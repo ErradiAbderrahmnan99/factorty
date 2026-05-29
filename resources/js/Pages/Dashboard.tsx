@@ -68,15 +68,15 @@ export default function Dashboard() {
             header={
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                     <div>
-                        <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">
                             Tableau de Bord Principal
                         </h2>
-                        <p className="text-slate-400 text-xs mt-1">
+                        <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
                             Aperçu analytique global de vos opérations de vente, achat, stock et comptabilité.
                         </p>
                     </div>
                     <div className="flex items-center space-x-3 shrink-0">
-                        <button className="flex items-center space-x-2 bg-slate-900 border border-slate-800 hover:bg-slate-850 px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 transition-all duration-200">
+                        <button className="flex items-center space-x-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 px-4 py-2 rounded-xl text-xs font-semibold text-slate-650 dark:text-slate-350 transition-all duration-200">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
@@ -95,14 +95,14 @@ export default function Dashboard() {
             <Head title="Tableau de Bord" />
 
             <div className="space-y-8">
-                {/* Greeting Banner */}
-                <div className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-gradient-to-tr from-slate-900 via-indigo-950/20 to-purple-950/20 p-8 shadow-2xl backdrop-blur-xl">
-                    <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+                {/* Greeting Banner - Metronic White / Gradient Dark Hybrid */}
+                <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-tr from-slate-100/50 via-white to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20 p-8 shadow-sm dark:shadow-2xl backdrop-blur-xl transition-all duration-200">
+                    <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-2xl pointer-events-none" />
                     <div className="relative z-10 space-y-2">
-                        <h3 className="text-xl md:text-2xl font-bold text-white">
-                            Bienvenue, <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">{user.name}</span> 👋
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
+                            Bienvenue, <span className="bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">{user.name}</span> 👋
                         </h3>
-                        <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-400 text-sm max-w-2xl leading-relaxed">
                             Le système ERP Factoraty est entièrement opérationnel. Vous avez des tâches d'approbations d'achat en attente et vos comptes d'écritures pour ce mois sont prêts pour la révision de clôture.
                         </p>
                     </div>
@@ -111,18 +111,18 @@ export default function Dashboard() {
                 {/* Grid of Key Analytics Cards */}
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {stats.map((stat, idx) => (
-                        <div key={idx} className="relative overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-900/40 p-6 shadow-xl backdrop-blur-md hover:border-slate-700/80 transition-all duration-300 group">
+                        <div key={idx} className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/60 bg-white dark:bg-slate-900/40 p-6 shadow-sm dark:shadow-xl backdrop-blur-md hover:border-indigo-500/40 dark:hover:border-slate-700/80 transition-all duration-300 group">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.title}</p>
-                                    <h4 className="text-2xl font-bold text-white tracking-tight">{stat.value}</h4>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{stat.title}</p>
+                                    <h4 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">{stat.value}</h4>
                                 </div>
                                 <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr ${stat.color} shadow-md group-hover:scale-110 transition-transform duration-300`}>
                                     {stat.icon}
                                 </div>
                             </div>
                             <div className="mt-4 flex items-center space-x-2">
-                                <span className={`flex items-center text-xs font-bold ${stat.isPositive ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                <span className={`flex items-center text-xs font-bold ${stat.isPositive ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                     {stat.isPositive ? (
                                         <svg className="mr-1 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -144,33 +144,33 @@ export default function Dashboard() {
                     {/* Left: Recent Activities (Colspan 2) */}
                     <div className="lg:col-span-2 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-white tracking-tight">Activités Récentes</h3>
-                            <button className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition duration-150">Voir tout</button>
+                            <h3 className="text-lg font-extrabold text-slate-800 dark:text-white tracking-tight">Activités Récentes</h3>
+                            <button className="text-xs font-bold text-indigo-650 dark:text-indigo-400 hover:underline transition duration-150">Voir tout</button>
                         </div>
-                        <div className="overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-900/30 shadow-xl backdrop-blur-md">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900/30 shadow-sm dark:shadow-xl backdrop-blur-md">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-slate-800 bg-slate-900/50">
-                                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Référence</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Montant</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date/Heure</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Statut</th>
+                                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Référence</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Description</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Montant</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Date/Heure</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Statut</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800/60">
+                                    <tbody className="divide-y divide-slate-150 dark:divide-slate-800/60">
                                         {recentActivities.map((act) => (
-                                            <tr key={act.id} className="hover:bg-slate-800/10 transition-colors duration-150">
-                                                <td className="px-6 py-4 text-xs font-bold text-white">{act.ref}</td>
-                                                <td className="px-6 py-4 text-xs text-slate-300">{act.desc}</td>
-                                                <td className="px-6 py-4 text-xs font-medium text-slate-400">{act.amount}</td>
-                                                <td className="px-6 py-4 text-xs text-slate-500">{act.time}</td>
+                                            <tr key={act.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/10 transition-colors duration-150">
+                                                <td className="px-6 py-4 text-xs font-extrabold text-slate-850 dark:text-white">{act.ref}</td>
+                                                <td className="px-6 py-4 text-xs text-slate-650 dark:text-slate-300">{act.desc}</td>
+                                                <td className="px-6 py-4 text-xs font-medium text-slate-550 dark:text-slate-400">{act.amount}</td>
+                                                <td className="px-6 py-4 text-xs text-slate-450 dark:text-slate-500">{act.time}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                                         act.status === 'Validé' || act.status === 'Complété'
-                                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                            : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                            : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                                                     }`}>
                                                         {act.status}
                                                     </span>
@@ -185,48 +185,48 @@ export default function Dashboard() {
 
                     {/* Right: Quick actions panel */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white tracking-tight">Raccourcis & Configuration</h3>
-                        <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-6 shadow-xl backdrop-blur-md space-y-4">
-                            <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-3">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Assistance & Démo</h4>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">Raccourcis & Configuration</h3>
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900/30 p-6 shadow-sm dark:shadow-xl backdrop-blur-md space-y-4">
+                            <div className="p-4 rounded-xl bg-slate-50/85 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 space-y-3">
+                                <h4 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Assistance & Démo</h4>
                                 <p className="text-xs text-slate-500 leading-relaxed">
                                     Cliquez sur n'importe quel élément du menu latéral pour simuler ou tester un module spécifique. Tous les sous-menus sont interactifs !
                                 </p>
                             </div>
                             
                             <div className="space-y-2">
-                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-800/80 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 text-xs font-semibold text-slate-200 transition-all duration-200">
+                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-850 hover:border-slate-350 dark:hover:border-slate-700 text-xs font-semibold text-slate-750 dark:text-slate-200 transition-all duration-200">
                                     <div className="flex items-center space-x-3">
-                                        <div className="h-7 w-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                                        <div className="h-7 w-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                             <span className="font-bold">V</span>
                                         </div>
                                         <span>Générer un Devis Client</span>
                                     </div>
-                                    <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </button>
 
-                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-800/80 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 text-xs font-semibold text-slate-200 transition-all duration-200">
+                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-850 hover:border-slate-350 dark:hover:border-slate-700 text-xs font-semibold text-slate-750 dark:text-slate-200 transition-all duration-200">
                                     <div className="flex items-center space-x-3">
-                                        <div className="h-7 w-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                        <div className="h-7 w-7 rounded-lg bg-purple-500/10 text-purple-650 dark:text-purple-400 flex items-center justify-center">
                                             <span className="font-bold">A</span>
                                         </div>
                                         <span>Créer Demande d'Achat</span>
                                     </div>
-                                    <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </button>
 
-                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-800/80 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 text-xs font-semibold text-slate-200 transition-all duration-200">
+                                <button className="flex w-full items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-850 hover:border-slate-350 dark:hover:border-slate-700 text-xs font-semibold text-slate-750 dark:text-slate-200 transition-all duration-200">
                                     <div className="flex items-center space-x-3">
-                                        <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                                        <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                                             <span className="font-bold">C</span>
                                         </div>
                                         <span>Saisir Pièce Comptable</span>
                                     </div>
-                                    <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </button>

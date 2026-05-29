@@ -21,6 +21,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'employee' => $request->user()->employee,
         ]);
     }
 
@@ -38,6 +39,32 @@ class ProfileController extends Controller
         $request->user()->save();
 
         return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Update the connected employee details.
+     */
+    public function updateEmployee(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'tele' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'adress' => ['nullable', 'string'],
+            'cin' => ['nullable', 'string', 'max:50'],
+            'birth_date' => ['nullable', 'date'],
+            'gender' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $employee = $user->employee ?: new \App\Models\Employee();
+        $employee->fill($validated);
+        $employee->user_id = $user->id;
+        $employee->save();
+
+        return Redirect::route('profile.edit')->with('status', 'employee-updated');
     }
 
     /**

@@ -1,6 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
 
 export default function Authenticated({
     header,
@@ -8,6 +8,30 @@ export default function Authenticated({
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const user = usePage().props.auth.user;
     
+    // Theme state (default is light)
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('theme');
+            return (saved === 'dark' || saved === 'light') ? saved : 'light';
+        }
+        return 'light';
+    });
+
+    useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            root.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    };
+
     // Sidebar collapsible state
     const [openModules, setOpenModules] = useState<{ [key: string]: boolean }>({
         vente: true,
@@ -109,15 +133,15 @@ export default function Authenticated({
     ];
 
     return (
-        <div className="flex h-screen bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
-            {/* Background Blur Accents */}
-            <div className="absolute top-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-indigo-900/10 blur-[100px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-violet-900/10 blur-[120px] pointer-events-none" />
+        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden transition-colors duration-200">
+            {/* Background Blur Accents for Dark mode only */}
+            <div className="hidden dark:block absolute top-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-indigo-900/10 blur-[100px] pointer-events-none" />
+            <div className="hidden dark:block absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-violet-900/10 blur-[120px] pointer-events-none" />
 
-            {/* Sidebar (Desktop) */}
-            <aside className="hidden md:flex flex-col w-72 bg-slate-900/50 border-r border-slate-800/80 backdrop-blur-xl shrink-0 z-20">
+            {/* Sidebar (Desktop) - Metronic Dark High Contrast Theme */}
+            <aside className="hidden md:flex flex-col w-72 bg-[#1e1e2d] border-r border-[#2b2b40] shrink-0 z-20">
                 {/* Logo Section */}
-                <div className="flex items-center space-x-3 p-6 border-b border-slate-800/85">
+                <div className="flex items-center space-x-3 p-6 border-b border-[#2b2b40]">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 shadow-md shadow-indigo-500/20">
                         <span className="text-white font-bold text-lg">F</span>
                     </div>
@@ -161,7 +185,7 @@ export default function Authenticated({
                             </button>
 
                             {openModules[mod.id] && (
-                                <div className="pl-9 pr-2 py-1 space-y-1 border-l border-slate-800 ml-5 mt-1">
+                                <div className="pl-9 pr-2 py-1 space-y-1 border-l border-slate-800/80 ml-5 mt-1">
                                     {mod.items.map((item) => (
                                         <button
                                             key={item.key}
@@ -178,9 +202,9 @@ export default function Authenticated({
                 </nav>
 
                 {/* Sidebar Footer User Info */}
-                <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+                <div className="p-4 border-t border-[#2b2b40] bg-slate-950/20">
                     <div className="flex items-center space-x-3 px-2">
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-200">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-800 border border-slate-750 flex items-center justify-center font-bold text-slate-200">
                             {user.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -194,8 +218,8 @@ export default function Authenticated({
             {/* Mobile Sidebar overlay */}
             {mobileSidebarOpen && (
                 <div className="fixed inset-0 z-40 flex md:hidden bg-slate-950/80 backdrop-blur-sm">
-                    <div className="relative flex flex-col w-72 max-w-[80%] bg-slate-900 border-r border-slate-800 text-slate-100">
-                        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                    <div className="relative flex flex-col w-72 max-w-[80%] bg-[#1e1e2d] border-r border-[#2b2b40] text-slate-100">
+                        <div className="flex items-center justify-between p-6 border-b border-[#2b2b40]">
                             <span className="text-lg font-bold tracking-wider text-white">FACTORATY</span>
                             <button onClick={() => setMobileSidebarOpen(false)} className="text-slate-400 hover:text-white">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -243,44 +267,61 @@ export default function Authenticated({
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-                {/* Topbar */}
-                <header className="flex h-16 items-center justify-between px-6 bg-slate-900/40 border-b border-slate-800/80 backdrop-blur-md shrink-0">
-                    {/* Left: Mobile hamburger & Page Title */}
+                {/* Topbar - Metronic Clean White / Dark Fluid theme */}
+                <header className="flex h-16 items-center justify-between px-6 bg-white dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800/80 backdrop-blur-md shrink-0 transition-colors duration-200">
+                    {/* Left: Mobile hamburger & Search bar */}
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setMobileSidebarOpen(true)}
-                            className="md:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                            className="md:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-white"
                         >
                             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
                         
-                        {/* Search Input (Premium aesthetic) */}
+                        {/* Search Input (Metronic style) */}
                         <div className="relative hidden sm:block w-64 md:w-80">
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </span>
                             <input
                                 type="text"
-                                className="w-full pl-10 pr-4 py-2 bg-slate-950/40 border border-slate-800 rounded-xl text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 backdrop-blur-sm transition-all duration-200"
+                                className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 backdrop-blur-sm transition-all duration-200"
                                 placeholder="Rechercher des clients, factures, pièces..."
                             />
                         </div>
                     </div>
 
-                    {/* Right: Quick actions & Profile drop */}
+                    {/* Right: Theme toggle, indicators, Notifications & Profile */}
                     <div className="flex items-center space-x-4">
                         {/* Live Server Indicator */}
                         <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Live</span>
+                            <span className="text-[10px] font-semibold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider">Live</span>
                         </div>
 
+                        {/* Theme Toggle Button */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-xl text-slate-500 dark:text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all duration-150"
+                            aria-label="Toggle Theme"
+                        >
+                            {theme === 'light' ? (
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                            ) : (
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                                </svg>
+                            )}
+                        </button>
+
                         {/* Notifications */}
-                        <button className="relative p-2 rounded-xl text-slate-400 hover:bg-slate-800/30 hover:text-white transition-all duration-150">
+                        <button className="relative p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 hover:text-slate-700 dark:hover:text-white transition-all duration-150">
                             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-indigo-500" />
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -291,12 +332,12 @@ export default function Authenticated({
                         <div className="relative">
                             <Dropdown>
                                 <Dropdown.Trigger>
-                                    <button className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800/30 transition-all duration-150">
+                                    <button className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all duration-150">
                                         <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-sm">
                                             {user.name.charAt(0)}
                                         </div>
-                                        <span className="hidden md:block text-xs font-semibold text-slate-300">{user.name}</span>
-                                        <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <span className="hidden md:block text-xs font-semibold text-slate-750 dark:text-slate-300">{user.name}</span>
+                                        <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
@@ -315,9 +356,9 @@ export default function Authenticated({
                     </div>
                 </header>
 
-                {/* Sub-header or Breadcrumbs */}
+                {/* Sub-header / Breadcrumbs (Metronic Style) */}
                 {header && (
-                    <div className="bg-slate-900/10 border-b border-slate-800/40 py-4 px-8 shrink-0">
+                    <div className="bg-white dark:bg-slate-900/10 border-b border-slate-200 dark:border-slate-800/40 py-4 px-8 shrink-0 transition-colors duration-200">
                         {header}
                     </div>
                 )}
@@ -330,17 +371,17 @@ export default function Authenticated({
 
             {/* Premium Toast Alert for Mock Interactivity */}
             {toast && (
-                <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-2xl backdrop-blur-lg animate-bounce duration-500">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-2xl backdrop-blur-lg animate-bounce duration-500">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-white">{toast.title}</h4>
-                        <p className="text-xs text-slate-400 mt-0.5">{toast.message}</p>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">{toast.title}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{toast.message}</p>
                     </div>
-                    <button onClick={() => setToast(null)} className="text-slate-500 hover:text-slate-300">
+                    <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-350">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
