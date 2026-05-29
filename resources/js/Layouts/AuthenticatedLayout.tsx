@@ -2,6 +2,20 @@ import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
 
+interface ERPItem {
+    name: string;
+    key: string;
+    group?: string;
+    href?: string;
+}
+
+interface ERPModule {
+    id: string;
+    title: string;
+    icon: ReactNode;
+    items: ERPItem[];
+}
+
 export default function Authenticated({
     header,
     children,
@@ -34,7 +48,8 @@ export default function Authenticated({
 
     // Sidebar collapsible state
     const [openModules, setOpenModules] = useState<{ [key: string]: boolean }>({
-        vente: true,
+        ddb: true,
+        vente: false,
         achat: false,
         accounting: false,
         stock: false,
@@ -61,7 +76,33 @@ export default function Authenticated({
         setTimeout(() => setToast(null), 4000);
     };
 
-    const erpModules = [
+    const erpModules: ERPModule[] = [
+        {
+            id: 'ddb',
+            title: 'DDB (Données de base)',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            ),
+            items: [
+                // Group 1: Produits
+                { name: 'Catégorie de produits', key: 'prod_cat', group: 'Produits', href: route('product-categories.index') },
+                { name: 'Produits', key: 'prod_list', group: 'Produits', href: route('products.index') },
+                { name: 'Catégorie d\'unité', key: 'unit_cat', group: 'Produits', href: route('unit-categories.index') },
+                { name: 'Unités', key: 'unit_list', group: 'Produits', href: route('units.index') },
+                // Group 2: Tiers
+                { name: 'Prospects', key: 'prospects', group: 'Tiers', href: route('tiers.prospect.index') },
+                { name: 'Clients', key: 'clients', group: 'Tiers', href: route('tiers.client.index') },
+                { name: 'Fournisseurs', key: 'fournisseurs', group: 'Tiers', href: route('tiers.fournisseur.index') },
+                // Group 3: Paramètres Tiers
+                { name: 'Catégories de Tiers', key: 'tier_cat', group: 'Paramètres Tiers', href: route('tier-categories.index') },
+                { name: 'Formes Juridiques', key: 'legal_forms', group: 'Paramètres Tiers', href: route('legal-forms.index') },
+                { name: 'Pays', key: 'countries', group: 'Paramètres Tiers', href: route('countries.index') },
+                { name: 'Régions', key: 'regions', group: 'Paramètres Tiers', href: route('regions.index') },
+                { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
+            ],
+        },
         {
             id: 'vente',
             title: 'Ventes',
@@ -186,15 +227,34 @@ export default function Authenticated({
 
                             {openModules[mod.id] && (
                                 <div className="pl-9 pr-2 py-1 space-y-1 border-l border-slate-800/80 ml-5 mt-1">
-                                    {mod.items.map((item) => (
-                                        <button
-                                            key={item.key}
-                                            onClick={() => triggerMockAlert(`${mod.title} / ${item.name}`)}
-                                            className="block w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-150"
-                                        >
-                                            {item.name}
-                                        </button>
-                                    ))}
+                                    {mod.items.map((item, idx) => {
+                                        // Render Metronic-style grouping header if it's the first item of that group
+                                        const showGroupHeader = item.group && (idx === 0 || mod.items[idx - 1].group !== item.group);
+                                        return (
+                                            <div key={item.key} className="space-y-1">
+                                                {showGroupHeader && (
+                                                    <div className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest pt-2 pb-1 pl-3">
+                                                        {item.group}
+                                                    </div>
+                                                )}
+                                                {item.href ? (
+                                                    <Link
+                                                        href={item.href}
+                                                        className="block w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-150"
+                                                    >
+                                                        {item.name}
+                                                    </Link>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => triggerMockAlert(`${mod.title} / ${item.name}`)}
+                                                        className="block w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-150"
+                                                    >
+                                                        {item.name}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -244,18 +304,37 @@ export default function Authenticated({
                                     </button>
                                     {openModules[mod.id] && (
                                         <div className="pl-9 space-y-1 border-l border-slate-800 ml-5">
-                                            {mod.items.map((item) => (
-                                                <button
-                                                    key={item.key}
-                                                    onClick={() => {
-                                                        setMobileSidebarOpen(false);
-                                                        triggerMockAlert(`${mod.title} / ${item.name}`);
-                                                    }}
-                                                    className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
-                                                >
-                                                    {item.name}
-                                                </button>
-                                            ))}
+                                            {mod.items.map((item, idx) => {
+                                                const showGroupHeader = item.group && (idx === 0 || mod.items[idx - 1].group !== item.group);
+                                                return (
+                                                    <div key={item.key} className="space-y-1">
+                                                        {showGroupHeader && (
+                                                            <div className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest pt-2 pb-1 pl-3">
+                                                                {item.group}
+                                                            </div>
+                                                        )}
+                                                        {item.href ? (
+                                                            <Link
+                                                                href={item.href}
+                                                                onClick={() => setMobileSidebarOpen(false)}
+                                                                className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
+                                                            >
+                                                                {item.name}
+                                                            </Link>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setMobileSidebarOpen(false);
+                                                                    triggerMockAlert(`${mod.title} / ${item.name}`);
+                                                                }}
+                                                                className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
+                                                            >
+                                                                {item.name}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
