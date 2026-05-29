@@ -1,0 +1,352 @@
+import Dropdown from '@/Components/Dropdown';
+import { Link, usePage } from '@inertiajs/react';
+import { PropsWithChildren, ReactNode, useState } from 'react';
+
+export default function Authenticated({
+    header,
+    children,
+}: PropsWithChildren<{ header?: ReactNode }>) {
+    const user = usePage().props.auth.user;
+    
+    // Sidebar collapsible state
+    const [openModules, setOpenModules] = useState<{ [key: string]: boolean }>({
+        vente: true,
+        achat: false,
+        accounting: false,
+        stock: false,
+    });
+
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    
+    // Custom Toast state for mock module interactions
+    const [toast, setToast] = useState<{ show: boolean; title: string; message: string } | null>(null);
+
+    const toggleModule = (module: string) => {
+        setOpenModules((prev) => ({
+            ...prev,
+            [module]: !prev[module],
+        }));
+    };
+
+    const triggerMockAlert = (moduleName: string) => {
+        setToast({
+            show: true,
+            title: `Module ${moduleName}`,
+            message: "Ce module est prêt pour l'intégration de la base de données. L'interface et les schémas sont validés !",
+        });
+        setTimeout(() => setToast(null), 4000);
+    };
+
+    const erpModules = [
+        {
+            id: 'vente',
+            title: 'Ventes',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+            items: [
+                { name: 'Devis', key: 'devis' },
+                { name: 'Commande Client', key: 'commande' },
+                { name: 'Bon de Livraison', key: 'livraison' },
+                { name: 'Retour Vente', key: 'reture' },
+                { name: 'Facture Vente', key: 'facture' },
+                { name: 'Avoir Vente', key: 'avoir' },
+                { name: 'Contrat Vente', key: 'contrat' },
+            ],
+        },
+        {
+            id: 'achat',
+            title: 'Achats',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+            ),
+            items: [
+                { name: 'Contrats Achat', key: 'contrat_a' },
+                { name: "Demandes d'Achat", key: 'demande_a' },
+                { name: "Groupes d'Achat", key: 'groupe_a' },
+                { name: 'Demandes de Prix (RFQ)', key: 'demande_p' },
+                { name: 'Commandes Achat', key: 'commande_a' },
+                { name: 'Bons de Réception', key: 'reception' },
+                { name: 'Retours Achat', key: 'retour_a' },
+                { name: 'Factures Fournisseur', key: 'facture_f' },
+                { name: 'Avoirs Fournisseur', key: 'avoir_f' },
+                { name: 'Rapports Achat', key: 'rapport' },
+            ],
+        },
+        {
+            id: 'accounting',
+            title: 'Comptabilité',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            ),
+            items: [
+                { name: 'Pièces Comptables', key: 'piece' },
+                { name: 'Plan Comptable', key: 'plan' },
+                { name: 'Comptes Comptables', key: 'compt' },
+                { name: 'Paramétrage', key: 'param' },
+            ],
+        },
+        {
+            id: 'stock',
+            title: 'Stocks & Articles',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            ),
+            items: [
+                { name: 'Fiches Articles', key: 'articles' },
+                { name: 'Mouvements de Stock', key: 'mouvements' },
+                { name: 'Valorisation Stock', key: 'valorisation' },
+            ],
+        },
+    ];
+
+    return (
+        <div className="flex h-screen bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
+            {/* Background Blur Accents */}
+            <div className="absolute top-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-indigo-900/10 blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-violet-900/10 blur-[120px] pointer-events-none" />
+
+            {/* Sidebar (Desktop) */}
+            <aside className="hidden md:flex flex-col w-72 bg-slate-900/50 border-r border-slate-800/80 backdrop-blur-xl shrink-0 z-20">
+                {/* Logo Section */}
+                <div className="flex items-center space-x-3 p-6 border-b border-slate-800/85">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 shadow-md shadow-indigo-500/20">
+                        <span className="text-white font-bold text-lg">F</span>
+                    </div>
+                    <span className="text-lg font-bold tracking-wider text-white">
+                        FACTORATY<span className="text-indigo-400 font-medium">ERP</span>
+                    </span>
+                </div>
+
+                {/* Navigation Menu */}
+                <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-4 custom-scrollbar">
+                    <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Modules ERP
+                    </div>
+                    
+                    {erpModules.map((mod) => (
+                        <div key={mod.id} className="space-y-1">
+                            <button
+                                onClick={() => toggleModule(mod.id)}
+                                className={`flex w-full items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                    openModules[mod.id] 
+                                        ? 'bg-slate-800/40 text-indigo-400' 
+                                        : 'text-slate-400 hover:bg-slate-800/20 hover:text-slate-200'
+                                }`}
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <span className={`${openModules[mod.id] ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                        {mod.icon}
+                                    </span>
+                                    <span>{mod.title}</span>
+                                </div>
+                                <svg
+                                    className={`h-4 w-4 transform transition-transform duration-200 ${
+                                        openModules[mod.id] ? 'rotate-180' : ''
+                                    }`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {openModules[mod.id] && (
+                                <div className="pl-9 pr-2 py-1 space-y-1 border-l border-slate-800 ml-5 mt-1">
+                                    {mod.items.map((item) => (
+                                        <button
+                                            key={item.key}
+                                            onClick={() => triggerMockAlert(`${mod.title} / ${item.name}`)}
+                                            className="block w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-150"
+                                        >
+                                            {item.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </nav>
+
+                {/* Sidebar Footer User Info */}
+                <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+                    <div className="flex items-center space-x-3 px-2">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-200">
+                            {user.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Mobile Sidebar overlay */}
+            {mobileSidebarOpen && (
+                <div className="fixed inset-0 z-40 flex md:hidden bg-slate-950/80 backdrop-blur-sm">
+                    <div className="relative flex flex-col w-72 max-w-[80%] bg-slate-900 border-r border-slate-800 text-slate-100">
+                        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                            <span className="text-lg font-bold tracking-wider text-white">FACTORATY</span>
+                            <button onClick={() => setMobileSidebarOpen(false)} className="text-slate-400 hover:text-white">
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+                            {erpModules.map((mod) => (
+                                <div key={mod.id} className="space-y-1">
+                                    <button
+                                        onClick={() => toggleModule(mod.id)}
+                                        className="flex w-full items-center justify-between px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/20"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            {mod.icon}
+                                            <span>{mod.title}</span>
+                                        </div>
+                                        <svg className={`h-4 w-4 transform transition-transform ${openModules[mod.id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    {openModules[mod.id] && (
+                                        <div className="pl-9 space-y-1 border-l border-slate-800 ml-5">
+                                            {mod.items.map((item) => (
+                                                <button
+                                                    key={item.key}
+                                                    onClick={() => {
+                                                        setMobileSidebarOpen(false);
+                                                        triggerMockAlert(`${mod.title} / ${item.name}`);
+                                                    }}
+                                                    className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
+                                                >
+                                                    {item.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </nav>
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+                {/* Topbar */}
+                <header className="flex h-16 items-center justify-between px-6 bg-slate-900/40 border-b border-slate-800/80 backdrop-blur-md shrink-0">
+                    {/* Left: Mobile hamburger & Page Title */}
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={() => setMobileSidebarOpen(true)}
+                            className="md:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                        >
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        
+                        {/* Search Input (Premium aesthetic) */}
+                        <div className="relative hidden sm:block w-64 md:w-80">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input
+                                type="text"
+                                className="w-full pl-10 pr-4 py-2 bg-slate-950/40 border border-slate-800 rounded-xl text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/80 backdrop-blur-sm transition-all duration-200"
+                                placeholder="Rechercher des clients, factures, pièces..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Right: Quick actions & Profile drop */}
+                    <div className="flex items-center space-x-4">
+                        {/* Live Server Indicator */}
+                        <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Live</span>
+                        </div>
+
+                        {/* Notifications */}
+                        <button className="relative p-2 rounded-xl text-slate-400 hover:bg-slate-800/30 hover:text-white transition-all duration-150">
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </button>
+
+                        {/* Dropdown settings */}
+                        <div className="relative">
+                            <Dropdown>
+                                <Dropdown.Trigger>
+                                    <button className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800/30 transition-all duration-150">
+                                        <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-sm">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <span className="hidden md:block text-xs font-semibold text-slate-300">{user.name}</span>
+                                        <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </Dropdown.Trigger>
+
+                                <Dropdown.Content>
+                                    <Dropdown.Link href={route('profile.edit')}>
+                                        Profil
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('logout')} method="post" as="button">
+                                        Se déconnecter
+                                    </Dropdown.Link>
+                                </Dropdown.Content>
+                            </Dropdown>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Sub-header or Breadcrumbs */}
+                {header && (
+                    <div className="bg-slate-900/10 border-b border-slate-800/40 py-4 px-8 shrink-0">
+                        {header}
+                    </div>
+                )}
+
+                {/* Dynamic Page Content */}
+                <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    {children}
+                </main>
+            </div>
+
+            {/* Premium Toast Alert for Mock Interactivity */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-2xl backdrop-blur-lg animate-bounce duration-500">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-white">{toast.title}</h4>
+                        <p className="text-xs text-slate-400 mt-0.5">{toast.message}</p>
+                    </div>
+                    <button onClick={() => setToast(null)} className="text-slate-500 hover:text-slate-300">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
