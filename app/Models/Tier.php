@@ -21,7 +21,7 @@ class Tier extends Model
         'country_id',
         'region_id',
         'city_id',
-        'legal_form_id',
+        'legal_form',
         'if_fiscal',
         'ice',
         'rc',
@@ -93,8 +93,5 @@ class Tier extends Model
         return $this->belongsTo(City::class);
     }
 
-    public function legalForm(): BelongsTo
-    {
-        return $this->belongsTo(LegalForm::class);
-    }
+
 }

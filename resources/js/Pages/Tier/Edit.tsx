@@ -12,7 +12,7 @@ interface TierData {
     id: number; type: string; ref: string | null; label: string; is_professionnel: boolean;
     description: string | null; parent_id: number | null; tier_category_id: number | null;
     address: string | null; country_id: number | null; region_id: number | null; city_id: number | null;
-    legal_form_id: number | null; if_fiscal: string | null; ice: string | null; rc: string | null;
+    legal_form: string | null; if_fiscal: string | null; ice: string | null; rc: string | null;
     cnss: string | null; tp: string | null; rib: string | null; emploi: string | null;
     email: string | null; telephone: string | null; website: string | null; fax: string | null;
     linkedin: string | null; twitter: string | null; facebook: string | null; instagram: string | null;
@@ -26,7 +26,7 @@ export default function Edit({
 }: {
     tier: TierData; type: string; typeLabel: string;
     tierCategories: SelectItem[]; countries: SelectItem[]; regions: RegionItem[];
-    cities: CityItem[]; legalForms: SelectItem[]; parents: ParentItem[];
+    cities: CityItem[]; legalForms: string[]; parents: ParentItem[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
 
@@ -35,7 +35,7 @@ export default function Edit({
         parent_id: tier.parent_id ? String(tier.parent_id) : '', tier_category_id: tier.tier_category_id ? String(tier.tier_category_id) : '',
         address: tier.address || '', country_id: tier.country_id ? String(tier.country_id) : '',
         region_id: tier.region_id ? String(tier.region_id) : '', city_id: tier.city_id ? String(tier.city_id) : '',
-        legal_form_id: tier.legal_form_id ? String(tier.legal_form_id) : '',
+        legal_form: tier.legal_form || '',
         if_fiscal: tier.if_fiscal || '', ice: tier.ice || '', rc: tier.rc || '',
         cnss: tier.cnss || '', tp: tier.tp || '', rib: tier.rib || '', emploi: tier.emploi || '',
         email: tier.email || '', telephone: tier.telephone || '', website: tier.website || '', fax: tier.fax || '',
@@ -152,7 +152,7 @@ export default function Edit({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
                                     <button type="button" onClick={() => setData('is_professionnel', !data.is_professionnel)}
-                                        className={`relative h-6 w-11 rounded-full transition-all duration-300 ${data.is_professionnel ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                                        className={`shrink-0 relative h-6 w-11 rounded-full transition-all duration-300 ${data.is_professionnel ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
                                         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 ${data.is_professionnel ? 'translate-x-5' : 'translate-x-0.5'}`} />
                                     </button>
                                     <div>
@@ -206,9 +206,9 @@ export default function Edit({
                             <h3 className="text-xs font-extrabold text-slate-800 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800/60 pb-3">Informations Légales & Fiscales</h3>
                             <div>
                                 <label className={labelCls}>Forme Juridique</label>
-                                <select className={inputCls} value={data.legal_form_id} onChange={e => setData('legal_form_id', e.target.value)}>
+                                <select className={inputCls} value={data.legal_form} onChange={e => setData('legal_form', e.target.value)}>
                                     <option value="">Choisir...</option>
-                                    {legalForms.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                                    {legalForms.map(f => <option key={f} value={f}>{f}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

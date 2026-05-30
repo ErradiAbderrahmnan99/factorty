@@ -97,10 +97,10 @@ export default function Authenticated({
                 { name: 'Fournisseurs', key: 'fournisseurs', group: 'Tiers', href: route('tiers.fournisseur.index') },
                 // Group 3: Paramètres Tiers
                 { name: 'Catégories de Tiers', key: 'tier_cat', group: 'Paramètres Tiers', href: route('tier-categories.index') },
-                { name: 'Formes Juridiques', key: 'legal_forms', group: 'Paramètres Tiers', href: route('legal-forms.index') },
                 { name: 'Pays', key: 'countries', group: 'Paramètres Tiers', href: route('countries.index') },
                 { name: 'Régions', key: 'regions', group: 'Paramètres Tiers', href: route('regions.index') },
                 { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
+                { name: 'Devises', key: 'devises', group: 'Paramètres Tiers', href: route('devises.index') },
             ],
         },
         {
@@ -112,7 +112,7 @@ export default function Authenticated({
                 </svg>
             ),
             items: [
-                { name: 'Devis', key: 'devis' },
+                { name: 'Devis', key: 'devis', href: route('devis.index') },
                 { name: 'Commande Client', key: 'commande' },
                 { name: 'Bon de Livraison', key: 'livraison' },
                 { name: 'Retour Vente', key: 'reture' },

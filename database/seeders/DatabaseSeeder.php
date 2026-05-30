@@ -388,24 +388,9 @@ class DatabaseSeeder extends Seeder
             \App\Models\TierCategory::updateOrCreate(['code' => $tc['code']], $tc);
         }
 
-        // Legal Forms
-        $legalForms = [
-            ['code' => 'SARL', 'label' => 'Société à Responsabilité Limitée', 'description' => 'SARL — Capital minimum 10 000 MAD'],
-            ['code' => 'SA', 'label' => 'Société Anonyme', 'description' => 'SA — Capital minimum 300 000 MAD'],
-            ['code' => 'SNC', 'label' => 'Société en Nom Collectif', 'description' => null],
-            ['code' => 'SCS', 'label' => 'Société en Commandite Simple', 'description' => null],
-            ['code' => 'AUTO', 'label' => 'Auto-Entrepreneur', 'description' => 'Régime simplifié pour indépendants'],
-            ['code' => 'SUCC', 'label' => 'Succursale', 'description' => 'Filiale ou succursale d\'une société étrangère'],
-        ];
-        foreach ($legalForms as $lf) {
-            \App\Models\LegalForm::updateOrCreate(['code' => $lf['code']], $lf);
-        }
-
         // ─── Tiers (Prospects, Clients, Fournisseurs) ───────────────────────
         $distCat = \App\Models\TierCategory::where('code', 'DIST')->first();
         $indCat  = \App\Models\TierCategory::where('code', 'IND')->first();
-        $sarlForm = \App\Models\LegalForm::where('code', 'SARL')->first();
-        $saForm   = \App\Models\LegalForm::where('code', 'SA')->first();
         $casaCity = \App\Models\City::where('code', 'CASA')->first();
         $rabaCity = \App\Models\City::where('code', 'RABA')->first();
 
@@ -415,7 +400,7 @@ class DatabaseSeeder extends Seeder
                 'type' => 'prospect', 'ref' => 'PRO-2026-001', 'label' => 'TechMaroc Solutions',
                 'is_professionnel' => true, 'tier_category_id' => $distCat?->id,
                 'city_id' => $casaCity?->id, 'country_id' => $ma->id,
-                'legal_form_id' => $sarlForm?->id, 'email' => 'contact@techmaroc.ma',
+                'legal_form' => 'SARL', 'email' => 'contact@techmaroc.ma',
                 'telephone' => '+212 522-456789', 'status' => 'actif', 'description' => 'Distributeur de matériel informatique à Casablanca.',
                 'ice' => '002345678000001',
             ],
@@ -423,7 +408,7 @@ class DatabaseSeeder extends Seeder
                 'type' => 'prospect', 'ref' => 'PRO-2026-002', 'label' => 'Groupe Atlas Industries',
                 'is_professionnel' => true, 'tier_category_id' => $indCat?->id,
                 'city_id' => $rabaCity?->id, 'country_id' => $ma->id,
-                'legal_form_id' => $saForm?->id, 'email' => 'atlas@groupeatlas.ma',
+                'legal_form' => 'SA', 'email' => 'atlas@groupeatlas.ma',
                 'telephone' => '+212 537-112233', 'status' => 'actif',
             ],
             [
@@ -437,7 +422,7 @@ class DatabaseSeeder extends Seeder
                 'type' => 'client', 'ref' => 'CLI-2026-001', 'label' => 'Sonatrac Maroc',
                 'is_professionnel' => true, 'tier_category_id' => $distCat?->id,
                 'city_id' => $casaCity?->id, 'country_id' => $ma->id,
-                'legal_form_id' => $saForm?->id, 'email' => 'commandes@sonatrac.ma',
+                'legal_form' => 'SA', 'email' => 'commandes@sonatrac.ma',
                 'telephone' => '+212 522-778899', 'website' => 'https://www.sonatrac.ma',
                 'if_fiscal' => '12345678', 'ice' => '001122334455000',
                 'rc' => '123456 Casablanca', 'status' => 'actif', 'is_professionnel' => true,
@@ -458,7 +443,7 @@ class DatabaseSeeder extends Seeder
                 'type' => 'fournisseur', 'ref' => 'FOU-2026-001', 'label' => 'ElectroParts Maroc SARL',
                 'is_professionnel' => true, 'tier_category_id' => $indCat?->id,
                 'city_id' => $casaCity?->id, 'country_id' => $ma->id,
-                'legal_form_id' => $sarlForm?->id, 'email' => 'fournisseur@electroparts.ma',
+                'legal_form' => 'SARL', 'email' => 'fournisseur@electroparts.ma',
                 'telephone' => '+212 522-001122', 'website' => 'https://www.electroparts.ma',
                 'if_fiscal' => '87654321', 'rib' => 'MA64 011 5100 0100 0506 2001 5 003',
                 'status' => 'actif',
@@ -472,13 +457,24 @@ class DatabaseSeeder extends Seeder
             [
                 'type' => 'fournisseur', 'ref' => 'FOU-2026-003', 'label' => 'Acier & Métaux SA',
                 'is_professionnel' => true, 'city_id' => $casaCity?->id, 'country_id' => $ma->id,
-                'legal_form_id' => $saForm?->id, 'email' => 'ventes@aciermetaux.ma',
+                'legal_form' => 'SA', 'email' => 'ventes@aciermetaux.ma',
                 'telephone' => '+212 522-332211', 'status' => 'inactif',
             ],
         ];
 
         foreach ($tiers as $t) {
             \App\Models\Tier::updateOrCreate(['ref' => $t['ref']], $t);
+        }
+
+        // 13. Seed Devises
+        $devises = [
+            ['code' => 'MAD', 'label' => 'Dirham Marocain', 'symbol' => 'DH'],
+            ['code' => 'EUR', 'label' => 'Euro', 'symbol' => '€'],
+            ['code' => 'USD', 'label' => 'Dollar Américain', 'symbol' => '$'],
+        ];
+
+        foreach ($devises as $devise) {
+            \App\Models\Devise::updateOrCreate(['code' => $devise['code']], $devise);
         }
     }
 }

@@ -9,8 +9,9 @@ use App\Http\Controllers\CountryController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\TierCategoryController;
-use App\Http\Controllers\LegalFormController;
 use App\Http\Controllers\TierController;
+use App\Http\Controllers\DeviseController;
+use App\Http\Controllers\DevisController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,7 +41,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('regions', RegionController::class)->except(['create', 'edit', 'show']);
     Route::resource('cities', CityController::class)->except(['create', 'edit', 'show']);
     Route::resource('tier-categories', TierCategoryController::class)->except(['create', 'edit', 'show']);
-    Route::resource('legal-forms', LegalFormController::class)->except(['create', 'edit', 'show']);
 
     // DDB: Tiers — Main entity (Prospect / Client / Fournisseur) — type-scoped routes
     foreach (['prospects' => 'prospect', 'clients' => 'client', 'fournisseurs' => 'fournisseur'] as $plural => $type) {
@@ -59,6 +59,17 @@ Route::middleware('auth')->group(function () {
         Route::delete("/{$plural}/{tier}", [TierController::class, 'destroy'])
             ->defaults('type', $type)->name("tiers.{$type}.destroy");
     }
+
+    // DDB: Devises
+    Route::resource('devises', DeviseController::class)->except(['create', 'edit', 'show']);
+
+    // Devis CRUD
+    Route::get('devis/export-template', [DevisController::class, 'exportTemplate'])->name('devis.export-template');
+    Route::post('devis/import', [DevisController::class, 'import'])->name('devis.import');
+    Route::resource('devis', DevisController::class)->parameters([
+        'devis' => 'devis'
+    ]);
+    Route::post('devis/{devis}/toggle-status', [DevisController::class, 'updateStatus'])->name('devis.toggle-status');
 });
 
 require __DIR__.'/auth.php';

@@ -15,7 +15,7 @@ export default function Create({
 }: {
     type: string; typeLabel: string;
     tierCategories: SelectItem[]; countries: SelectItem[]; regions: RegionItem[];
-    cities: CityItem[]; legalForms: SelectItem[]; parents: ParentItem[];
+    cities: CityItem[]; legalForms: string[]; parents: ParentItem[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
 
@@ -23,7 +23,7 @@ export default function Create({
         ref: '', label: '', is_professionnel: false as boolean, description: '',
         parent_id: '', tier_category_id: '',
         address: '', country_id: '', region_id: '', city_id: '',
-        legal_form_id: '', if_fiscal: '', ice: '', rc: '', cnss: '', tp: '', rib: '', emploi: '',
+        legal_form: '', if_fiscal: '', ice: '', rc: '', cnss: '', tp: '', rib: '', emploi: '',
         email: '', telephone: '', website: '', fax: '',
         linkedin: '', twitter: '', facebook: '', instagram: '',
         status: 'actif',
@@ -138,7 +138,7 @@ export default function Create({
                                 {/* is_professionnel Toggle */}
                                 <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
                                     <button type="button" onClick={() => setData('is_professionnel', !data.is_professionnel)}
-                                        className={`relative h-6 w-11 rounded-full transition-all duration-300 focus:outline-none ${data.is_professionnel ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                                        className={`shrink-0 relative h-6 w-11 rounded-full transition-all duration-300 focus:outline-none ${data.is_professionnel ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
                                         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 ${data.is_professionnel ? 'translate-x-5' : 'translate-x-0.5'}`} />
                                     </button>
                                     <div>
@@ -205,11 +205,11 @@ export default function Create({
                             <h3 className="text-xs font-extrabold text-slate-800 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800/60 pb-3">Informations Légales & Fiscales</h3>
                             <div>
                                 <label className={labelCls}>Forme Juridique</label>
-                                <select className={inputCls} value={data.legal_form_id} onChange={e => setData('legal_form_id', e.target.value)}>
+                                <select className={inputCls} value={data.legal_form} onChange={e => setData('legal_form', e.target.value)}>
                                     <option value="">Choisir...</option>
-                                    {legalForms.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                                    {legalForms.map(f => <option key={f} value={f}>{f}</option>)}
                                 </select>
-                                <InputError message={errors.legal_form_id} className="mt-1" />
+                                <InputError message={errors.legal_form} className="mt-1" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[

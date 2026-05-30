@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('city_id')->nullable()->constrained('cities')->nullOnDelete();
 
             // Legal & Fiscal
-            $table->foreignId('legal_form_id')->nullable()->constrained('legal_forms')->nullOnDelete();
+            $table->string('legal_form', 50)->nullable();
             $table->string('if_fiscal', 50)->nullable();  // Identification Fiscale
             $table->string('ice', 50)->nullable();         // Identifiant Commun de l'Entreprise
             $table->string('rc', 50)->nullable();          // Registre de Commerce

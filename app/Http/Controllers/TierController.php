@@ -7,7 +7,6 @@ use App\Models\TierCategory;
 use App\Models\Country;
 use App\Models\Region;
 use App\Models\City;
-use App\Models\LegalForm;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -58,6 +57,7 @@ class TierController extends Controller
     public function create(string $type): Response
     {
         abort_unless(array_key_exists($type, $this->typeLabels), 404);
+        $legalForms = ['SARL', 'SA', 'SNC', 'SCS', 'Auto-Entrepreneur', 'Succursale'];
 
         return Inertia::render('Tier/Create', [
             'type'           => $type,
@@ -66,7 +66,7 @@ class TierController extends Controller
             'countries'      => Country::orderBy('label')->get(),
             'regions'        => Region::with('country')->orderBy('label')->get(),
             'cities'         => City::with('region')->orderBy('label')->get(),
-            'legalForms'     => LegalForm::orderBy('label')->get(),
+            'legalForms'     => $legalForms,
             'parents'        => Tier::where('type', $type)->orderBy('label')->get(['id', 'label', 'ref']),
         ]);
     }
@@ -86,7 +86,7 @@ class TierController extends Controller
             'country_id'      => ['nullable', 'exists:countries,id'],
             'region_id'       => ['nullable', 'exists:regions,id'],
             'city_id'         => ['nullable', 'exists:cities,id'],
-            'legal_form_id'   => ['nullable', 'exists:legal_forms,id'],
+            'legal_form'      => ['nullable', 'string', 'max:100'],
             'if_fiscal'       => ['nullable', 'string', 'max:50'],
             'ice'             => ['nullable', 'string', 'max:50'],
             'rc'              => ['nullable', 'string', 'max:50'],
@@ -116,6 +116,7 @@ class TierController extends Controller
     {
         abort_unless(array_key_exists($type, $this->typeLabels), 404);
         abort_unless($tier->type === $type, 404);
+        $legalForms = ['SARL', 'SA', 'SNC', 'SCS', 'Auto-Entrepreneur', 'Succursale'];
 
         return Inertia::render('Tier/Edit', [
             'tier'           => $tier,
@@ -125,7 +126,7 @@ class TierController extends Controller
             'countries'      => Country::orderBy('label')->get(),
             'regions'        => Region::with('country')->orderBy('label')->get(),
             'cities'         => City::with('region')->orderBy('label')->get(),
-            'legalForms'     => LegalForm::orderBy('label')->get(),
+            'legalForms'     => $legalForms,
             'parents'        => Tier::where('type', $type)
                                     ->where('id', '!=', $tier->id)
                                     ->orderBy('label')->get(['id', 'label', 'ref']),
@@ -148,7 +149,7 @@ class TierController extends Controller
             'country_id'      => ['nullable', 'exists:countries,id'],
             'region_id'       => ['nullable', 'exists:regions,id'],
             'city_id'         => ['nullable', 'exists:cities,id'],
-            'legal_form_id'   => ['nullable', 'exists:legal_forms,id'],
+            'legal_form'      => ['nullable', 'string', 'max:100'],
             'if_fiscal'       => ['nullable', 'string', 'max:50'],
             'ice'             => ['nullable', 'string', 'max:50'],
             'rc'              => ['nullable', 'string', 'max:50'],
