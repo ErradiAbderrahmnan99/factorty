@@ -12,6 +12,10 @@ use App\Http\Controllers\TierCategoryController;
 use App\Http\Controllers\TierController;
 use App\Http\Controllers\DeviseController;
 use App\Http\Controllers\DevisController;
+use App\Http\Controllers\LivraisonController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EntrepotController;
+use App\Http\Controllers\CommandeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -63,6 +67,12 @@ Route::middleware('auth')->group(function () {
     // DDB: Devises
     Route::resource('devises', DeviseController::class)->except(['create', 'edit', 'show']);
 
+    // DDB: Employés
+    Route::resource('employees', EmployeeController::class)->except(['create', 'edit', 'show']);
+
+    // DDB: Entrepôts
+    Route::resource('entrepots', EntrepotController::class)->except(['create', 'edit', 'show']);
+
     // Devis CRUD
     Route::get('devis/export-template', [DevisController::class, 'exportTemplate'])->name('devis.export-template');
     Route::post('devis/import', [DevisController::class, 'import'])->name('devis.import');
@@ -70,6 +80,16 @@ Route::middleware('auth')->group(function () {
         'devis' => 'devis'
     ]);
     Route::post('devis/{devis}/toggle-status', [DevisController::class, 'updateStatus'])->name('devis.toggle-status');
+
+    // Commande Client CRUD & Stock / Lot Management
+    Route::post('commandes/{commande}/valider', [CommandeController::class, 'valider'])->name('commandes.valider');
+    Route::post('commandes/{commande}/toggle-status', [CommandeController::class, 'updateStatus'])->name('commandes.toggle-status');
+    Route::get('api/entrepot-lots', [CommandeController::class, 'getLots'])->name('api.entrepot-lots');
+    Route::resource('commandes', CommandeController::class);
+
+    // Bon de Livraison CRUD & Stock Management
+    Route::post('livraisons/{livraison}/toggle-status', [LivraisonController::class, 'updateStatus'])->name('livraisons.toggle-status');
+    Route::resource('livraisons', LivraisonController::class);
 });
 
 require __DIR__.'/auth.php';

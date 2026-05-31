@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
@@ -27,6 +28,8 @@ class Product extends Model
         'purchase_price',
         'image_path',
         'status',
+        'manage_by_lot',
+        'stock_negative',
     ];
 
     protected $casts = [
@@ -36,6 +39,8 @@ class Product extends Model
         'stock_limit' => 'double',
         'sale_price' => 'double',
         'purchase_price' => 'double',
+        'manage_by_lot' => 'boolean',
+        'stock_negative' => 'boolean',
     ];
 
     protected $appends = [
@@ -73,5 +78,10 @@ class Product extends Model
     public function saleUnit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'sale_unit_id');
+    }
+
+    public function entrepots(): BelongsToMany
+    {
+        return $this->belongsToMany(Entrepot::class, 'entrepot_product');
     }
 }

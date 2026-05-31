@@ -49,11 +49,13 @@ export default function Create({
     products,
     devises,
     units,
+    commercials,
 }: {
     tiers: Tier[];
     products: Product[];
     devises: Devise[];
     units: Unit[];
+    commercials: { id: number; first_name: string; last_name: string; type: string; }[];
 }) {
     // Current date format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
@@ -188,8 +190,16 @@ export default function Create({
 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Commercial / Agent</label>
-                            <input type="text" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
-                                value={data.commercial} onChange={e => setData('commercial', e.target.value)} placeholder="Nom du commercial" />
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                value={data.commercial} onChange={e => setData('commercial', e.target.value)}>
+                                <option value="">Sélectionner un commercial...</option>
+                                {commercials.map(c => {
+                                    const fullName = `${c.last_name} ${c.first_name}`;
+                                    return (
+                                        <option key={c.id} value={fullName}>{fullName} ({c.type})</option>
+                                    );
+                                })}
+                            </select>
                             <InputError message={errors.commercial} className="mt-1" />
                         </div>
 

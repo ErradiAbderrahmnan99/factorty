@@ -101,6 +101,7 @@ export default function Authenticated({
                 { name: 'Régions', key: 'regions', group: 'Paramètres Tiers', href: route('regions.index') },
                 { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
                 { name: 'Devises', key: 'devises', group: 'Paramètres Tiers', href: route('devises.index') },
+                { name: 'Employés', key: 'employees', group: 'Paramètres Tiers', href: route('employees.index') },
             ],
         },
         {
@@ -113,8 +114,8 @@ export default function Authenticated({
             ),
             items: [
                 { name: 'Devis', key: 'devis', href: route('devis.index') },
-                { name: 'Commande Client', key: 'commande' },
-                { name: 'Bon de Livraison', key: 'livraison' },
+                { name: 'Commande Client', key: 'commande', href: route('commandes.index') },
+                { name: 'Bon de Livraison', key: 'livraison', href: route('livraisons.index') },
                 { name: 'Retour Vente', key: 'reture' },
                 { name: 'Facture Vente', key: 'facture' },
                 { name: 'Avoir Vente', key: 'avoir' },
@@ -166,6 +167,7 @@ export default function Authenticated({
                 </svg>
             ),
             items: [
+                { name: 'Entrepôts', key: 'entrepots', href: route('entrepots.index') },
                 { name: 'Fiches Articles', key: 'articles' },
                 { name: 'Mouvements de Stock', key: 'mouvements' },
                 { name: 'Valorisation Stock', key: 'valorisation' },

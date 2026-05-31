@@ -78,7 +78,12 @@ class ProductController extends Controller
             'purchase_price' => ['required', 'numeric', 'min:0'],
             'image' => ['nullable', 'image', 'max:2048'], // Max 2MB image
             'status' => ['required', 'in:actif,inactif'],
+            'manage_by_lot' => ['nullable', 'boolean'],
+            'stock_negative' => ['nullable', 'boolean'],
         ]);
+
+        $validated['manage_by_lot'] = $request->boolean('manage_by_lot');
+        $validated['stock_negative'] = $request->boolean('stock_negative');
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
@@ -120,7 +125,12 @@ class ProductController extends Controller
             'purchase_price' => ['required', 'numeric', 'min:0'],
             'image' => ['nullable', 'image', 'max:2048'], // Max 2MB
             'status' => ['required', 'in:actif,inactif'],
+            'manage_by_lot' => ['nullable', 'boolean'],
+            'stock_negative' => ['nullable', 'boolean'],
         ]);
+
+        $validated['manage_by_lot'] = $request->boolean('manage_by_lot');
+        $validated['stock_negative'] = $request->boolean('stock_negative');
 
         if ($request->hasFile('image')) {
             // Delete old image if exists

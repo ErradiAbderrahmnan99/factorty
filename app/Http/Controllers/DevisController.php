@@ -8,6 +8,7 @@ use App\Models\Tier;
 use App\Models\Product;
 use App\Models\Devise;
 use App\Models\Unit;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -67,12 +68,17 @@ class DevisController extends Controller
 
         $devises = Devise::orderBy('label')->get();
         $units = Unit::orderBy('label')->get();
+        $commercials = Employee::whereIn('type', ['commercial', 'agent'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
         return Inertia::render('Devis/Create', [
-            'tiers'    => $tiers,
-            'products' => $products,
-            'devises'  => $devises,
-            'units'    => $units,
+            'tiers'        => $tiers,
+            'products'     => $products,
+            'devises'      => $devises,
+            'units'        => $units,
+            'commercials'  => $commercials,
         ]);
     }
 
@@ -178,13 +184,18 @@ class DevisController extends Controller
 
         $devises = Devise::orderBy('label')->get();
         $units = Unit::orderBy('label')->get();
+        $commercials = Employee::whereIn('type', ['commercial', 'agent'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
         return Inertia::render('Devis/Edit', [
-            'devis'    => $devis,
-            'tiers'    => $tiers,
-            'products' => $products,
-            'devises'  => $devises,
-            'units'    => $units,
+            'devis'        => $devis,
+            'tiers'        => $tiers,
+            'products'     => $products,
+            'devises'      => $devises,
+            'units'        => $units,
+            'commercials'  => $commercials,
         ]);
     }
 
@@ -652,6 +663,7 @@ class DevisController extends Controller
                             'unit_category_id' => $unit ? $unit->unit_category_id : null,
                             'sale_unit_id' => $unit ? $unit->id : null,
                             'purchase_unit_id' => $unit ? $unit->id : null,
+                            'stock_unit_id' => $unit ? $unit->id : null,
                             'purchase_price' => 0,
                             'status' => 'actif',
                         ]);

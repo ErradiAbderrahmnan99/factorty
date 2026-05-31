@@ -48,6 +48,8 @@ export default function Create({
         purchase_price: '0.0000',
         image: null as File | null,
         status: 'actif',
+        manage_by_lot: false,
+        stock_negative: false,
     });
 
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -445,6 +447,41 @@ export default function Create({
                                     >
                                         Inactif
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Card: Stock Options */}
+                            <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] dark:shadow-none rounded-3xl p-6 backdrop-blur-xl transition-all duration-300 space-y-4">
+                                <h3 className="text-xs font-extrabold text-slate-850 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800/60 pb-3 mb-2">
+                                    Paramètres Stock
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <label className="flex items-center space-x-3 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded-lg border-slate-250 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500/20 h-5 w-5 transition-all cursor-pointer"
+                                            checked={data.manage_by_lot}
+                                            onChange={(e) => setData('manage_by_lot', e.target.checked)}
+                                        />
+                                        <div>
+                                            <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">Gérer par lot</span>
+                                            <span className="block text-[10px] text-slate-400 dark:text-slate-500">Activer la traçabilité par lot pour ce produit</span>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center space-x-3 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded-lg border-slate-250 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500/20 h-5 w-5 transition-all cursor-pointer"
+                                            checked={data.stock_negative}
+                                            onChange={(e) => setData('stock_negative', e.target.checked)}
+                                        />
+                                        <div>
+                                            <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">Stock négatif autorisé</span>
+                                            <span className="block text-[10px] text-slate-400 dark:text-slate-500">Autoriser les ventes même si le stock est épuisé</span>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
