@@ -346,7 +346,7 @@ class CommandeController extends Controller
     }
 
     /**
-     * Get available lots for a product in a warehouse
+     * Get available lots for a product in a warehouse (including those with 0 stock)
      */
     public function getLots(Request $request)
     {
@@ -363,13 +363,31 @@ class CommandeController extends Controller
             return response()->json([]);
         }
 
-        // Only return lots with positive quantity
+        // Return lots with non-negative quantity so 0 stock is fetched and can be deleted
         $lots = ProductLot::where('entrepot_product_id', $productEntrepot->id)
-            ->where('quantity', '>', 0)
+            ->where('quantity', '>=', 0)
             ->orderBy('expiration_date', 'asc')
             ->get(['id', 'lot_number', 'quantity', 'fabrication_date', 'expiration_date']);
 
         return response()->json($lots);
+    }
+
+    /**
+     * Delete a product lot from database if quantity is 0
+     */
+    public function deleteLot($id)
+    {
+        $lot = ProductLot::find($id);
+        if (!$lot) {
+            return response()->json(['success' => false, 'message' => 'Lot non trouvé.'], 404);
+        }
+
+        if ((double)$lot->quantity > 0.0001) {
+            return response()->json(['success' => false, 'message' => 'Impossible de supprimer un lot qui a du stock restant.'], 400);
+        }
+
+        $lot->delete();
+        return response()->json(['success' => true, 'message' => 'Lot supprimé de la base de données avec succès.']);
     }
 
     /**

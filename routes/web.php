@@ -13,9 +13,20 @@ use App\Http\Controllers\TierController;
 use App\Http\Controllers\DeviseController;
 use App\Http\Controllers\DevisController;
 use App\Http\Controllers\LivraisonController;
+use App\Http\Controllers\FactureVenteController;
+use App\Http\Controllers\AvoirVenteController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EntrepotController;
 use App\Http\Controllers\CommandeController;
+use App\Http\Controllers\ModeReglementController;
+use App\Http\Controllers\ConditionReglementController;
+use App\Http\Controllers\OrigineController;
+use App\Http\Controllers\CompteBancaireController;
+use App\Http\Controllers\TypeApporteurController;
+use App\Http\Controllers\ApporteurController;
+use App\Http\Controllers\RetourVenteController;
+use App\Http\Controllers\EntreeStockController;
+use App\Http\Controllers\SortieStockController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -85,11 +96,42 @@ Route::middleware('auth')->group(function () {
     Route::post('commandes/{commande}/valider', [CommandeController::class, 'valider'])->name('commandes.valider');
     Route::post('commandes/{commande}/toggle-status', [CommandeController::class, 'updateStatus'])->name('commandes.toggle-status');
     Route::get('api/entrepot-lots', [CommandeController::class, 'getLots'])->name('api.entrepot-lots');
+    Route::delete('api/entrepot-lots/{id}', [CommandeController::class, 'deleteLot'])->name('api.entrepot-lots.destroy');
     Route::resource('commandes', CommandeController::class);
 
     // Bon de Livraison CRUD & Stock Management
     Route::post('livraisons/{livraison}/toggle-status', [LivraisonController::class, 'updateStatus'])->name('livraisons.toggle-status');
     Route::resource('livraisons', LivraisonController::class);
+
+    // Facture Vente CRUD
+    Route::get('api/factures-vente/{facture}', [FactureVenteController::class, 'getFactureWithLines'])->name('api.factures-vente.show');
+    Route::post('factures-vente/{facturesVente}/toggle-status', [FactureVenteController::class, 'updateStatus'])->name('factures-vente.toggle-status');
+    Route::resource('factures-vente', FactureVenteController::class);
+
+    // Avoir Vente CRUD
+    Route::post('avoirs-vente/{avoirsVente}/toggle-status', [AvoirVenteController::class, 'updateStatus'])->name('avoirs-vente.toggle-status');
+    Route::resource('avoirs-vente', AvoirVenteController::class);
+
+    // Retours Vente CRUD
+    Route::post('retours-vente/{retourVente}/toggle-status', [RetourVenteController::class, 'updateStatus'])->name('retours-vente.toggle-status');
+    Route::resource('retours-vente', RetourVenteController::class);
+
+    // Entrées de Stock
+    Route::post('entrees-stock/{entreesStock}/toggle-status', [EntreeStockController::class, 'toggleStatus'])->name('entrees-stock.toggle-status');
+    Route::resource('entrees-stock', EntreeStockController::class);
+
+    // Sorties de Stock
+    Route::post('sorties-stock/{sortiesStock}/toggle-status', [SortieStockController::class, 'toggleStatus'])->name('sorties-stock.toggle-status');
+    Route::get('products/{product}/warehouses/{entrepot}/lots', [SortieStockController::class, 'getProductLots'])->name('products.lots');
+    Route::resource('sorties-stock', SortieStockController::class);
+
+    // New Facturation/Payment/Referential CRUDs
+    Route::resource('modes-reglement', ModeReglementController::class)->except(['create', 'edit', 'show']);
+    Route::resource('conditions-reglement', ConditionReglementController::class)->except(['create', 'edit', 'show']);
+    Route::resource('origines', OrigineController::class)->except(['create', 'edit', 'show']);
+    Route::resource('comptes-bancaires', CompteBancaireController::class)->except(['create', 'edit', 'show']);
+    Route::resource('types-apporteur', TypeApporteurController::class)->except(['create', 'edit', 'show']);
+    Route::resource('apporteurs', ApporteurController::class)->except(['create', 'edit', 'show']);
 });
 
 require __DIR__.'/auth.php';

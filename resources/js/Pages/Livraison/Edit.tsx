@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import InputError from '@/Components/InputError';
+import LotAllocationModal from '@/Components/LotAllocationModal';
 
 interface Tier {
     id: number;
@@ -145,53 +146,7 @@ export default function Edit({
 
     const isReadOnly = livraison.status === 'valide';
 
-    // Lot Allocation Modal State
     const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
-    const [availableLots, setAvailableLots] = useState<AvailableLot[]>([]);
-    const [isLoadingLots, setIsLoadingLots] = useState(false);
-    const [allocatedLotsMap, setAllocatedLotsMap] = useState<Record<string, number>>({});
-    const [lotModalError, setLotModalError] = useState<string | null>(null);
-
-    const [manualLotNumber, setManualLotNumber] = useState('');
-    const [manualLotQty, setManualLotQty] = useState('');
-    const [manualFabricationDate, setManualFabricationDate] = useState('');
-    const [manualExpirationDate, setManualExpirationDate] = useState('');
-
-    const addManualLot = () => {
-        if (!manualLotNumber.trim()) {
-            setLotModalError("Le numéro de lot ne peut pas être vide.");
-            return;
-        }
-        const qty = Number(manualLotQty) || 0;
-        if (qty <= 0) {
-            setLotModalError("La quantité doit être supérieure à 0.");
-            return;
-        }
-        
-        // Check if lot already exists in availableLots
-        if (availableLots.some(l => l.lot_number.toLowerCase() === manualLotNumber.trim().toLowerCase())) {
-            setLotModalError("Ce lot existe déjà dans la liste.");
-            return;
-        }
-
-        const newLot: AvailableLot = {
-            id: -Date.now(), // temporary negative ID
-            lot_number: manualLotNumber.trim(),
-            quantity: 999999, // Allow high limit for manual lot
-            fabrication_date: manualFabricationDate || null,
-            expiration_date: manualExpirationDate || null
-        };
-
-        setAvailableLots(prev => [...prev, newLot]);
-        setAllocatedLotsMap(prev => ({
-            ...prev,
-            [newLot.lot_number]: qty
-        }));
-        setManualLotNumber('');
-        setManualLotQty('');
-        setManualFabricationDate('');
-        setManualExpirationDate('');
-        setLotModalError(null);
     };
 
     const addLine = () => {
@@ -276,105 +231,23 @@ export default function Edit({
     const totalRemise = data.lines.reduce((sum, item) => sum + item.rm, 0);
 
     // Fetch and Open Lot Modal
+    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const toastTimer = useRef<any>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'error') => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ type, message });
+        toastTimer.current = setTimeout(() => setToast(null), 5000);
+    };
+
     const openLotModal = (index: number) => {
         const line = data.lines[index];
         if (!line.product_id || !line.entrepot_id) {
-            alert('Veuillez sélectionner d\'abord un produit et un entrepôt.');
+            showToast('Veuillez sélectionner d\'abord un produit et un entrepôt.');
             return;
         }
         
         setActiveLineIndex(index);
-        setIsLoadingLots(true);
-        setLotModalError(null);
-        setManualLotNumber('');
-        setManualLotQty('');
-        setManualFabricationDate('');
-        setManualExpirationDate('');
-        
-        // Prep current lot allocations mapping
-        const currentMap: Record<string, number> = {};
-        line.lots.forEach(lot => {
-            currentMap[lot.lot_number] = lot.quantity;
-        });
-        setAllocatedLotsMap(currentMap);
-
-        // Fetch lots from backend
-        fetch(`/api/entrepot-lots?product_id=${line.product_id}&entrepot_id=${line.entrepot_id}`)
-            .then(res => res.json())
-            .then((fetchedLots: AvailableLot[]) => {
-                const merged = [...fetchedLots];
-                line.lots.forEach(savedLot => {
-                    if (!merged.some(l => l.lot_number === savedLot.lot_number)) {
-                        merged.push({
-                            id: -Math.abs(savedLot.id || Date.now()),
-                            lot_number: savedLot.lot_number,
-                            quantity: 999999,
-                            fabrication_date: savedLot.fabrication_date || null,
-                            expiration_date: savedLot.expiration_date || null
-                        });
-                    }
-                });
-                setAvailableLots(merged);
-                setIsLoadingLots(false);
-            })
-            .catch(() => {
-                setLotModalError('Impossible de récupérer les lots disponibles.');
-                setIsLoadingLots(false);
-            });
-    };
-
-    const handleUpdateLotQty = (lotNumber: string, value: string) => {
-        const qty = Math.max(0, Number(value) || 0);
-        setAllocatedLotsMap(prev => ({
-            ...prev,
-            [lotNumber]: qty
-        }));
-    };
-
-    const saveLotsAllocation = () => {
-        if (activeLineIndex === null) return;
-        const line = data.lines[activeLineIndex];
-        const product = products.find(p => p.id.toString() === line.product_id);
-        const activeUnitId = line.sale_unit_id || product?.sale_unit_id;
-        const lineUnit = units.find(u => u.id.toString() === activeUnitId?.toString());
-        const stockUnit = (product as any)?.stock_unit;
-        
-        let requestedQty = line.qty;
-        if (stockUnit && lineUnit && lineUnit.id !== stockUnit.id) {
-            const ratioLine = Number(lineUnit.ratio) || 1.0;
-            const ratioStock = Number(stockUnit.ratio) || 1.0;
-            if (ratioStock > 0) {
-                requestedQty = line.qty * (ratioLine / ratioStock);
-            }
-        }
-
-        const lotsData: LineLot[] = [];
-        let totalAllocated = 0;
-
-        Object.entries(allocatedLotsMap).forEach(([lotNumber, qty]) => {
-            if (qty > 0) {
-                const foundLot = availableLots.find(l => l.lot_number === lotNumber);
-                lotsData.push({
-                    lot_number: lotNumber,
-                    quantity: qty,
-                    fabrication_date: foundLot?.fabrication_date || null,
-                    expiration_date: foundLot?.expiration_date || null,
-                });
-                totalAllocated += qty;
-            }
-        });
-
-        // Verify total allocated matches order quantity
-        if (Math.abs(totalAllocated - requestedQty) > 0.0001) {
-            setLotModalError(`La quantité totale allouée (${totalAllocated}) doit être exactement égale à la quantité requise (${requestedQty}).`);
-            return;
-        }
-
-        const updated = [...data.lines];
-        updated[activeLineIndex].lots = lotsData;
-        
-        setData('lines', updated);
-        setActiveLineIndex(null);
     };
 
     const submit = (e: React.FormEvent) => {
@@ -400,7 +273,7 @@ export default function Edit({
 
                 const allocated = line.lots.reduce((sum, l) => sum + l.quantity, 0);
                 if (Math.abs(allocated - requestedQty) > 0.0001) {
-                    alert(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${prod.label}) avant d'enregistrer.`);
+                    showToast(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${prod.label}) avant d'enregistrer.`);
                     return;
                 }
             }
@@ -732,166 +605,64 @@ export default function Edit({
                 </div>
             </form>
 
-            {/* Dynamic Lot Allocation Modal */}
-            {activeLineIndex !== null && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 transform transition-all max-h-[85vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4 mb-6">
-                            <div>
-                                <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">
-                                    Allocation des lots
-                                </h3>
-                                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
-                                    Produit: {products.find(p => p.id.toString() === data.lines[activeLineIndex].product_id)?.label}
-                                </p>
-                            </div>
-                            <button type="button" onClick={() => setActiveLineIndex(null)}
-                                className="p-1.5 text-slate-400 hover:text-slate-655 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
-                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
+            {activeLineIndex !== null && (() => {
+                const line = data.lines[activeLineIndex];
+                const product = products.find(p => p.id.toString() === line.product_id);
+                const activeUnitId = line.sale_unit_id || product?.sale_unit_id;
+                const lineUnit = units.find(u => u.id.toString() === activeUnitId?.toString());
+                const stockUnit = (product as any)?.stock_unit;
+                
+                let requestedQty = line.qty;
+                let unitLabel = lineUnit?.code || '';
+                if (stockUnit && lineUnit && lineUnit.id !== stockUnit.id) {
+                    const ratioLine = Number(lineUnit.ratio) || 1.0;
+                    const ratioStock = Number(stockUnit.ratio) || 1.0;
+                    if (ratioStock > 0) {
+                        requestedQty = line.qty * (ratioLine / ratioStock);
+                        unitLabel = stockUnit.code;
+                    }
+                }
 
-                        {lotModalError && (
-                            <div className="mb-4 p-3.5 bg-rose-50 dark:bg-rose-950/35 border border-rose-100 dark:border-rose-900/50 text-rose-650 dark:text-rose-400 rounded-2xl text-xs font-bold leading-normal">
-                                {lotModalError}
-                            </div>
-                        )}
+                return (
+                    <LotAllocationModal
+                        isOpen={activeLineIndex !== null}
+                        onClose={() => setActiveLineIndex(null)}
+                        productName={product?.label || ''}
+                        productId={line.product_id}
+                        entrepotId={line.entrepot_id}
+                        requestedQty={requestedQty}
+                        unitCode={unitLabel}
+                        initialLots={line.lots}
+                        allowManualLots={false}
+                        isLocked={isReadOnly}
+                        onConfirm={(allocatedLots) => {
+                            const updated = [...data.lines];
+                            updated[activeLineIndex].lots = allocatedLots;
+                            setData('lines', updated);
+                            setActiveLineIndex(null);
+                        }}
+                    />
+                );
+            })()}
 
-                        {(() => {
-                            const line = data.lines[activeLineIndex];
-                            const product = products.find(p => p.id.toString() === line.product_id);
-                            const activeUnitId = line.sale_unit_id || product?.sale_unit_id;
-                            const lineUnit = units.find(u => u.id.toString() === activeUnitId?.toString());
-                            const stockUnit = (product as any)?.stock_unit;
-                            let requestedQty = line.qty;
-                            let unitCode = lineUnit?.code || '';
-                            if (stockUnit && lineUnit && lineUnit.id !== stockUnit.id) {
-                                const ratioLine = Number(lineUnit.ratio) || 1.0;
-                                const ratioStock = Number(stockUnit.ratio) || 1.0;
-                                if (ratioStock > 0) {
-                                    requestedQty = line.qty * (ratioLine / ratioStock);
-                                    unitCode = stockUnit.code;
-                                }
-                            }
-                            return (
-                                <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 p-4 rounded-2xl mb-6 flex justify-between text-xs font-bold text-indigo-755 dark:text-indigo-305 w-full">
-                                    <div>Quantité demandée (Unité Stock): <span className="font-extrabold text-sm">{requestedQty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {unitCode}</span></div>
-                                    <div>
-                                        Quantité allouée: <span className="font-extrabold text-sm font-mono">
-                                            {Object.values(allocatedLotsMap).reduce((s, q) => s + q, 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {unitCode}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {isLoadingLots ? (
-                            <div className="py-12 flex flex-col items-center justify-center space-y-3">
-                                <svg className="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Chargement des lots...</span>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {availableLots.length === 0 ? (
-                                    <div className="py-10 text-center text-xs font-bold text-slate-455 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-                                        Aucun lot disponible dans l'entrepôt pour cet article.
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div className="hidden md:grid grid-cols-4 gap-4 px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-450">
-                                            <span>N° Lot</span>
-                                            <span>Stock Restant</span>
-                                            <span>Date Expiration</span>
-                                            <span className="text-right">Qté à Allouer</span>
-                                        </div>
-                                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                                            {availableLots.map(lot => (
-                                                <div key={lot.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 items-center bg-slate-50 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-855">
-                                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">{lot.lot_number}</span>
-                                                    
-                                                    <div className="flex flex-col md:block">
-                                                        <span className="text-[9px] md:hidden font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">Stock disponible</span>
-                                                        <span className="text-xs font-bold text-slate-655 dark:text-slate-400">{lot.quantity === 999999 ? 'Nouveau lot' : `${lot.quantity} en stock`}</span>
-                                                    </div>
-
-                                                    <div className="flex flex-col md:block">
-                                                        <span className="text-[9px] md:hidden font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">Date Expi</span>
-                                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-455">{lot.expiration_date || '—'}</span>
-                                                    </div>
-
-                                                    <div>
-                                                        <input type="number" step="any" min="0" max={lot.quantity}
-                                                            placeholder="0"
-                                                            className="block w-full md:w-32 ml-auto rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 text-right focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-200 font-bold"
-                                                            value={allocatedLotsMap[lot.lot_number] || ''}
-                                                            onChange={e => handleUpdateLotQty(lot.lot_number, e.target.value)}
-                                                            disabled={isReadOnly} />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Formulaire d'ajout de lot manuel */}
-                                {!isReadOnly && (
-                                    <div className="pt-5 border-t border-slate-100 dark:border-slate-800/60 mt-4">
-                                        <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-450 dark:text-slate-400 mb-3">
-                                            Ajouter un lot manuellement
-                                        </h4>
-                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                                            <div>
-                                                <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-450 mb-1.5 font-sans">N° Lot</label>
-                                                <input type="text" placeholder="Ex: LOT-2026-001"
-                                                    className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/40 text-xs py-2.5 px-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-200 font-bold"
-                                                    value={manualLotNumber} onChange={e => setManualLotNumber(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-450 mb-1.5 font-sans">Qté à Allouer</label>
-                                                <input type="number" step="any" min="0" placeholder="0.00"
-                                                    className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/40 text-xs py-2.5 px-3 text-right focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-200 font-bold"
-                                                    value={manualLotQty} onChange={e => setManualLotQty(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-450 mb-1.5 font-sans">Date Fab.</label>
-                                                <input type="date"
-                                                    className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-200 font-bold font-mono"
-                                                    value={manualFabricationDate} onChange={e => setManualFabricationDate(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-450 mb-1.5 font-sans">Date Exp.</label>
-                                                <input type="date"
-                                                    className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-200 font-bold font-mono"
-                                                    value={manualExpirationDate} onChange={e => setManualExpirationDate(e.target.value)} />
-                                            </div>
-                                            <button type="button" onClick={addManualLot}
-                                                className="w-full sm:w-auto h-[38px] inline-flex items-center justify-center space-x-1.5 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all active:scale-[0.97] col-span-2 md:col-span-1">
-                                                <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                <span>Ajouter</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="flex items-center justify-end space-x-3 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800/60">
-                            <button type="button" onClick={() => setActiveLineIndex(null)}
-                                className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-355 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">
-                                {isReadOnly ? 'Fermer' : 'Annuler'}
-                            </button>
-                            {!isReadOnly && (
-                                <button type="button" onClick={saveLotsAllocation} disabled={isLoadingLots}
-                                    className="px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl transition-all shadow-md shadow-indigo-500/20 active:scale-[0.97]">
-                                    Enregistrer
-                                </button>
+            {/* Toast */}
+            {toast && (
+                <div className="fixed top-5 right-5 z-[100] max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[2rem] shadow-3xl p-4 animate-slide-in backdrop-blur-xl">
+                    <div className="flex items-start space-x-3.5">
+                        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/20'}`}>
+                            {toast.type === 'success' ? (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                             )}
                         </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">{toast.type === 'success' ? 'Succès' : 'Erreur'}</h4>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-455 mt-1 leading-relaxed">{toast.message}</p>
+                        </div>
+                        <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-355 transition-all shrink-0">
+                            <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                 </div>
             )}

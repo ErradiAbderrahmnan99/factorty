@@ -287,4 +287,196 @@ class StockService
 
         return $qty;
     }
+
+    /**
+     * Validate and add stock for a validated Stock Entry (EntreeStock).
+     *
+     * @param \App\Models\EntreeStock $entree
+     * @return array
+     */
+    public function validateAndAddStockForEntree(\App\Models\EntreeStock $entree): array
+    {
+        return DB::transaction(function () use ($entree) {
+            try {
+                if ($entree->status === 'valide') {
+                    return [
+                        'status' => false,
+                        'message' => 'Cette entrée de stock est déjà validée.',
+                    ];
+                }
+
+                foreach ($entree->lines as $line) {
+                    $product = $line->product;
+                    $requestedQty = (float) $line->qty;
+
+                    $qtyConverted = $requestedQty;
+
+                    // Find or create product warehouse record
+                    $productEntrepot = ProductEntrepot::findProductEntrepot($product->id, $line->entrepot_id);
+                    if (!$productEntrepot) {
+                        $productEntrepot = ProductEntrepot::createProductEntrepot($product->id, $line->entrepot_id, 0.0);
+                    }
+
+                    if ($product->manage_by_lot) {
+                        $lineLots = $line->lots;
+
+                        if ($lineLots->isEmpty()) {
+                            throw new \Exception("Le produit '{$product->label}' est géré par lot, mais aucun lot n'a été alloué.");
+                        }
+
+                        $allocatedSum = 0.0;
+                        foreach ($lineLots as $ll) {
+                            $allocatedSum += (float) $ll->quantity;
+                        }
+
+                        if (abs($allocatedSum - $requestedQty) > 0.0001) {
+                            throw new \Exception("La quantité cumulée des lots ({$allocatedSum}) ne correspond pas à la quantité demandée ({$requestedQty}) pour le produit '{$product->label}'.");
+                        }
+
+                        foreach ($lineLots as $lineLot) {
+                            // Find or create lot in entrepot_product_lots
+                            $lot = ProductLot::where('entrepot_product_id', $productEntrepot->id)
+                                ->where('lot_number', $lineLot->lot_number)
+                                ->first();
+
+                            if (!$lot) {
+                                $lot = ProductLot::create([
+                                    'entrepot_product_id' => $productEntrepot->id,
+                                    'lot_number' => $lineLot->lot_number,
+                                    'quantity' => 0.0000,
+                                    'fabrication_date' => $lineLot->fabrication_date ?: null,
+                                    'expiration_date' => $lineLot->expiration_date ?: null,
+                                ]);
+                            }
+
+                            $lotQtyConverted = (float)$lineLot->quantity;
+                            $lot->quantity += $lotQtyConverted;
+                            $lot->save();
+                        }
+                    }
+
+                    $productEntrepot->quantity += $qtyConverted;
+                    $productEntrepot->save();
+                }
+
+                $entree->status = 'valide';
+                $entree->save();
+
+                return [
+                    'status' => true,
+                    'message' => 'Entrée de stock validée et stock réintégré avec succès !',
+                ];
+
+            } catch (\Exception $e) {
+                return [
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Validate and deduct stock for a validated Stock Exit (SortieStock).
+     *
+     * @param \App\Models\SortieStock $sortie
+     * @return array
+     */
+    public function validateAndDeductStockForSortie(\App\Models\SortieStock $sortie): array
+    {
+        return DB::transaction(function () use ($sortie) {
+            try {
+                if ($sortie->status === 'valide') {
+                    return [
+                        'status' => false,
+                        'message' => 'Cette sortie de stock est déjà validée.',
+                    ];
+                }
+
+                foreach ($sortie->lines as $line) {
+                    $product = $line->product;
+                    $requestedQty = (float) $line->qty;
+
+                    $qtyConverted = $requestedQty;
+
+                    $productEntrepot = ProductEntrepot::findProductEntrepot($product->id, $line->entrepot_id);
+
+                    // Check if stock negative is allowed
+                    $allowNegative = (bool) ($product->stock_negative ?? false);
+
+                    if (!$allowNegative) {
+                        $currentStock = $productEntrepot ? (float) $productEntrepot->quantity : 0.0;
+                        if ($currentStock < $qtyConverted) {
+                            throw new \Exception("Stock insuffisant pour le produit [{$product->ref}] dans l'entrepôt sélectionné. Restant: {$currentStock}, demandé: {$qtyConverted}");
+                        }
+                    }
+
+                    if (!$productEntrepot) {
+                        $productEntrepot = ProductEntrepot::createProductEntrepot($product->id, $line->entrepot_id, 0.0);
+                    }
+
+                    if ($product->manage_by_lot) {
+                        $lineLots = $line->lots;
+
+                        if ($lineLots->isEmpty()) {
+                            throw new \Exception("Le produit '{$product->label}' est géré par lot, mais aucun lot n'a été alloué.");
+                        }
+
+                        $allocatedSum = 0.0;
+                        foreach ($lineLots as $ll) {
+                            $allocatedSum += (float) $ll->quantity;
+                        }
+
+                        if (abs($allocatedSum - $requestedQty) > 0.0001) {
+                            throw new \Exception("La quantité cumulée des lots ({$allocatedSum}) ne correspond pas à la quantité demandée ({$requestedQty}) pour le produit '{$product->label}'.");
+                        }
+
+                        foreach ($lineLots as $lineLot) {
+                            $lot = ProductLot::where('entrepot_product_id', $productEntrepot->id)
+                                ->where('lot_number', $lineLot->lot_number)
+                                ->first();
+
+                            if (!$lot && !$allowNegative) {
+                                throw new \Exception("Le lot [{$lineLot->lot_number}] n'existe pas ou n'a pas de stock dans cet entrepôt pour le produit [{$product->ref}].");
+                            }
+
+                            $lotQtyConverted = (float)$lineLot->quantity;
+
+                            if ($lot) {
+                                if (!$allowNegative && (float) $lot->quantity < $lotQtyConverted) {
+                                    throw new \Exception("Stock de lot insuffisant pour le lot [{$lineLot->lot_number}]. Restant: {$lot->quantity}, demandé: {$lotQtyConverted}");
+                                }
+                                $lot->quantity -= $lotQtyConverted;
+                                $lot->save();
+                            } else {
+                                // Negative stock allowed and lot doesn't exist, create it with negative qty
+                                ProductLot::create([
+                                    'entrepot_product_id' => $productEntrepot->id,
+                                    'lot_number' => $lineLot->lot_number,
+                                    'quantity' => -$lotQtyConverted,
+                                ]);
+                            }
+                        }
+                    }
+
+                    $productEntrepot->quantity -= $qtyConverted;
+                    $productEntrepot->save();
+                }
+
+                $sortie->status = 'valide';
+                $sortie->save();
+
+                return [
+                    'status' => true,
+                    'message' => 'Sortie de stock validée et stock déduit avec succès !',
+                ];
+
+            } catch (\Exception $e) {
+                return [
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        });
+    }
 }
