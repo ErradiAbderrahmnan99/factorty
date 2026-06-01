@@ -147,7 +147,6 @@ export default function Edit({
     const isReadOnly = livraison.status === 'valide';
 
     const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
-    };
 
     const addLine = () => {
         const newLine: LineItem = {

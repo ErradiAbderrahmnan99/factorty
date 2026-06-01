@@ -237,7 +237,11 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                 </svg>
                                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Modifier le statut</h3>
                             </div>
-                            {statusTarget.status !== 'valide' && (
+                            {statusTarget.status === 'valide' ? (
+                                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
+                                    ⚠️ Ce bon de livraison a été validé et le stock a été déduit. Son statut est définitif et ne peut plus être modifié.
+                                </div>
+                            ) : (
                                 <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
                                     ⚠️ Passer à <strong>Validé</strong> déduira automatiquement le stock de l'entrepôt. Cette action est irréversible.
                                 </div>
@@ -246,9 +250,10 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                             <div className="space-y-2 mb-6">
                                 {(['brouillon', 'valide', 'annule'] as const).map(statusOption => {
                                     const st = STATUS_STYLING[statusOption];
+                                    const isDisabled = statusTarget.status === 'valide' && statusOption !== 'valide';
                                     return (
-                                        <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99] ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
+                                        <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
+                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99]'} ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
                                             <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
                                                 <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                                 <span>{st.label}</span>

@@ -335,6 +335,10 @@ class LivraisonController extends Controller
      */
     public function updateStatus(Request $request, Livraison $livraison): RedirectResponse
     {
+        if ($livraison->status === 'valide') {
+            return back()->with('error', 'Un bon de livraison déjà validé ne peut plus être modifié.');
+        }
+
         $request->validate([
             'status' => ['required', 'string', 'in:brouillon,valide,annule'],
         ]);
