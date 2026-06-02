@@ -17,7 +17,7 @@ class AvoirVente extends Model
         'ref', 'tier_id', 'facture_vente_id', 'commercial', 'date_avoir',
         'devise_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
         'mode_reglement_id', 'condition_reglement_id', 'origine_id',
-        'compte_bancaire_id', 'type_apporteur_id', 'apporteur_id',
+        'compte_bancaire_id', 'approbateur_id',
         'note_public', 'note_private',
     ];
 
@@ -35,7 +35,6 @@ class AvoirVente extends Model
     public function conditionReglement(): BelongsTo  { return $this->belongsTo(ConditionReglement::class, 'condition_reglement_id'); }
     public function origine(): BelongsTo             { return $this->belongsTo(Origine::class, 'origine_id'); }
     public function compteBancaire(): BelongsTo      { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
-    public function typeApporteur(): BelongsTo       { return $this->belongsTo(TypeApporteur::class, 'type_apporteur_id'); }
-    public function apporteur(): BelongsTo           { return $this->belongsTo(Apporteur::class, 'apporteur_id'); }
+    public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(AvoirVenteLine::class, 'avoir_vente_id'); }
 }

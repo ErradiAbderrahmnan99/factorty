@@ -1,11 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
+import { useState } from 'react';
 
 interface Tier {
     id: number;
     label: string;
     type: string;
+    type_approbateur_id?: number | null;
 }
 
 interface Unit {
@@ -49,8 +51,7 @@ interface FactureVente {
     condition_reglement_id: number | null;
     origine_id: number | null;
     compte_bancaire_id: number | null;
-    type_apporteur_id: number | null;
-    apporteur_id: number | null;
+    approbateur_id: number | null;
     note_public: string | null;
     note_private: string | null;
 }
@@ -79,8 +80,8 @@ export default function Create({
     conditionsReglement = [],
     origines = [],
     comptesBancaires = [],
-    typesApporteur = [],
-    apporteurs = [],
+    typesApprobateur = [],
+    approbateurs = [],
 }: {
     factures?: FactureVente[];
     tiers: Tier[];
@@ -92,10 +93,14 @@ export default function Create({
     conditionsReglement?: LookupItem[];
     origines?: LookupItem[];
     comptesBancaires?: LookupItem[];
-    typesApporteur?: LookupItem[];
-    apporteurs?: LookupItem[];
+    typesApprobateur?: LookupItem[];
+    approbateurs?: (Tier & { type_approbateur?: { label: string } })[];
 }) {
     const today = new Date().toISOString().split('T')[0];
+    const [selectedTypeApprobateur, setSelectedTypeApprobateur] = useState('');
+    const filteredApprobateurs = selectedTypeApprobateur
+        ? approbateurs.filter(item => item.type_approbateur_id?.toString() === selectedTypeApprobateur)
+        : approbateurs;
 
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
@@ -107,8 +112,7 @@ export default function Create({
         condition_reglement_id: '',
         origine_id: '',
         compte_bancaire_id: '',
-        type_apporteur_id: '',
-        apporteur_id: '',
+        approbateur_id: '',
         delai_livraison: '',
         date_livraison: '',
         note_public: '',
@@ -195,6 +199,13 @@ export default function Create({
             if (!res.ok) throw new Error('Failed to fetch invoice details');
             const facture = await res.json();
 
+            if (facture.approbateur_id) {
+                const foundType = approbateurs.find(item => item.id.toString() === facture.approbateur_id.toString())?.type_approbateur_id?.toString() || '';
+                setSelectedTypeApprobateur(foundType);
+            } else {
+                setSelectedTypeApprobateur('');
+            }
+
             setData(curr => ({
                 ...curr,
                 facture_vente_id: factureId,
@@ -205,8 +216,7 @@ export default function Create({
                 condition_reglement_id: facture.condition_reglement_id ? facture.condition_reglement_id.toString() : curr.condition_reglement_id,
                 origine_id: facture.origine_id ? facture.origine_id.toString() : curr.origine_id,
                 compte_bancaire_id: facture.compte_bancaire_id ? facture.compte_bancaire_id.toString() : curr.compte_bancaire_id,
-                type_apporteur_id: facture.type_apporteur_id ? facture.type_apporteur_id.toString() : curr.type_apporteur_id,
-                apporteur_id: facture.apporteur_id ? facture.apporteur_id.toString() : curr.apporteur_id,
+                approbateur_id: facture.approbateur_id ? facture.approbateur_id.toString() : curr.approbateur_id,
                 note_public: facture.note_public || curr.note_public,
                 note_private: facture.note_private || curr.note_private,
                 lines: (facture.lines || []).map((l: any) => ({
@@ -334,7 +344,7 @@ export default function Create({
 
                 {/* Additional Reference Lookups */}
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
-                    <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">2. Conditions, Origine & Apporteur</h3>
+                    <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">2. Conditions, Origine & Approbateur</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
@@ -400,27 +410,30 @@ export default function Create({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Type Apporteur</label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.type_apporteur_id} onChange={e => setData('type_apporteur_id', e.target.value)}>
-                                <option value="">Sélectionner...</option>
-                                {typesApporteur.map(item => (
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Type d'Approbateur</label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={selectedTypeApprobateur}
+                                onChange={e => {
+                                    setSelectedTypeApprobateur(e.target.value);
+                                    setData('approbateur_id', '');
+                                }}>
+                                <option value="">Tous les types...</option>
+                                {typesApprobateur.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
                                 ))}
                             </select>
-                            <InputError message={errors.type_apporteur_id} className="mt-1" />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Apporteur</label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.apporteur_id} onChange={e => setData('apporteur_id', e.target.value)}>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Approbateur</label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.approbateur_id} onChange={e => setData('approbateur_id', e.target.value)}>
                                 <option value="">Sélectionner...</option>
-                                {apporteurs.map(item => (
+                                {filteredApprobateurs.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
                                 ))}
                             </select>
-                            <InputError message={errors.apporteur_id} className="mt-1" />
+                            <InputError message={errors.approbateur_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

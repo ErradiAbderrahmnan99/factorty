@@ -1,6 +1,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import LotAllocationModal from '@/Components/LotAllocationModal';
+
+interface LineLot {
+    lot_number: string;
+    quantity: number;
+    fabrication_date?: string | null;
+    expiration_date?: string | null;
+}
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -12,6 +20,7 @@ interface Product {
     id: number;
     ref: string;
     label: string;
+    manage_by_lot?: boolean;
 }
 
 interface RetourVenteLine {
@@ -31,8 +40,15 @@ interface RetourVenteLine {
     remaining_qty: number;
     original_bl_qty: number;
     bl_ref: string;
+    manage_by_lot?: boolean;
     product?: Product;
     sale_unit?: Unit;
+    lots?: Array<{
+        lot_number: string;
+        quantity: number | string;
+        fabrication_date?: string | null;
+        expiration_date?: string | null;
+    }>;
 }
 
 interface RetourVente {
@@ -82,8 +98,34 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
             label: line.product?.label || 'Produit',
             ref: line.product?.ref || '',
             bl_ref: line.bl_ref,
+            manage_by_lot: line.product?.manage_by_lot || false,
+            lots: (line.lots || []).map((l: any) => ({
+                lot_number: l.lot_number,
+                quantity: Number(l.quantity),
+                fabrication_date: l.fabrication_date,
+                expiration_date: l.expiration_date,
+            })),
         })),
     });
+
+    const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
+    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const toastTimer = useRef<any>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'error') => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ type, message });
+        toastTimer.current = setTimeout(() => setToast(null), 5000);
+    };
+
+    const openLotModal = (index: number) => {
+        const line = data.lines[index];
+        if (!line.product_id || !line.entrepot_id) {
+            showToast("Veuillez d'abord sélectionner un article et un entrepôt.");
+            return;
+        }
+        setActiveLineIndex(index);
+    };
 
     const handleQtyChange = (idx: number, val: number) => {
         if (isLocked) return;
@@ -94,7 +136,11 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
         const maxLimit = line.remaining_qty;
         const safeVal = Math.min(val, maxLimit);
         
-        linesCopy[idx] = { ...line, qty: Math.max(0.0001, safeVal) };
+        linesCopy[idx] = { 
+            ...line, 
+            qty: Math.max(0.0001, safeVal),
+            lots: [] // reset lots on quantity change to force re-allocation
+        };
         setData('lines', linesCopy);
     };
 
@@ -117,6 +163,22 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
         e.preventDefault();
         if (isLocked) return;
 
+        // Validate lot allocations
+        for (let i = 0; i < data.lines.length; i++) {
+            const line = data.lines[i];
+            if (line.manage_by_lot) {
+                if (!line.lots || line.lots.length === 0) {
+                    showToast(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.label}) avant d'enregistrer.`);
+                    return;
+                }
+                const totalAllocated = line.lots.reduce((sum, l) => sum + Number(l.quantity), 0);
+                if (Math.abs(totalAllocated - line.qty) > 0.0001) {
+                    showToast(`La quantité cumulée des lots (${totalAllocated}) ne correspond pas à la quantité demandée (${line.qty}) pour la ligne n° ${i + 1} (${line.label}).`);
+                    return;
+                }
+            }
+        }
+
         put(route('retours-vente.update', retour.id));
     };
 
@@ -132,7 +194,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
 
             <form onSubmit={handleSubmit} className="max-w-7xl mx-auto space-y-6">
                 {/* Main Card */}
-                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6">
+                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-6">
                     <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 dark:border-slate-800/60 pb-5">
                         <div>
                             <div className="flex items-center space-x-2">
@@ -158,9 +220,9 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                     </div>
 
                     {/* Metadata lookups - Locked */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5 font-black">Client</label>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Client</label>
                             <select value={data.tier_id} disabled={true}
                                 className="w-full rounded-2xl border border-slate-200/80 bg-slate-100/80 dark:bg-slate-900/80 text-xs font-semibold text-slate-500 py-3 px-4 focus:outline-none transition-all cursor-not-allowed">
                                 {tiers.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -168,34 +230,16 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5 font-black">Date du Retour</label>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Date du Retour</label>
                             <input type="date" value={data.date_retour} onChange={e => setData('date_retour', e.target.value)} disabled={isLocked}
                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50" />
                             {errors.date_retour && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.date_retour}</span>}
-                        </div>
-
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5 font-black">Commercial</label>
-                            <select value={data.commercial} onChange={e => setData('commercial', e.target.value)} disabled={isLocked}
-                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50">
-                                <option value="">Aucun commercial...</option>
-                                {commercials.map(c => <option key={c.id} value={`${c.first_name} ${c.last_name}`}>{c.first_name} {c.last_name}</option>)}
-                            </select>
-                            {errors.commercial && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.commercial}</span>}
-                        </div>
-
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5 font-black">Devise</label>
-                            <select value={data.devise_id} disabled={true}
-                                className="w-full rounded-2xl border border-slate-200/80 bg-slate-100/80 dark:bg-slate-900/80 text-xs font-semibold text-slate-500 py-3 px-4 focus:outline-none transition-all cursor-not-allowed">
-                                {devises.map(d => <option key={d.id} value={d.id}>{d.code}</option>)}
-                            </select>
                         </div>
                     </div>
                 </div>
 
                 {/* Lines of return */}
-                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden backdrop-blur-xl shadow-xl">
+                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/20">
                         <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Articles de retour</h3>
                         <p className="text-[11px] text-slate-450 mt-0.5">Les lignes ci-dessous sont fixes et associées aux BLs. Les quantités peuvent être éditées.</p>
@@ -210,6 +254,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                                     <th className="py-4 px-6 text-center">Quantité Livrée</th>
                                     <th className="py-4 px-6 text-center">Limite de Retour</th>
                                     <th className="py-4 px-6 text-center w-40">Qté Retournée</th>
+                                    <th className="py-4 px-6 text-center w-36">Lots Alloués</th>
                                     <th className="py-4 px-6 text-right">P.U. HT</th>
                                     <th className="py-4 px-6 text-right">Total HT</th>
                                 </tr>
@@ -221,9 +266,10 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                                     const lineTotalHt = Math.max(0, lineHt - discount);
                                     const currentDevise = devises.find(d => String(d.id) === data.devise_id);
                                     const symbol = currentDevise ? currentDevise.symbol || currentDevise.code : '';
+                                    const allocatedQty = line.lots?.reduce((sum, l) => sum + Number(l.quantity), 0) || 0;
 
                                     return (
-                                        <tr key={line.id} className="hover:bg-slate-50/5 dark:hover:bg-slate-950/5">
+                                        <tr key={line.id} className="hover:bg-slate-50/5 dark:hover:bg-slate-955/5">
                                             <td className="py-4 px-6 text-xs font-black text-slate-500">{line.bl_ref}</td>
                                             <td className="py-4 px-6">
                                                 <span className="text-xs font-extrabold text-slate-850 dark:text-white block">{line.label}</span>
@@ -240,11 +286,27 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                                                     <input type="number" step="any" min="0.0001" max={line.remaining_qty}
                                                         value={line.qty} disabled={isLocked}
                                                         onChange={e => handleQtyChange(idx, Number(e.target.value))}
-                                                        className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-950 text-xs font-bold text-slate-800 dark:text-slate-200 py-2 px-3 text-center focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50 disabled:bg-slate-100" />
+                                                        className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-955 text-xs font-bold text-slate-800 dark:text-slate-200 py-2 px-3 text-center focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50 disabled:bg-slate-100" />
                                                     {line.qty > line.remaining_qty && (
                                                         <span className="absolute left-0 -bottom-4.5 text-[8px] text-rose-500 font-extrabold uppercase">Limite dépassée!</span>
                                                     )}
                                                 </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                {line.manage_by_lot ? (
+                                                    <button type="button"
+                                                        onClick={() => openLotModal(idx)}
+                                                        className={`inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                                            Math.abs(allocatedQty - line.qty) < 0.0001
+                                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20'
+                                                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/20'
+                                                        }`}>
+                                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                        <span>{allocatedQty > 0 ? `${allocatedQty}/${line.qty} alloués` : 'Allouer Lots'}</span>
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[10px] text-slate-400 font-bold italic select-none">—</span>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-right font-semibold text-slate-700 dark:text-slate-300">
                                                 {line.pu_ht.toFixed(2)} {symbol}
@@ -258,33 +320,79 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                             </tbody>
                         </table>
                     </div>
+                </div>
 
-                    {/* Summary & Totals */}
-                    <div className="p-6 bg-slate-50/50 dark:bg-slate-950/10 border-t border-slate-100 dark:border-slate-800/60 flex flex-col md:flex-row md:justify-between items-end gap-6">
-                        <div className="text-xs text-slate-450 leading-relaxed max-w-md">
-                            <span className="font-extrabold uppercase tracking-widest text-[9px] text-indigo-500 block mb-1">Détails d'Inventaire</span>
-                            Les modifications de quantités sont contrôlées et validées par rapport aux restes retournables calculés en temps réel dans notre base de données.
+                {/* Summary & Totals */}
+                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col md:flex-row md:justify-between items-end gap-6">
+                    <div className="text-xs text-slate-450 leading-relaxed max-w-md">
+                        <span className="font-extrabold uppercase tracking-widest text-[9px] text-indigo-500 block mb-1">Détails d'Inventaire</span>
+                        Les modifications de quantités sont contrôlées et validées par rapport aux restes retournables calculés en temps réel dans notre base de données.
+                    </div>
+                    
+                    <div className="w-full md:w-80 space-y-2.5">
+                        <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+                            <span>Total HT</span>
+                            <span>{totalHt.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                         </div>
-                        
-                        <div className="w-full md:w-80 space-y-2.5">
-                            <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
-                                <span>Total HT</span>
-                                <span>{totalHt.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800">
-                                <span>TVA cumulée</span>
-                                <span>{totalTva.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total TTC</span>
-                                <span className="text-lg font-black text-indigo-655 dark:text-indigo-400">
-                                    {totalTtc.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}
-                                </span>
-                            </div>
+                        <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800">
+                            <span>TVA cumulée</span>
+                            <span>{totalTva.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total TTC</span>
+                            <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
+                                {totalTtc.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}
+                            </span>
                         </div>
                     </div>
                 </div>
             </form>
+
+            {activeLineIndex !== null && (() => {
+                const line = data.lines[activeLineIndex];
+                return (
+                    <LotAllocationModal
+                        isOpen={activeLineIndex !== null}
+                        onClose={() => setActiveLineIndex(null)}
+                        productName={line.label || ''}
+                        productId={line.product_id}
+                        entrepotId={line.entrepot_id}
+                        requestedQty={line.qty}
+                        unitCode="U"
+                        initialLots={line.lots || []}
+                        allowManualLots={!isLocked}
+                        isLocked={isLocked}
+                        onConfirm={(allocatedLots) => {
+                            const updated = [...data.lines];
+                            updated[activeLineIndex].lots = allocatedLots as any[];
+                            setData('lines', updated);
+                            setActiveLineIndex(null);
+                        }}
+                    />
+                );
+            })()}
+
+            {/* Toast */}
+            {toast && (
+                <div className="fixed top-5 right-5 z-[100] max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[2rem] shadow-3xl p-4 animate-slide-in backdrop-blur-xl">
+                    <div className="flex items-start space-x-3.5">
+                        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/20'}`}>
+                            {toast.type === 'success' ? (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">{toast.type === 'success' ? 'Succès' : 'Erreur'}</h4>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-455 mt-1 leading-relaxed">{toast.message}</p>
+                        </div>
+                        <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-355 transition-all shrink-0">
+                            <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

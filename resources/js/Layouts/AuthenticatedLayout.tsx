@@ -106,8 +106,7 @@ export default function Authenticated({
                 { name: 'Conditions de Règlement', key: 'conditions_reglement', group: 'Paramètres Tiers', href: route('conditions-reglement.index') },
                 { name: 'Origines', key: 'origines', group: 'Paramètres Tiers', href: route('origines.index') },
                 { name: 'Comptes Bancaires', key: 'comptes_bancaires', group: 'Paramètres Tiers', href: route('comptes-bancaires.index') },
-                { name: 'Types d\'Apporteur', key: 'types_apporteur', group: 'Paramètres Tiers', href: route('types-apporteur.index') },
-                { name: 'Apporteurs', key: 'apporteurs', group: 'Paramètres Tiers', href: route('apporteurs.index') },
+                { name: 'Types d\'Approbateur', key: 'types_approbateur', group: 'Paramètres Tiers', href: route('types-approbateur.index') },
             ],
         },
         {
@@ -125,7 +124,7 @@ export default function Authenticated({
                 { name: 'Retour Vente', key: 'reture', href: route('retours-vente.index') },
                 { name: 'Facture Vente', key: 'facture', href: route('factures-vente.index') },
                 { name: 'Avoir Vente', key: 'avoir', href: route('avoirs-vente.index') },
-                { name: 'Contrat Vente', key: 'contrat' },
+                { name: 'Contrat Vente', key: 'contrat', href: route('contrats-vente.index') },
             ],
         },
         {

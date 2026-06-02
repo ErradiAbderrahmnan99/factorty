@@ -6,6 +6,7 @@ use App\Models\Commande;
 use App\Models\Livraison;
 use App\Models\ProductEntrepot;
 use App\Models\ProductLot;
+use App\Models\RetourVente;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -469,6 +470,98 @@ class StockService
                 return [
                     'status' => true,
                     'message' => 'Sortie de stock validée et stock déduit avec succès !',
+                ];
+
+            } catch (\Exception $e) {
+                return [
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Validate and add stock for a validated Sales Return (RetourVente).
+     *
+     * @param RetourVente $retourVente
+     * @return array
+     */
+    public function validateAndAddStockForRetourVente(RetourVente $retourVente): array
+    {
+        return DB::transaction(function () use ($retourVente) {
+            try {
+                if ($retourVente->status === 'valide') {
+                    return [
+                        'status' => false,
+                        'message' => 'Ce retour de vente est déjà validé.',
+                    ];
+                }
+
+                foreach ($retourVente->lines as $line) {
+                    $product = $line->product;
+                    $entrepotId = $line->entrepot_id;
+                    $requestedQty = (float) $line->qty;
+
+                    // Convert requested quantity from line unit to product stock unit
+                    $qtyConverted = $this->convertToStockUnit($requestedQty, $line->sale_unit_id, $product);
+
+                    // Find or create product warehouse record
+                    $productEntrepot = ProductEntrepot::findProductEntrepot($product->id, $entrepotId);
+                    if (!$productEntrepot) {
+                        $productEntrepot = ProductEntrepot::createProductEntrepot($product->id, $entrepotId, 0.0);
+                    }
+
+                    if ($product->manage_by_lot) {
+                        $lineLots = $line->lots;
+
+                        if ($lineLots->isEmpty()) {
+                            throw new \Exception("Le produit '{$product->label}' est géré par lot, mais aucun lot n'a été alloué.");
+                        }
+
+                        $allocatedSum = 0.0;
+                        foreach ($lineLots as $ll) {
+                            $allocatedSum += (float) $ll->quantity;
+                        }
+
+                        if (abs($allocatedSum - $requestedQty) > 0.0001) {
+                            throw new \Exception("La quantité cumulée des lots ({$allocatedSum}) ne correspond pas à la quantité demandée ({$requestedQty}) pour le produit '{$product->label}'.");
+                        }
+
+                        foreach ($lineLots as $lineLot) {
+                            // Find or create lot in entrepot_product_lots
+                            $lot = ProductLot::where('entrepot_product_id', $productEntrepot->id)
+                                ->where('lot_number', $lineLot->lot_number)
+                                ->first();
+
+                            // Convert the lot's quantity from the line unit to the product's warehouse stock unit
+                            $lotQtyConverted = $this->convertToStockUnit((float)$lineLot->quantity, $line->sale_unit_id, $product);
+
+                            if (!$lot) {
+                                $lot = ProductLot::create([
+                                    'entrepot_product_id' => $productEntrepot->id,
+                                    'lot_number' => $lineLot->lot_number,
+                                    'quantity' => 0.0000,
+                                    'fabrication_date' => $lineLot->fabrication_date ?: null,
+                                    'expiration_date' => $lineLot->expiration_date ?: null,
+                                ]);
+                            }
+
+                            $lot->quantity += $lotQtyConverted;
+                            $lot->save();
+                        }
+                    }
+
+                    $productEntrepot->quantity += $qtyConverted;
+                    $productEntrepot->save();
+                }
+
+                $retourVente->status = 'valide';
+                $retourVente->save();
+
+                return [
+                    'status' => true,
+                    'message' => 'Retour de vente validé et stock réintégré avec succès !',
                 ];
 
             } catch (\Exception $e) {

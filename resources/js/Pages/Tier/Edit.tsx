@@ -11,6 +11,7 @@ interface ParentItem { id: number; label: string; ref: string | null; }
 interface TierData {
     id: number; type: string; ref: string | null; label: string; is_professionnel: boolean;
     description: string | null; parent_id: number | null; tier_category_id: number | null;
+    type_approbateur_id: number | null;
     address: string | null; country_id: number | null; region_id: number | null; city_id: number | null;
     legal_form: string | null; if_fiscal: string | null; ice: string | null; rc: string | null;
     cnss: string | null; tp: string | null; rib: string | null; emploi: string | null;
@@ -22,17 +23,18 @@ interface TierData {
 const TAB_LABELS = ['Identification', 'Localisation', 'Légal & Fiscal', 'Contact & Réseaux'];
 
 export default function Edit({
-    tier, type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents,
+    tier, type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents, typesApprobateur = [],
 }: {
     tier: TierData; type: string; typeLabel: string;
     tierCategories: SelectItem[]; countries: SelectItem[]; regions: RegionItem[];
-    cities: CityItem[]; legalForms: string[]; parents: ParentItem[];
+    cities: CityItem[]; legalForms: string[]; parents: ParentItem[]; typesApprobateur?: SelectItem[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
 
     const { data, setData, patch, processing, errors } = useForm({
         ref: tier.ref || '', label: tier.label, is_professionnel: tier.is_professionnel, description: tier.description || '',
         parent_id: tier.parent_id ? String(tier.parent_id) : '', tier_category_id: tier.tier_category_id ? String(tier.tier_category_id) : '',
+        type_approbateur_id: tier.type_approbateur_id ? String(tier.type_approbateur_id) : '',
         address: tier.address || '', country_id: tier.country_id ? String(tier.country_id) : '',
         region_id: tier.region_id ? String(tier.region_id) : '', city_id: tier.city_id ? String(tier.city_id) : '',
         legal_form: tier.legal_form || '',
@@ -89,10 +91,10 @@ export default function Edit({
                 <div>
                     <div className="flex items-center space-x-2 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
                         <span>DDB</span><span>/</span><span>{typeLabel}s</span><span>/</span>
-                        <span className="text-indigo-600 dark:text-indigo-400">Modifier</span>
+                        <span className="text-indigo-650 dark:text-indigo-400">Modifier</span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-                        Modifier : <span className="text-indigo-600 dark:text-indigo-400">{tier.label}</span>
+                        Modifier : <span className="text-indigo-655 dark:text-indigo-400">{tier.label}</span>
                     </h2>
                 </div>
                 <Link href={route(`tiers.${type}.index`)} className="inline-flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase tracking-widest rounded-2xl h-[42px] px-6 hover:bg-slate-200 transition-all shrink-0">
@@ -129,7 +131,7 @@ export default function Edit({
                                     <InputError message={errors.ref} className="mt-1" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className={labelCls}>Catégorie de Tiers</label>
                                     <select className={inputCls} value={data.tier_category_id} onChange={e => setData('tier_category_id', e.target.value)}>
@@ -143,6 +145,14 @@ export default function Edit({
                                         <option value="">Aucun parent</option>
                                         {parents.map(p => <option key={p.id} value={p.id}>{p.label}{p.ref ? ` (${p.ref})` : ''}</option>)}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Type d'Approbateur (si applicable)</label>
+                                    <select className={inputCls} value={data.type_approbateur_id} onChange={e => setData('type_approbateur_id', e.target.value)}>
+                                        <option value="">Aucun</option>
+                                        {typesApprobateur.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                                    </select>
+                                    <InputError message={errors.type_approbateur_id} className="mt-1" />
                                 </div>
                             </div>
                             <div>

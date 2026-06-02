@@ -38,6 +38,7 @@ class Tier extends Model
         'facebook',
         'instagram',
         'status',
+        'type_approbateur_id',
     ];
 
     protected $casts = [
@@ -93,5 +94,8 @@ class Tier extends Model
         return $this->belongsTo(City::class);
     }
 
-
+    public function typeApprobateur(): BelongsTo
+    {
+        return $this->belongsTo(TypeApprobateur::class, 'type_approbateur_id');
+    }
 }

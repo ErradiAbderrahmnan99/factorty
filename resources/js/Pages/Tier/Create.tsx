@@ -8,20 +8,18 @@ interface RegionItem { id: number; label: string; country_id: number; country?: 
 interface CityItem { id: number; label: string; region_id: number; region?: { id: number; label: string }; }
 interface ParentItem { id: number; label: string; ref: string | null; }
 
-const TAB_LABELS = ['Identification', 'Localisation', 'Légal & Fiscal', 'Contact & Réseaux'];
-
-export default function Create({
-    type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents,
+const TAB_LABELS = ['Identification', 'Localisation', 'Légal & Fiscal', 'Contact & Réseaux'];export default function Create({
+    type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents, typesApprobateur = [],
 }: {
     type: string; typeLabel: string;
     tierCategories: SelectItem[]; countries: SelectItem[]; regions: RegionItem[];
-    cities: CityItem[]; legalForms: string[]; parents: ParentItem[];
+    cities: CityItem[]; legalForms: string[]; parents: ParentItem[]; typesApprobateur?: SelectItem[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
 
     const { data, setData, post, processing, errors } = useForm({
         ref: '', label: '', is_professionnel: false as boolean, description: '',
-        parent_id: '', tier_category_id: '',
+        parent_id: '', tier_category_id: '', type_approbateur_id: '',
         address: '', country_id: '', region_id: '', city_id: '',
         legal_form: '', if_fiscal: '', ice: '', rc: '', cnss: '', tp: '', rib: '', emploi: '',
         email: '', telephone: '', website: '', fax: '',
@@ -67,7 +65,7 @@ export default function Create({
                 <div>
                     <div className="flex items-center space-x-2 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
                         <span>DDB</span><span>/</span><span>{typeLabel}s</span><span>/</span>
-                        <span className="text-indigo-600 dark:text-indigo-400">Nouveau</span>
+                        <span className="text-indigo-650 dark:text-indigo-400">Nouveau</span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">Créer un {typeLabel}</h2>
                 </div>
@@ -109,7 +107,7 @@ export default function Create({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className={labelCls}>Catégorie de Tiers <span className="text-rose-500">*</span></label>
                                     <select className={inputCls} value={data.tier_category_id} onChange={e => setData('tier_category_id', e.target.value)}>
@@ -126,7 +124,15 @@ export default function Create({
                                     </select>
                                     <InputError message={errors.parent_id} className="mt-1" />
                                 </div>
+                                <div>
+                                    <label className={labelCls}>Type d'Approbateur (si applicable)</label>
+                                    <select className={inputCls} value={data.type_approbateur_id} onChange={e => setData('type_approbateur_id', e.target.value)}>
+                                        <option value="">Aucun</option>
+                                        {typesApprobateur.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                                    </select>
+                                </div>
                             </div>
+
 
                             <div>
                                 <label className={labelCls}>Description</label>

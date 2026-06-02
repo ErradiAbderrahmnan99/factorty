@@ -12,9 +12,8 @@ use App\Models\Employee;
 use App\Models\ModeReglement;
 use App\Models\ConditionReglement;
 use App\Models\Origine;
+use App\Models\TypeApprobateur;
 use App\Models\CompteBancaire;
-use App\Models\TypeApporteur;
-use App\Models\Apporteur;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +24,7 @@ class FactureVenteController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = FactureVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'typeApporteur', 'apporteur'])
+        $query = FactureVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -59,8 +58,8 @@ class FactureVenteController extends Controller
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'origines'            => Origine::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
-            'typesApporteur'      => TypeApporteur::orderBy('label')->get(),
-            'apporteurs'          => Apporteur::orderBy('label')->get(),
+            'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
+            'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
         ]);
     }
 
@@ -76,8 +75,7 @@ class FactureVenteController extends Controller
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
-            'type_apporteur_id'      => ['nullable', 'exists:types_apporteur,id'],
-            'apporteur_id'          => ['nullable', 'exists:apporteurs,id'],
+            'approbateur_id'         => ['nullable', 'exists:tiers,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -112,8 +110,7 @@ class FactureVenteController extends Controller
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'origine_id'             => $request->input('origine_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
-                'type_apporteur_id'      => $request->input('type_apporteur_id'),
-                'apporteur_id'          => $request->input('apporteur_id'),
+                'approbateur_id'         => $request->input('approbateur_id'),
                 'delai_livraison'        => $request->input('delai_livraison'),
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),
@@ -134,7 +131,7 @@ class FactureVenteController extends Controller
 
     public function edit(FactureVente $facturesVente): Response
     {
-        $facturesVente->load(['lines.product', 'lines.saleUnit']);
+        $facturesVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
 
         return Inertia::render('FactureVente/Edit', [
             'facture'             => $facturesVente,
@@ -147,8 +144,8 @@ class FactureVenteController extends Controller
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'origines'            => Origine::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
-            'typesApporteur'      => TypeApporteur::orderBy('label')->get(),
-            'apporteurs'          => Apporteur::orderBy('label')->get(),
+            'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
+            'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
         ]);
     }
 
@@ -168,8 +165,7 @@ class FactureVenteController extends Controller
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
-            'type_apporteur_id'      => ['nullable', 'exists:types_apporteur,id'],
-            'apporteur_id'          => ['nullable', 'exists:apporteurs,id'],
+            'approbateur_id'         => ['nullable', 'exists:tiers,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -198,8 +194,7 @@ class FactureVenteController extends Controller
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'origine_id'             => $request->input('origine_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
-                'type_apporteur_id'      => $request->input('type_apporteur_id'),
-                'apporteur_id'          => $request->input('apporteur_id'),
+                'approbateur_id'         => $request->input('approbateur_id'),
                 'delai_livraison'        => $request->input('delai_livraison'),
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),

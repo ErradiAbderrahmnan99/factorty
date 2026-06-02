@@ -7,6 +7,7 @@ use App\Models\TierCategory;
 use App\Models\Country;
 use App\Models\Region;
 use App\Models\City;
+use App\Models\TypeApprobateur;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -33,7 +34,7 @@ class TierController extends Controller
 
         $tiers = Tier::query()
             ->where('type', $type)
-            ->with(['tierCategory', 'city', 'country', 'parent'])
+            ->with(['tierCategory', 'city', 'country', 'parent', 'typeApprobateur'])
             ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
                 $q2->where('label', 'like', "%{$search}%")
                    ->orWhere('ref', 'like', "%{$search}%")
@@ -68,6 +69,7 @@ class TierController extends Controller
             'cities'         => City::with('region')->orderBy('label')->get(),
             'legalForms'     => $legalForms,
             'parents'        => Tier::where('type', $type)->orderBy('label')->get(['id', 'label', 'ref']),
+            'typesApprobateur'=> TypeApprobateur::orderBy('label')->get(),
         ]);
     }
 
@@ -82,6 +84,7 @@ class TierController extends Controller
             'description'     => ['nullable', 'string'],
             'parent_id'       => ['nullable', 'exists:tiers,id'],
             'tier_category_id'=> ['required', 'exists:tier_categories,id'],
+            'type_approbateur_id'=> ['nullable', 'exists:types_approbateur,id'],
             'address'         => ['nullable', 'string', 'max:500'],
             'country_id'      => ['nullable', 'exists:countries,id'],
             'region_id'       => ['nullable', 'exists:regions,id'],
@@ -130,6 +133,7 @@ class TierController extends Controller
             'parents'        => Tier::where('type', $type)
                                     ->where('id', '!=', $tier->id)
                                     ->orderBy('label')->get(['id', 'label', 'ref']),
+            'typesApprobateur'=> TypeApprobateur::orderBy('label')->get(),
         ]);
     }
 
@@ -145,6 +149,7 @@ class TierController extends Controller
             'description'     => ['nullable', 'string'],
             'parent_id'       => ['nullable', 'exists:tiers,id'],
             'tier_category_id'=> ['nullable', 'exists:tier_categories,id'],
+            'type_approbateur_id'=> ['nullable', 'exists:types_approbateur,id'],
             'address'         => ['nullable', 'string', 'max:500'],
             'country_id'      => ['nullable', 'exists:countries,id'],
             'region_id'       => ['nullable', 'exists:regions,id'],

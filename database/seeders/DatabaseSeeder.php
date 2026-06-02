@@ -388,6 +388,19 @@ class DatabaseSeeder extends Seeder
             \App\Models\TierCategory::updateOrCreate(['code' => $tc['code']], $tc);
         }
 
+        // Seeding Type Approbateurs
+        $typeApprobateurs = [
+            'BUREAUX DE CONTROLE',
+            'ARCHITECTES',
+            "BUREAUX D'ETUDE",
+            'ENTREPRISE',
+            "MAITRES D'OUVRAGE",
+            'AUTRE'
+        ];
+        foreach ($typeApprobateurs as $label) {
+            \App\Models\TypeApprobateur::updateOrCreate(['label' => $label]);
+        }
+
         // ─── Tiers (Prospects, Clients, Fournisseurs) ───────────────────────
         $distCat = \App\Models\TierCategory::where('code', 'DIST')->first();
         $indCat  = \App\Models\TierCategory::where('code', 'IND')->first();

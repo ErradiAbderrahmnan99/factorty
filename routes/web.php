@@ -15,6 +15,7 @@ use App\Http\Controllers\DevisController;
 use App\Http\Controllers\LivraisonController;
 use App\Http\Controllers\FactureVenteController;
 use App\Http\Controllers\AvoirVenteController;
+use App\Http\Controllers\ContratVenteController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EntrepotController;
 use App\Http\Controllers\CommandeController;
@@ -22,8 +23,7 @@ use App\Http\Controllers\ModeReglementController;
 use App\Http\Controllers\ConditionReglementController;
 use App\Http\Controllers\OrigineController;
 use App\Http\Controllers\CompteBancaireController;
-use App\Http\Controllers\TypeApporteurController;
-use App\Http\Controllers\ApporteurController;
+use App\Http\Controllers\TypeApprobateurController;
 use App\Http\Controllers\RetourVenteController;
 use App\Http\Controllers\EntreeStockController;
 use App\Http\Controllers\SortieStockController;
@@ -108,13 +108,22 @@ Route::middleware('auth')->group(function () {
     Route::post('factures-vente/{facturesVente}/toggle-status', [FactureVenteController::class, 'updateStatus'])->name('factures-vente.toggle-status');
     Route::resource('factures-vente', FactureVenteController::class);
 
+    // Contrat Vente CRUD
+    Route::get('api/contrats-vente/{contrat}', [ContratVenteController::class, 'getContratWithLines'])->name('api.contrats-vente.show');
+    Route::post('contrats-vente/{contratsVente}/toggle-status', [ContratVenteController::class, 'updateStatus'])->name('contrats-vente.toggle-status');
+    Route::resource('contrats-vente', ContratVenteController::class)->parameters([
+        'contrats-vente' => 'contratsVente'
+    ]);
+
     // Avoir Vente CRUD
     Route::post('avoirs-vente/{avoirsVente}/toggle-status', [AvoirVenteController::class, 'updateStatus'])->name('avoirs-vente.toggle-status');
     Route::resource('avoirs-vente', AvoirVenteController::class);
 
     // Retours Vente CRUD
     Route::post('retours-vente/{retourVente}/toggle-status', [RetourVenteController::class, 'updateStatus'])->name('retours-vente.toggle-status');
-    Route::resource('retours-vente', RetourVenteController::class);
+    Route::resource('retours-vente', RetourVenteController::class)->parameters([
+        'retours-vente' => 'retourVente'
+    ]);
 
     // Entrées de Stock
     Route::post('entrees-stock/{entreesStock}/toggle-status', [EntreeStockController::class, 'toggleStatus'])->name('entrees-stock.toggle-status');
@@ -130,8 +139,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('conditions-reglement', ConditionReglementController::class)->except(['create', 'edit', 'show']);
     Route::resource('origines', OrigineController::class)->except(['create', 'edit', 'show']);
     Route::resource('comptes-bancaires', CompteBancaireController::class)->except(['create', 'edit', 'show']);
-    Route::resource('types-apporteur', TypeApporteurController::class)->except(['create', 'edit', 'show']);
-    Route::resource('apporteurs', ApporteurController::class)->except(['create', 'edit', 'show']);
+    Route::resource('types-approbateur', TypeApprobateurController::class)->except(['create', 'edit', 'show']);
 });
 
 require __DIR__.'/auth.php';

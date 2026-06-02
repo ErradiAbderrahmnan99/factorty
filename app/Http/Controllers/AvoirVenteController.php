@@ -12,9 +12,8 @@ use App\Models\Employee;
 use App\Models\ModeReglement;
 use App\Models\ConditionReglement;
 use App\Models\Origine;
+use App\Models\TypeApprobateur;
 use App\Models\CompteBancaire;
-use App\Models\TypeApporteur;
-use App\Models\Apporteur;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +24,7 @@ class AvoirVenteController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = AvoirVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'typeApporteur', 'apporteur'])
+        $query = AvoirVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -60,8 +59,8 @@ class AvoirVenteController extends Controller
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'origines'            => Origine::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
-            'typesApporteur'      => TypeApporteur::orderBy('label')->get(),
-            'apporteurs'          => Apporteur::orderBy('label')->get(),
+            'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
+            'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
         ]);
     }
 
@@ -77,8 +76,7 @@ class AvoirVenteController extends Controller
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
-            'type_apporteur_id'      => ['nullable', 'exists:types_apporteur,id'],
-            'apporteur_id'          => ['nullable', 'exists:apporteurs,id'],
+            'approbateur_id'         => ['nullable', 'exists:tiers,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -113,8 +111,7 @@ class AvoirVenteController extends Controller
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'origine_id'             => $request->input('origine_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
-                'type_apporteur_id'      => $request->input('type_apporteur_id'),
-                'apporteur_id'          => $request->input('apporteur_id'),
+                'approbateur_id'         => $request->input('approbateur_id'),
                 'delai_livraison'        => $request->input('delai_livraison'),
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),
@@ -135,7 +132,7 @@ class AvoirVenteController extends Controller
 
     public function edit(AvoirVente $avoirsVente): Response
     {
-        $avoirsVente->load(['lines.product', 'lines.saleUnit']);
+        $avoirsVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
 
         return Inertia::render('AvoirVente/Edit', [
             'avoir'               => $avoirsVente,
@@ -149,8 +146,8 @@ class AvoirVenteController extends Controller
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'origines'            => Origine::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
-            'typesApporteur'      => TypeApporteur::orderBy('label')->get(),
-            'apporteurs'          => Apporteur::orderBy('label')->get(),
+            'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
+            'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
         ]);
     }
 
@@ -170,8 +167,7 @@ class AvoirVenteController extends Controller
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
-            'type_apporteur_id'      => ['nullable', 'exists:types_apporteur,id'],
-            'apporteur_id'          => ['nullable', 'exists:apporteurs,id'],
+            'approbateur_id'         => ['nullable', 'exists:tiers,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -200,8 +196,7 @@ class AvoirVenteController extends Controller
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'origine_id'             => $request->input('origine_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
-                'type_apporteur_id'      => $request->input('type_apporteur_id'),
-                'apporteur_id'          => $request->input('apporteur_id'),
+                'approbateur_id'         => $request->input('approbateur_id'),
                 'delai_livraison'        => $request->input('delai_livraison'),
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),

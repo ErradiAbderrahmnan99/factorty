@@ -1,6 +1,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import LotAllocationModal from '@/Components/LotAllocationModal';
+
+interface LineLot {
+    lot_number: string;
+    quantity: number;
+    fabrication_date?: string | null;
+    expiration_date?: string | null;
+}
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -14,6 +22,7 @@ interface Product {
     label: string;
     sale_unit_id: number;
     stock_unit_id: number;
+    manage_by_lot?: boolean;
     stockUnit?: Unit;
     saleUnit?: Unit;
 }
@@ -36,6 +45,12 @@ interface LivraisonLine {
     remaining_qty: number;
     product?: Product;
     sale_unit?: Unit;
+    lots?: Array<{
+        lot_number: string;
+        quantity: number | string;
+        fabrication_date?: string | null;
+        expiration_date?: string | null;
+    }>;
 }
 
 interface Livraison {
@@ -82,11 +97,14 @@ export default function Create({ tiers, products, devises, units, entrepots, com
             label: string;
             ref: string;
             bl_ref: string;
+            manage_by_lot: boolean;
+            lots: LineLot[];
         }>,
     });
 
     const [selectedBlIds, setSelectedBlIds] = useState<number[]>([]);
     const [availableBls, setAvailableBls] = useState<Livraison[]>([]);
+    const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
 
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const toastTimer = useRef<any>(null);
@@ -155,6 +173,13 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                             label: line.product?.label || 'Produit',
                             ref: line.product?.ref || '',
                             bl_ref: bl.ref,
+                            manage_by_lot: line.product?.manage_by_lot || false,
+                            lots: (line.lots || []).map((l: any) => ({
+                                lot_number: l.lot_number,
+                                quantity: Number(l.quantity),
+                                fabrication_date: l.fabrication_date,
+                                expiration_date: l.expiration_date,
+                            })),
                         });
                     }
                 });
@@ -186,9 +211,12 @@ export default function Create({ tiers, products, devises, units, entrepots, com
     const handleQtyChange = (idx: number, val: number) => {
         const linesCopy = [...data.lines];
         const line = linesCopy[idx];
-        // Enforce max validation
         const safeVal = Math.min(val, line.remaining_qty);
-        linesCopy[idx] = { ...line, qty: Math.max(0.0001, safeVal) };
+        linesCopy[idx] = { 
+            ...line, 
+            qty: Math.max(0.0001, safeVal),
+            lots: [] // reset lots on quantity change to force re-allocation
+        };
         setData('lines', linesCopy);
     };
 
@@ -212,6 +240,15 @@ export default function Create({ tiers, products, devises, units, entrepots, com
 
     const totalTva = Math.max(0, totalTtc - totalHt);
 
+    const openLotModal = (index: number) => {
+        const line = data.lines[index];
+        if (!line.product_id || !line.entrepot_id) {
+            showToast("Veuillez d'abord sélectionner un article et un entrepôt.");
+            return;
+        }
+        setActiveLineIndex(index);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const activeLines = getCheckedLines().map(l => ({
@@ -225,6 +262,9 @@ export default function Create({ tiers, products, devises, units, entrepots, com
             pu_ttc: l.pu_ttc,
             remise: l.remise,
             rm: l.rm,
+            manage_by_lot: l.manage_by_lot,
+            label: l.label,
+            lots: l.lots,
         }));
 
         if (activeLines.length === 0) {
@@ -232,9 +272,25 @@ export default function Create({ tiers, products, devises, units, entrepots, com
             return;
         }
 
+        // Validate lot allocations
+        for (let i = 0; i < activeLines.length; i++) {
+            const line = activeLines[i];
+            if (line.manage_by_lot) {
+                if (!line.lots || line.lots.length === 0) {
+                    showToast(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.label}) avant d'enregistrer.`);
+                    return;
+                }
+                const totalAllocated = line.lots.reduce((sum, l) => sum + Number(l.quantity), 0);
+                if (Math.abs(totalAllocated - line.qty) > 0.0001) {
+                    showToast(`La quantité cumulée des lots (${totalAllocated}) ne correspond pas à la quantité demandée (${line.qty}) pour la ligne n° ${i + 1} (${line.label}).`);
+                    return;
+                }
+            }
+        }
+
         router.post(route('retours-vente.store'), {
             ...data,
-            lines: activeLines,
+            lines: activeLines as any,
         });
     };
 
@@ -367,6 +423,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                                         <th className="py-4 px-6">Article</th>
                                         <th className="py-4 px-6 text-center">Reste à Retourner</th>
                                         <th className="py-4 px-6 text-center w-40">Qté Retournée</th>
+                                        <th className="py-4 px-6 text-center w-36">Lots Alloués</th>
                                         <th className="py-4 px-6 text-right">P.U. HT</th>
                                         <th className="py-4 px-6 text-right">Total HT</th>
                                     </tr>
@@ -379,6 +436,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                                         const lineTotalHt = Math.max(0, lineHt - discount);
                                         const currentDevise = devises.find(d => String(d.id) === data.devise_id);
                                         const symbol = currentDevise ? currentDevise.symbol || currentDevise.code : '';
+                                        const allocatedQty = line.lots?.reduce((sum, l) => sum + Number(l.quantity), 0) || 0;
 
                                         return (
                                             <tr key={line.livraison_line_id} className={`transition-colors ${isChecked ? 'bg-indigo-50/5 dark:bg-indigo-950/5' : 'opacity-60 bg-transparent'}`}>
@@ -399,11 +457,29 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                                                         <input type="number" step="any" min="0.0001" max={line.remaining_qty}
                                                             value={line.qty} disabled={!isChecked}
                                                             onChange={e => handleQtyChange(idx, Number(e.target.value))}
-                                                            className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-950 text-xs font-bold text-slate-800 dark:text-slate-200 py-2 px-3 text-center focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50 disabled:bg-slate-100" />
+                                                            className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-955 text-xs font-bold text-slate-800 dark:text-slate-200 py-2 px-3 text-center focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50 disabled:bg-slate-100" />
                                                         {line.qty > line.remaining_qty && (
                                                             <span className="absolute left-0 -bottom-4.5 text-[8px] text-rose-500 font-extrabold uppercase">Limite dépassée!</span>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    {line.manage_by_lot ? (
+                                                        <button type="button" disabled={!isChecked}
+                                                            onClick={() => openLotModal(idx)}
+                                                            className={`inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                                                !isChecked
+                                                                    ? 'opacity-40 cursor-not-allowed bg-slate-150 text-slate-400 border border-slate-200'
+                                                                    : Math.abs(allocatedQty - line.qty) < 0.0001
+                                                                        ? 'bg-emerald-500/10 text-emerald-650 dark:text-emerald-450 border border-emerald-500/20'
+                                                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/20'
+                                                            }`}>
+                                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                            <span>{allocatedQty > 0 ? `${allocatedQty}/${line.qty} alloués` : 'Allouer Lots'}</span>
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-400 font-bold italic select-none">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="py-4 px-6 text-xs text-right font-semibold text-slate-700 dark:text-slate-300">
                                                     {line.pu_ht.toFixed(2)} {symbol}
@@ -445,6 +521,28 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                     </div>
                 )}
             </form>
+            {activeLineIndex !== null && (() => {
+                const line = data.lines[activeLineIndex];
+                return (
+                    <LotAllocationModal
+                        isOpen={activeLineIndex !== null}
+                        onClose={() => setActiveLineIndex(null)}
+                        productName={line.label || ''}
+                        productId={line.product_id}
+                        entrepotId={line.entrepot_id}
+                        requestedQty={line.qty}
+                        unitCode="U"
+                        initialLots={line.lots || []}
+                        allowManualLots={true}
+                        onConfirm={(allocatedLots) => {
+                            const updated = [...data.lines];
+                            updated[activeLineIndex].lots = allocatedLots as any[];
+                            setData('lines', updated);
+                            setActiveLineIndex(null);
+                        }}
+                    />
+                );
+            })()}
             {/* Toast */}
             {toast && (
                 <div className="fixed top-5 right-5 z-[100] max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[2rem] shadow-3xl p-4 animate-slide-in backdrop-blur-xl">

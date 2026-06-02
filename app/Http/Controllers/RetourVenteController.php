@@ -168,38 +168,46 @@ class RetourVenteController extends Controller
                     $totalHt += $lineTotalHt;
                     $totalTtc += $lineTotalTtc;
 
-                    // Automatically determine lots from original BL line
-                    $originalLots = $livraisonLine->lots;
+                    // Check if lots are sent from frontend, otherwise determine from BL
                     $lotsData = [];
-
-                    if ($originalLots->isNotEmpty()) {
-                        // Proportionately allocate returned quantity to original lots
-                        // For simplicity, we assign the return to the first original lot or partition it
-                        $remainingToAllocate = $qty;
-                        foreach ($originalLots as $oLot) {
-                            if ($remainingToAllocate <= 0) break;
-                            $allocatedQty = min($remainingToAllocate, (double)$oLot->quantity);
-                            if ($allocatedQty > 0) {
-                                $lotsData[] = [
-                                    'lot_number'       => $oLot->lot_number,
-                                    'quantity'         => $allocatedQty,
-                                    'fabrication_date' => $oLot->fabrication_date,
-                                    'expiration_date'  => $oLot->expiration_date,
-                                ];
-                                $remainingToAllocate -= $allocatedQty;
-                            }
-                        }
-                        // If anything remains (due to rounding or user edits), assign to the first lot
-                        if ($remainingToAllocate > 0 && count($lotsData) > 0) {
-                            $lotsData[0]['quantity'] += $remainingToAllocate;
-                        } elseif ($remainingToAllocate > 0) {
-                            // Fallback
+                    if (isset($line['lots']) && !empty($line['lots'])) {
+                        foreach ($line['lots'] as $lotInput) {
                             $lotsData[] = [
-                                'lot_number' => $originalLots[0]->lot_number,
-                                'quantity' => $remainingToAllocate,
-                                'fabrication_date' => $originalLots[0]->fabrication_date,
-                                'expiration_date' => $originalLots[0]->expiration_date,
+                                'lot_number'       => $lotInput['lot_number'],
+                                'quantity'         => (double)$lotInput['quantity'],
+                                'fabrication_date' => $lotInput['fabrication_date'] ?? null,
+                                'expiration_date'  => $lotInput['expiration_date'] ?? null,
                             ];
+                        }
+                    } else {
+                        $originalLots = $livraisonLine ? $livraisonLine->lots : collect();
+                        if ($originalLots->isNotEmpty()) {
+                            $remainingToAllocate = $qty;
+                            foreach ($originalLots as $oLot) {
+                                if ($remainingToAllocate <= 0) break;
+                                $allocatedQty = min($remainingToAllocate, (double)$oLot->quantity);
+                                if ($allocatedQty > 0) {
+                                    $lotsData[] = [
+                                        'lot_number'       => $oLot->lot_number,
+                                        'quantity'         => $allocatedQty,
+                                        'fabrication_date' => $oLot->fabrication_date,
+                                        'expiration_date'  => $oLot->expiration_date,
+                                    ];
+                                    $remainingToAllocate -= $allocatedQty;
+                                }
+                            }
+                            // If anything remains (due to rounding or user edits), assign to the first lot
+                            if ($remainingToAllocate > 0 && count($lotsData) > 0) {
+                                $lotsData[0]['quantity'] += $remainingToAllocate;
+                            } elseif ($remainingToAllocate > 0) {
+                                // Fallback
+                                $lotsData[] = [
+                                    'lot_number' => $originalLots[0]->lot_number,
+                                    'quantity' => $remainingToAllocate,
+                                    'fabrication_date' => $originalLots[0]->fabrication_date,
+                                    'expiration_date' => $originalLots[0]->expiration_date,
+                                ];
+                            }
                         }
                     }
 
@@ -275,7 +283,7 @@ class RetourVenteController extends Controller
             ->get();
 
         // In edit mode, we calculate remaining qty in the system for these lines
-        $retourVente->lines = $retourVente->lines->map(function ($line) use ($retourVente) {
+        $retourLines = $retourVente->lines->map(function ($line) {
             if ($line->livraisonLine) {
                 // Already returned by other retours
                 $otherReturned = RetourVenteLine::where('livraison_line_id', $line->livraison_line_id)
@@ -284,19 +292,58 @@ class RetourVenteController extends Controller
                         $q->where('status', '!=', 'annule');
                     })
                     ->sum('qty');
-                $line->remaining_qty = max(0.0, (float) $line->livraisonLine->qty - (float) $otherReturned);
-                $line->original_bl_qty = (float) $line->livraisonLine->qty;
-                $line->bl_ref = $line->livraisonLine->livraison->ref;
+                $remaining_qty = max(0.0, (float) $line->livraisonLine->qty - (float) $otherReturned);
+                $original_bl_qty = (float) $line->livraisonLine->qty;
+                $bl_ref = $line->livraisonLine->livraison ? $line->livraisonLine->livraison->ref : 'N/A';
             } else {
-                $line->remaining_qty = $line->qty;
-                $line->original_bl_qty = $line->qty;
-                $line->bl_ref = 'N/A';
+                $remaining_qty = $line->qty;
+                $original_bl_qty = $line->qty;
+                $bl_ref = 'N/A';
             }
-            return $line;
+
+            return [
+                'id' => $line->id,
+                'livraison_line_id' => $line->livraison_line_id,
+                'product_id' => $line->product_id,
+                'entrepot_id' => $line->entrepot_id,
+                'sale_unit_id' => $line->sale_unit_id,
+                'tva' => (float)$line->tva,
+                'qty' => (float)$line->qty,
+                'pu_ht' => (float)$line->pu_ht,
+                'pu_ttc' => (float)$line->pu_ttc,
+                'remise' => (float)$line->remise,
+                'rm' => (float)$line->rm,
+                'total_ht' => (float)$line->total_ht,
+                'total_ttc' => (float)$line->total_ttc,
+                'remaining_qty' => $remaining_qty,
+                'original_bl_qty' => $original_bl_qty,
+                'bl_ref' => $bl_ref,
+                'product' => $line->product ? [
+                    'id' => $line->product->id,
+                    'ref' => $line->product->ref,
+                    'label' => $line->product->label,
+                    'manage_by_lot' => (bool)$line->product->manage_by_lot,
+                ] : null,
+                'sale_unit' => $line->saleUnit ? [
+                    'id' => $line->saleUnit->id,
+                    'code' => $line->saleUnit->code,
+                ] : null,
+                'lots' => $line->lots->map(function ($lot) {
+                    return [
+                        'lot_number' => $lot->lot_number,
+                        'quantity' => (float)$lot->quantity,
+                        'fabrication_date' => $lot->fabrication_date,
+                        'expiration_date' => $lot->expiration_date,
+                    ];
+                })->toArray(),
+            ];
         });
 
+        $retourData = $retourVente->toArray();
+        $retourData['lines'] = $retourLines->toArray();
+
         return Inertia::render('RetourVente/Edit', [
-            'retour'      => $retourVente,
+            'retour'      => $retourData,
             'tiers'       => $tiers,
             'devises'     => $devises,
             'entrepots'   => $entrepots,
@@ -362,6 +409,7 @@ class RetourVenteController extends Controller
                         'qty' => $qty,
                         'total_ht' => $lineTotalHt,
                         'total_ttc' => $lineTotalTtc,
+                        'lots' => $lineInput['lots'] ?? null,
                     ];
                 }
 
@@ -388,14 +436,26 @@ class RetourVenteController extends Controller
                         'total_ttc' => $up['total_ttc'],
                     ]);
 
-                    // Adjust lots proportionately or scale them
-                    $lots = $line->lots;
-                    if ($lots->isNotEmpty() && $oldQty > 0) {
-                        $ratio = $newQty / $oldQty;
-                        foreach ($lots as $lot) {
-                            $lot->update([
-                                'quantity' => (double)$lot->quantity * $ratio,
+                    if (isset($up['lots']) && is_array($up['lots'])) {
+                        $line->lots()->delete();
+                        foreach ($up['lots'] as $lotInput) {
+                            $line->lots()->create([
+                                'lot_number'       => $lotInput['lot_number'],
+                                'quantity'         => (double)$lotInput['quantity'],
+                                'fabrication_date' => $lotInput['fabrication_date'] ?? null,
+                                'expiration_date'  => $lotInput['expiration_date'] ?? null,
                             ]);
+                        }
+                    } else {
+                        // Adjust lots proportionately or scale them
+                        $lots = $line->lots;
+                        if ($lots->isNotEmpty() && $oldQty > 0) {
+                            $ratio = $newQty / $oldQty;
+                            foreach ($lots as $lot) {
+                                $lot->update([
+                                    'quantity' => (double)$lot->quantity * $ratio,
+                                ]);
+                            }
                         }
                     }
                 }
