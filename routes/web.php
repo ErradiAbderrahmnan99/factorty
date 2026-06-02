@@ -16,6 +16,9 @@ use App\Http\Controllers\LivraisonController;
 use App\Http\Controllers\FactureVenteController;
 use App\Http\Controllers\AvoirVenteController;
 use App\Http\Controllers\ContratVenteController;
+use App\Http\Controllers\ContratAchatController;
+use App\Http\Controllers\DemandeAchatController;
+use App\Http\Controllers\DemandePrixController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EntrepotController;
 use App\Http\Controllers\CommandeController;
@@ -113,6 +116,24 @@ Route::middleware('auth')->group(function () {
     Route::post('contrats-vente/{contratsVente}/toggle-status', [ContratVenteController::class, 'updateStatus'])->name('contrats-vente.toggle-status');
     Route::resource('contrats-vente', ContratVenteController::class)->parameters([
         'contrats-vente' => 'contratsVente'
+    ]);
+
+    // Contrat Achat CRUD
+    Route::post('contrats-achat/{contratsAchat}/toggle-status', [ContratAchatController::class, 'updateStatus'])->name('contrats-achat.toggle-status');
+    Route::resource('contrats-achat', ContratAchatController::class)->parameters([
+        'contrats-achat' => 'contratsAchat'
+    ]);
+
+    // Demande Achat CRUD
+    Route::post('demandes-achat/{demandesAchat}/toggle-status', [DemandeAchatController::class, 'updateStatus'])->name('demandes-achat.toggle-status');
+    Route::resource('demandes-achat', DemandeAchatController::class)->parameters([
+        'demandes-achat' => 'demandesAchat'
+    ]);
+
+    // Demande Prix CRUD
+    Route::post('demandes-prix/{demandesPrix}/toggle-status', [DemandePrixController::class, 'updateStatus'])->name('demandes-prix.toggle-status');
+    Route::resource('demandes-prix', DemandePrixController::class)->parameters([
+        'demandes-prix' => 'demandesPrix'
     ]);
 
     // Avoir Vente CRUD

@@ -136,10 +136,9 @@ export default function Authenticated({
                 </svg>
             ),
             items: [
-                { name: 'Contrats Achat', key: 'contrat_a' },
-                { name: "Demandes d'Achat", key: 'demande_a' },
-                { name: "Groupes d'Achat", key: 'groupe_a' },
-                { name: 'Demandes de Prix (RFQ)', key: 'demande_p' },
+                { name: 'Contrats Achat', key: 'contrat_a', href: route('contrats-achat.index') },
+                { name: "Demandes d'Achat", key: 'demande_a', href: route('demandes-achat.index') },
+                { name: 'Demandes de Prix (RFQ)', key: 'demande_p', href: route('demandes-prix.index') },
                 { name: 'Commandes Achat', key: 'commande_a' },
                 { name: 'Bons de Réception', key: 'reception' },
                 { name: 'Retours Achat', key: 'retour_a' },
