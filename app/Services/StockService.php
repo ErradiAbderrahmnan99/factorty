@@ -8,6 +8,7 @@ use App\Models\ProductEntrepot;
 use App\Models\ProductLot;
 use App\Models\RetourVente;
 use App\Models\Reception;
+use App\Models\RetourAchat;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -657,6 +658,105 @@ class StockService
                 return [
                     'status' => true,
                     'message' => 'Bon de réception validé et stock augmenté avec succès !',
+                ];
+
+            } catch (\Exception $e) {
+                return [
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Validate and deduct stock for a validated RetourAchat (Purchase Return).
+     */
+    public function validateAndDeductStockForRetourAchat(RetourAchat $retourAchat): array
+    {
+        return DB::transaction(function () use ($retourAchat) {
+            try {
+                if ($retourAchat->status === 'valide') {
+                    return [
+                        'status' => false,
+                        'message' => 'Ce retour d\'achat est déjà validé.',
+                    ];
+                }
+
+                foreach ($retourAchat->lines as $line) {
+                    $product = $line->product;
+                    $entrepotId = $line->entrepot_id;
+                    $requestedQty = (float) $line->qty;
+
+                    // Convert requested quantity from line purchase unit to product stock unit
+                    $unitId = $line->purchase_unit_id ?: $product->purchase_unit_id;
+                    $qtyConverted = $this->convertToStockUnit($requestedQty, $unitId, $product);
+
+                    $productEntrepot = ProductEntrepot::findProductEntrepot($product->id, $entrepotId);
+                    if (!$productEntrepot) {
+                        $productEntrepot = ProductEntrepot::createProductEntrepot($product->id, $entrepotId, 0.0);
+                    }
+
+                    // Enforce stock check if stock_negative is false
+                    if (!$product->stock_negative && $productEntrepot->quantity < $qtyConverted) {
+                        throw new \Exception("Stock insuffisant pour le produit '{$product->label}' dans cet entrepôt. Stock disponible : {$productEntrepot->quantity}, Requis : {$qtyConverted}.");
+                    }
+
+                    if ($product->manage_by_lot) {
+                        $lineLots = $line->lots;
+
+                        if ($lineLots->isEmpty()) {
+                            throw new \Exception("Le produit '{$product->label}' est géré par lot, mais aucun lot n'a été alloué.");
+                        }
+
+                        $allocatedSum = 0.0;
+                        foreach ($lineLots as $ll) {
+                            $allocatedSum += (float) $ll->quantity;
+                        }
+
+                        if (abs($allocatedSum - $qtyConverted) > 0.0001) {
+                            throw new \Exception("La quantité cumulée des lots ({$allocatedSum}) ne correspond pas à la quantité demandée ({$qtyConverted} unité de stock) pour le produit '{$product->label}'.");
+                        }
+
+                        foreach ($lineLots as $lineLot) {
+                            $lot = ProductLot::where('entrepot_product_id', $productEntrepot->id)
+                                ->where('lot_number', $lineLot->lot_number)
+                                ->first();
+
+                            $lotQtyConverted = (float) $lineLot->quantity;
+
+                            if (!$lot || $lot->quantity < $lotQtyConverted) {
+                                $availableLotQty = $lot ? $lot->quantity : 0.0;
+                                if (!$product->stock_negative) {
+                                    throw new \Exception("Stock insuffisant pour le lot '{$lineLot->lot_number}' du produit '{$product->label}'. Disponible : {$availableLotQty}, Requis : {$lotQtyConverted}.");
+                                }
+                            }
+
+                            if (!$lot) {
+                                $lot = ProductLot::create([
+                                    'entrepot_product_id' => $productEntrepot->id,
+                                    'lot_number' => $lineLot->lot_number,
+                                    'quantity' => 0.0000,
+                                    'fabrication_date' => $lineLot->fabrication_date ?: null,
+                                    'expiration_date' => $lineLot->expiration_date ?: null,
+                                ]);
+                            }
+
+                            $lot->quantity -= $lotQtyConverted;
+                            $lot->save();
+                        }
+                    }
+
+                    $productEntrepot->quantity -= $qtyConverted;
+                    $productEntrepot->save();
+                }
+
+                $retourAchat->status = 'valide';
+                $retourAchat->save();
+
+                return [
+                    'status' => true,
+                    'message' => 'Retour d\'achat validé et stock déduit avec succès !',
                 ];
 
             } catch (\Exception $e) {

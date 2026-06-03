@@ -151,12 +151,19 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                                 {item.total_ttc.toFixed(2)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                <button onClick={() => setStatusTarget(item)}
-                                                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
-                                                    <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
-                                                    <span>{styling.label}</span>
-                                                    <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                                </button>
+                                                {item.status === 'brouillon' ? (
+                                                    <button onClick={() => setStatusTarget(item)}
+                                                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                        <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                                                    </button>
+                                                ) : (
+                                                    <span className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center justify-center space-x-1">

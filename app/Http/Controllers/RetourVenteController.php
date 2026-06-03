@@ -480,6 +480,14 @@ class RetourVenteController extends Controller
 
     public function updateStatus(Request $request, RetourVente $retourVente): RedirectResponse
     {
+        if ($retourVente->status === 'valide') {
+            return back()->with('error', 'Un retour de vente validé ne peut plus changer de statut.');
+        }
+
+        if ($retourVente->status === 'annule') {
+            return back()->with('error', 'Un retour de vente annulé ne peut plus changer de statut.');
+        }
+
         $request->validate([
             'status' => ['required', 'string', 'in:brouillon,valide,annule'],
         ]);

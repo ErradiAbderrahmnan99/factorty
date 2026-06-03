@@ -259,6 +259,10 @@ class ReceptionController extends Controller
             return back()->with('error', 'Un bon de réception déjà validé ne peut plus être modifié.');
         }
 
+        if ($reception->status === 'annulee') {
+            return back()->with('error', 'Un bon de réception déjà annulé ne peut plus être modifié.');
+        }
+
         $request->validate([
             'status' => ['required', 'string', 'in:brouillon,valide,annulee'],
         ]);

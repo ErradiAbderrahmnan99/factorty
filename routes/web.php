@@ -30,6 +30,7 @@ use App\Http\Controllers\OrigineController;
 use App\Http\Controllers\CompteBancaireController;
 use App\Http\Controllers\TypeApprobateurController;
 use App\Http\Controllers\RetourVenteController;
+use App\Http\Controllers\RetourAchatController;
 use App\Http\Controllers\EntreeStockController;
 use App\Http\Controllers\SortieStockController;
 use Illuminate\Support\Facades\Route;
@@ -156,6 +157,12 @@ Route::middleware('auth')->group(function () {
     Route::post('retours-vente/{retourVente}/toggle-status', [RetourVenteController::class, 'updateStatus'])->name('retours-vente.toggle-status');
     Route::resource('retours-vente', RetourVenteController::class)->parameters([
         'retours-vente' => 'retourVente'
+    ]);
+
+    // Retours Achat CRUD
+    Route::post('retours-achat/{retourAchat}/toggle-status', [RetourAchatController::class, 'updateStatus'])->name('retours-achat.toggle-status');
+    Route::resource('retours-achat', RetourAchatController::class)->parameters([
+        'retours-achat' => 'retourAchat'
     ]);
 
     // Entrées de Stock
