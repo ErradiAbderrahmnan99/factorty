@@ -14,6 +14,7 @@ use App\Http\Controllers\DeviseController;
 use App\Http\Controllers\DevisController;
 use App\Http\Controllers\LivraisonController;
 use App\Http\Controllers\FactureVenteController;
+use App\Http\Controllers\FactureAchatController;
 use App\Http\Controllers\AvoirVenteController;
 use App\Http\Controllers\ContratVenteController;
 use App\Http\Controllers\ContratAchatController;
@@ -113,6 +114,12 @@ Route::middleware('auth')->group(function () {
     Route::get('api/factures-vente/{facture}', [FactureVenteController::class, 'getFactureWithLines'])->name('api.factures-vente.show');
     Route::post('factures-vente/{facturesVente}/toggle-status', [FactureVenteController::class, 'updateStatus'])->name('factures-vente.toggle-status');
     Route::resource('factures-vente', FactureVenteController::class);
+
+    // Facture Achat CRUD
+    Route::post('factures-achat/{facturesAchat}/toggle-status', [FactureAchatController::class, 'updateStatus'])->name('factures-achat.toggle-status');
+    Route::resource('factures-achat', FactureAchatController::class)->parameters([
+        'factures-achat' => 'facturesAchat'
+    ]);
 
     // Contrat Vente CRUD
     Route::get('api/contrats-vente/{contrat}', [ContratVenteController::class, 'getContratWithLines'])->name('api.contrats-vente.show');

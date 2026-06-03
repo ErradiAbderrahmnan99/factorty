@@ -142,7 +142,7 @@ export default function Authenticated({
                 { name: 'Commandes Achat', key: 'commande_a', href: route('commandes-achat.index') },
                 { name: 'Bons de Réception', key: 'reception', href: route('receptions.index') },
                 { name: 'Retours Achat', key: 'retour_a', href: route('retours-achat.index') },
-                { name: 'Factures Fournisseur', key: 'facture_f' },
+                { name: 'Factures Fournisseur', key: 'facture_f', href: route('factures-achat.index') },
                 { name: 'Avoirs Fournisseur', key: 'avoir_f' },
                 { name: 'Rapports Achat', key: 'rapport' },
             ],
