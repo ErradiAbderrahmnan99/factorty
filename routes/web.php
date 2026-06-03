@@ -17,6 +17,8 @@ use App\Http\Controllers\FactureVenteController;
 use App\Http\Controllers\AvoirVenteController;
 use App\Http\Controllers\ContratVenteController;
 use App\Http\Controllers\ContratAchatController;
+use App\Http\Controllers\CommandeAchatController;
+use App\Http\Controllers\ReceptionController;
 use App\Http\Controllers\DemandeAchatController;
 use App\Http\Controllers\DemandePrixController;
 use App\Http\Controllers\EmployeeController;
@@ -123,6 +125,16 @@ Route::middleware('auth')->group(function () {
     Route::resource('contrats-achat', ContratAchatController::class)->parameters([
         'contrats-achat' => 'contratsAchat'
     ]);
+
+    // Commande Achat CRUD
+    Route::post('commandes-achat/{commandesAchat}/toggle-status', [CommandeAchatController::class, 'updateStatus'])->name('commandes-achat.toggle-status');
+    Route::resource('commandes-achat', CommandeAchatController::class)->parameters([
+        'commandes-achat' => 'commandesAchat'
+    ]);
+
+    // Bon de Réception (Purchasing Receipt) CRUD & Stock Management
+    Route::post('receptions/{reception}/toggle-status', [ReceptionController::class, 'updateStatus'])->name('receptions.toggle-status');
+    Route::resource('receptions', ReceptionController::class);
 
     // Demande Achat CRUD
     Route::post('demandes-achat/{demandesAchat}/toggle-status', [DemandeAchatController::class, 'updateStatus'])->name('demandes-achat.toggle-status');
