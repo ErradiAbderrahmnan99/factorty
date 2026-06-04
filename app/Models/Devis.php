@@ -48,4 +48,9 @@ class Devis extends Model
     {
         return $this->hasMany(DevisLine::class, 'devis_id');
     }
+
+    public function commandes(): HasMany
+    {
+        return $this->hasMany(Commande::class, 'devis_id');
+    }
 }

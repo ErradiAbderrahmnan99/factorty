@@ -24,7 +24,7 @@ class CommandeController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Commande::with(['tier', 'devise'])
+        $query = Commande::with(['tier', 'devise', 'devis', 'livraisons'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -43,10 +43,14 @@ class CommandeController extends Controller
         }
 
         $commandes = $query->paginate(10)->withQueryString();
+        $entrepots = \App\Models\Entrepot::orderBy('label')->get();
+        $products = \App\Models\Product::with(['saleUnit', 'stockUnit'])->where('status', 'actif')->orderBy('label')->get();
 
         return Inertia::render('Commande/Index', [
             'commandes' => $commandes,
             'filters'   => $request->only('search', 'status'),
+            'entrepots' => $entrepots,
+            'products'  => $products,
         ]);
     }
 
@@ -88,6 +92,7 @@ class CommandeController extends Controller
             'commercial'           => ['nullable', 'string', 'max:255'],
             'date_commande'        => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
+            'devis_id'             => ['nullable', 'exists:devis,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
@@ -159,11 +164,17 @@ class CommandeController extends Controller
                 'commercial'    => $request->input('commercial'),
                 'date_commande' => $request->input('date_commande'),
                 'devise_id'     => $request->input('devise_id'),
+                'devis_id'      => $request->input('devis_id'),
                 'status'        => 'brouillon',
                 'total_ht'      => $totalHt,
                 'total_tva'     => $totalTva,
                 'total_ttc'     => $totalTtc,
             ]);
+
+            if ($request->filled('devis_id')) {
+                \App\Models\Devis::where('id', $request->input('devis_id'))
+                    ->update(['status' => 'commandé']);
+            }
 
             foreach ($linesData as $lData) {
                 $lots = $lData['lots'];
@@ -325,7 +336,16 @@ class CommandeController extends Controller
             return back()->with('error', 'Une commande validée ne peut pas être supprimée.');
         }
 
+        $devisId = $commande->devis_id;
+
         $commande->delete();
+
+        if ($devisId) {
+            $hasOtherCommandes = Commande::where('devis_id', $devisId)->exists();
+            if (!$hasOtherCommandes) {
+                \App\Models\Devis::where('id', $devisId)->update(['status' => 'accepté']);
+            }
+        }
 
         return redirect()->route('commandes.index')->with('success', 'Commande supprimée avec succès.');
     }
@@ -395,8 +415,12 @@ class CommandeController extends Controller
      */
     public function updateStatus(Request $request, Commande $commande): RedirectResponse
     {
+        if ($commande->status === 'livré') {
+            return back()->with('error', 'Le statut d\'une commande livrée ne peut pas être modifié.');
+        }
+
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,valide,annule'],
+            'status' => ['required', 'string', 'in:brouillon,valide,annule,livré'],
         ]);
 
         $commande->update([
@@ -404,5 +428,14 @@ class CommandeController extends Controller
         ]);
 
         return back()->with('success', 'Statut de la commande mis à jour.');
+    }
+
+    /**
+     * Get details of a Commande with its lines for conversion
+     */
+    public function getCommandeWithLines(Commande $commande)
+    {
+        $commande->load(['lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'lines.lots', 'tier', 'devise']);
+        return response()->json($commande);
     }
 }

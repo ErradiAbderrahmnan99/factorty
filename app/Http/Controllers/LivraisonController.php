@@ -24,7 +24,7 @@ class LivraisonController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Livraison::with(['tier', 'devise'])
+        $query = Livraison::with(['tier', 'devise', 'commande'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -43,10 +43,14 @@ class LivraisonController extends Controller
         }
 
         $livraisons = $query->paginate(10)->withQueryString();
+        $entrepots = \App\Models\Entrepot::orderBy('label')->get();
+        $products = \App\Models\Product::with(['saleUnit', 'stockUnit'])->where('status', 'actif')->orderBy('label')->get();
 
         return Inertia::render('Livraison/Index', [
             'livraisons' => $livraisons,
             'filters'    => $request->only('search', 'status'),
+            'entrepots'  => $entrepots,
+            'products'   => $products,
         ]);
     }
 
@@ -88,6 +92,7 @@ class LivraisonController extends Controller
             'commercial'           => ['nullable', 'string', 'max:255'],
             'date_livraison'       => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
+            'commande_id'          => ['nullable', 'exists:commandes,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
@@ -159,6 +164,7 @@ class LivraisonController extends Controller
                 'commercial'     => $request->input('commercial'),
                 'date_livraison' => $request->input('date_livraison'),
                 'devise_id'      => $request->input('devise_id'),
+                'commande_id'    => $request->input('commande_id'),
                 'status'         => 'brouillon',
                 'total_ht'       => $totalHt,
                 'total_tva'      => $totalTva,
@@ -179,6 +185,11 @@ class LivraisonController extends Controller
                         'expiration_date'  => $lot['expiration_date'] ?? null,
                     ]);
                 }
+            }
+
+            if ($request->filled('commande_id')) {
+                \App\Models\Commande::where('id', $request->input('commande_id'))
+                    ->update(['status' => 'livré']);
             }
         });
 
@@ -325,7 +336,15 @@ class LivraisonController extends Controller
             return back()->with('error', 'Un bon de livraison validé ne peut pas être supprimé.');
         }
 
+        $commandeId = $livraison->commande_id;
         $livraison->delete();
+
+        if ($commandeId) {
+            $hasOtherDeliveries = Livraison::where('commande_id', $commandeId)->exists();
+            if (!$hasOtherDeliveries) {
+                \App\Models\Commande::where('id', $commandeId)->update(['status' => 'valide']);
+            }
+        }
 
         return redirect()->route('livraisons.index')->with('success', 'Bon de livraison supprimé avec succès.');
     }

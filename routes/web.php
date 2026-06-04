@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
     // Devis CRUD
     Route::get('devis/export-template', [DevisController::class, 'exportTemplate'])->name('devis.export-template');
     Route::post('devis/import', [DevisController::class, 'import'])->name('devis.import');
+    Route::get('api/devis/{devis}', [DevisController::class, 'getDevisWithLines'])->name('api.devis.show');
     Route::resource('devis', DevisController::class)->parameters([
         'devis' => 'devis'
     ]);
@@ -105,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::post('commandes/{commande}/toggle-status', [CommandeController::class, 'updateStatus'])->name('commandes.toggle-status');
     Route::get('api/entrepot-lots', [CommandeController::class, 'getLots'])->name('api.entrepot-lots');
     Route::delete('api/entrepot-lots/{id}', [CommandeController::class, 'deleteLot'])->name('api.entrepot-lots.destroy');
+    Route::get('api/commandes/{commande}', [CommandeController::class, 'getCommandeWithLines'])->name('api.commandes.show');
     Route::resource('commandes', CommandeController::class);
 
     // Bon de Livraison CRUD & Stock Management

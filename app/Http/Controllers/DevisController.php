@@ -27,7 +27,7 @@ class DevisController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Devis::with(['tier', 'devise'])
+        $query = Devis::with(['tier', 'devise', 'commandes'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -46,10 +46,14 @@ class DevisController extends Controller
         }
 
         $devis = $query->paginate(10)->withQueryString();
+        $entrepots = \App\Models\Entrepot::orderBy('label')->get();
+        $products = \App\Models\Product::with(['saleUnit', 'stockUnit'])->where('status', 'actif')->orderBy('label')->get();
 
         return Inertia::render('Devis/Index', [
-            'devis'   => $devis,
-            'filters' => $request->only('search', 'status'),
+            'devis'     => $devis,
+            'filters'   => $request->only('search', 'status'),
+            'entrepots' => $entrepots,
+            'products'  => $products,
         ]);
     }
 
@@ -735,5 +739,11 @@ class DevisController extends Controller
     {
         $devis->delete();
         return redirect()->route('devis.index')->with('success', 'Devis supprimé.');
+    }
+
+    public function getDevisWithLines(Devis $devis)
+    {
+        $devis->load(['lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'tier', 'devise']);
+        return response()->json($devis);
     }
 }

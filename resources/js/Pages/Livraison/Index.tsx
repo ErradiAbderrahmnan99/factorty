@@ -15,6 +15,7 @@ interface Livraison {
     total_ttc: number;
     status: 'brouillon' | 'valide' | 'annule';
     devise: Devise;
+    commande?: { id: number; ref: string } | null;
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -140,7 +141,20 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                     const styling = STATUS_STYLING[item.status] || STATUS_STYLING.brouillon;
                                     return (
                                         <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
-                                            <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-slate-200">{item.ref}</td>
+                                            <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-slate-200">
+                                                {item.ref}
+                                                {item.commande && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Commande liée :</span>
+                                                        <a href="/commandes"
+                                                            className="text-[9px] font-extrabold text-indigo-500 hover:text-indigo-750 hover:underline block"
+                                                            title={`Voir la Commande ${item.commande.ref}`}
+                                                        >
+                                                            {item.commande.ref}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="py-4 px-6">
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.tier ? item.tier.label : '—'}</div>
                                                 <div className="text-[10px] text-slate-400 font-medium">Commercial: {item.commercial || 'Aucun'}</div>
@@ -187,7 +201,6 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
                                                             </Link>
-                                                            <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider select-none pr-1">Verrouillé</span>
                                                         </div>
                                                     )}
                                                 </div>
