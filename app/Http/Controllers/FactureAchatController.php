@@ -249,6 +249,12 @@ class FactureAchatController extends Controller
         return back()->with('success', 'Statut de la facture mis à jour.');
     }
 
+    public function getFactureWithLines(FactureAchat $facture)
+    {
+        $facture->load(['lines.product', 'lines.purchaseUnit']);
+        return response()->json($facture);
+    }
+
     private function calcLines(array $lines): array
     {
         $totalHt = 0;

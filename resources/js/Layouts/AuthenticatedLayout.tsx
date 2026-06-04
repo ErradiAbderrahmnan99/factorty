@@ -1,6 +1,6 @@
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
-import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
+import { PropsWithChildren, ReactNode, useState, useEffect, useRef } from 'react';
 
 interface ERPItem {
     name: string;
@@ -21,60 +21,8 @@ export default function Authenticated({
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const user = usePage().props.auth.user;
-    
-    // Theme state (default is light)
-    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('theme');
-            return (saved === 'dark' || saved === 'light') ? saved : 'light';
-        }
-        return 'light';
-    });
-
-    useEffect(() => {
-        const root = document.documentElement;
-        if (theme === 'dark') {
-            root.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            root.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-    };
-
-    // Sidebar collapsible state
-    const [openModules, setOpenModules] = useState<{ [key: string]: boolean }>({
-        ddb: true,
-        vente: false,
-        achat: false,
-        accounting: false,
-        stock: false,
-    });
-
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    
-    // Custom Toast state for mock module interactions
-    const [toast, setToast] = useState<{ show: boolean; title: string; message: string } | null>(null);
-
-    const toggleModule = (module: string) => {
-        setOpenModules((prev) => ({
-            ...prev,
-            [module]: !prev[module],
-        }));
-    };
-
-    const triggerMockAlert = (moduleName: string) => {
-        setToast({
-            show: true,
-            title: `Module ${moduleName}`,
-            message: "Ce module est prêt pour l'intégration de la base de données. L'interface et les schémas sont validés !",
-        });
-        setTimeout(() => setToast(null), 4000);
-    };
+    const { url } = usePage();
+    const currentPath = url.split('?')[0];
 
     const erpModules: ERPModule[] = [
         {
@@ -143,7 +91,7 @@ export default function Authenticated({
                 { name: 'Bons de Réception', key: 'reception', href: route('receptions.index') },
                 { name: 'Retours Achat', key: 'retour_a', href: route('retours-achat.index') },
                 { name: 'Factures Fournisseur', key: 'facture_f', href: route('factures-achat.index') },
-                { name: 'Avoirs Fournisseur', key: 'avoir_f' },
+                { name: 'Avoirs Fournisseur', key: 'avoir_f', href: route('avoirs-achat.index') },
                 { name: 'Rapports Achat', key: 'rapport' },
             ],
         },
@@ -178,6 +126,106 @@ export default function Authenticated({
         },
     ];
 
+    // Theme state (default is light)
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('theme');
+            return (saved === 'dark' || saved === 'light') ? saved : 'light';
+        }
+        return 'light';
+    });
+
+    useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            root.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    };
+
+    // Ref and Effect to preserve sidebar scroll position across navigation
+    const navRef = useRef<HTMLElement>(null);
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return;
+        const savedScroll = sessionStorage.getItem('sidebar-scroll');
+        if (savedScroll) {
+            nav.scrollTop = parseInt(savedScroll, 10);
+        }
+        const handleScroll = () => {
+            sessionStorage.setItem('sidebar-scroll', nav.scrollTop.toString());
+        };
+        nav.addEventListener('scroll', handleScroll);
+        return () => {
+            nav.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
+    // Sidebar collapsible state initialized dynamically based on active URL
+    const [openModules, setOpenModules] = useState<{ [key: string]: boolean }>(() => {
+        const initial: { [key: string]: boolean } = {
+            ddb: false,
+            vente: false,
+            achat: false,
+            accounting: false,
+            stock: false,
+        };
+
+        let matchedAny = false;
+        erpModules.forEach((mod) => {
+            const hasActiveChild = mod.items.some((item) => {
+                if (!item.href) return false;
+                try {
+                    const itemPath = item.href.startsWith('http')
+                        ? new URL(item.href).pathname
+                        : item.href.split('?')[0];
+                    return currentPath === itemPath || currentPath.startsWith(itemPath + '/');
+                } catch (e) {
+                    return false;
+                }
+            });
+            if (hasActiveChild) {
+                initial[mod.id] = true;
+                matchedAny = true;
+            }
+        });
+
+        // Default to ddb open if no route matches
+        if (!matchedAny) {
+            initial.ddb = true;
+        }
+
+        return initial;
+    });
+
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    
+    // Custom Toast state for mock module interactions
+    const [toast, setToast] = useState<{ show: boolean; title: string; message: string } | null>(null);
+
+    const toggleModule = (module: string) => {
+        setOpenModules((prev) => ({
+            ...prev,
+            [module]: !prev[module],
+        }));
+    };
+
+    const triggerMockAlert = (moduleName: string) => {
+        setToast({
+            show: true,
+            title: `Module ${moduleName}`,
+            message: "Ce module est prêt pour l'intégration de la base de données. L'interface et les schémas sont validés !",
+        });
+        setTimeout(() => setToast(null), 4000);
+    };
+
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden transition-colors duration-200">
             {/* Background Blur Accents for Dark mode only */}
@@ -197,7 +245,7 @@ export default function Authenticated({
                 </div>
 
                 {/* Navigation Menu */}
-                <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-4 custom-scrollbar">
+                <nav ref={navRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4 custom-scrollbar">
                     <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         Modules ERP
                     </div>
@@ -235,6 +283,19 @@ export default function Authenticated({
                                     {mod.items.map((item, idx) => {
                                         // Render Metronic-style grouping header if it's the first item of that group
                                         const showGroupHeader = item.group && (idx === 0 || mod.items[idx - 1].group !== item.group);
+                                        
+                                        let isItemActive = false;
+                                        if (item.href) {
+                                            try {
+                                                const itemPath = item.href.startsWith('http')
+                                                    ? new URL(item.href).pathname
+                                                    : item.href.split('?')[0];
+                                                isItemActive = currentPath === itemPath || currentPath.startsWith(itemPath + '/');
+                                            } catch (e) {
+                                                isItemActive = false;
+                                            }
+                                        }
+
                                         return (
                                             <div key={item.key} className="space-y-1">
                                                 {showGroupHeader && (
@@ -245,7 +306,11 @@ export default function Authenticated({
                                                 {item.href ? (
                                                     <Link
                                                         href={item.href}
-                                                        className="block w-full text-left py-2 px-3 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-150"
+                                                        className={`block w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                                                            isItemActive
+                                                                ? 'bg-slate-800/40 text-indigo-400 font-bold border-l-2 border-indigo-500 pl-2'
+                                                                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/30'
+                                                        }`}
                                                     >
                                                         {item.name}
                                                     </Link>
@@ -311,6 +376,19 @@ export default function Authenticated({
                                         <div className="pl-9 space-y-1 border-l border-slate-800 ml-5">
                                             {mod.items.map((item, idx) => {
                                                 const showGroupHeader = item.group && (idx === 0 || mod.items[idx - 1].group !== item.group);
+                                                
+                                                let isItemActive = false;
+                                                if (item.href) {
+                                                    try {
+                                                        const itemPath = item.href.startsWith('http')
+                                                            ? new URL(item.href).pathname
+                                                            : item.href.split('?')[0];
+                                                        isItemActive = currentPath === itemPath || currentPath.startsWith(itemPath + '/');
+                                                    } catch (e) {
+                                                        isItemActive = false;
+                                                    }
+                                                }
+
                                                 return (
                                                     <div key={item.key} className="space-y-1">
                                                         {showGroupHeader && (
@@ -322,7 +400,11 @@ export default function Authenticated({
                                                             <Link
                                                                 href={item.href}
                                                                 onClick={() => setMobileSidebarOpen(false)}
-                                                                className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
+                                                                className={`block w-full text-left py-1.5 px-3 text-xs font-semibold rounded-lg transition-all ${
+                                                                    isItemActive
+                                                                        ? 'bg-slate-800/40 text-indigo-400 font-bold border-l-2 border-indigo-500 pl-2'
+                                                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/30'
+                                                                }`}
                                                             >
                                                                 {item.name}
                                                             </Link>
@@ -332,7 +414,7 @@ export default function Authenticated({
                                                                     setMobileSidebarOpen(false);
                                                                     triggerMockAlert(`${mod.title} / ${item.name}`);
                                                                 }}
-                                                                className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white"
+                                                                className="block w-full text-left py-1.5 px-3 text-xs text-slate-400 hover:text-white hover:bg-slate-800/30 transition-all duration-150"
                                                             >
                                                                 {item.name}
                                                             </button>

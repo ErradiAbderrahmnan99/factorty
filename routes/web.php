@@ -16,6 +16,7 @@ use App\Http\Controllers\LivraisonController;
 use App\Http\Controllers\FactureVenteController;
 use App\Http\Controllers\FactureAchatController;
 use App\Http\Controllers\AvoirVenteController;
+use App\Http\Controllers\AvoirAchatController;
 use App\Http\Controllers\ContratVenteController;
 use App\Http\Controllers\ContratAchatController;
 use App\Http\Controllers\CommandeAchatController;
@@ -116,6 +117,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('factures-vente', FactureVenteController::class);
 
     // Facture Achat CRUD
+    Route::get('api/factures-achat/{facture}', [FactureAchatController::class, 'getFactureWithLines'])->name('api.factures-achat.show');
     Route::post('factures-achat/{facturesAchat}/toggle-status', [FactureAchatController::class, 'updateStatus'])->name('factures-achat.toggle-status');
     Route::resource('factures-achat', FactureAchatController::class)->parameters([
         'factures-achat' => 'facturesAchat'
@@ -159,6 +161,12 @@ Route::middleware('auth')->group(function () {
     // Avoir Vente CRUD
     Route::post('avoirs-vente/{avoirsVente}/toggle-status', [AvoirVenteController::class, 'updateStatus'])->name('avoirs-vente.toggle-status');
     Route::resource('avoirs-vente', AvoirVenteController::class);
+
+    // Avoir Achat CRUD
+    Route::post('avoirs-achat/{avoirsAchat}/toggle-status', [AvoirAchatController::class, 'updateStatus'])->name('avoirs-achat.toggle-status');
+    Route::resource('avoirs-achat', AvoirAchatController::class)->parameters([
+        'avoirs-achat' => 'avoirsAchat'
+    ]);
 
     // Retours Vente CRUD
     Route::post('retours-vente/{retourVente}/toggle-status', [RetourVenteController::class, 'updateStatus'])->name('retours-vente.toggle-status');
