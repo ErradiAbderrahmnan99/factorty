@@ -73,6 +73,14 @@ interface FactureVente {
     note_public: string | null;
     note_private: string | null;
     status: string;
+    livraison?: {
+        id: number;
+        ref: string;
+        commande?: {
+            id: number;
+            ref: string;
+        } | null;
+    } | null;
     lines: {
         id: number;
         product_id: number;

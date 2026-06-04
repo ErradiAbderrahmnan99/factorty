@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
 
     // Bon de Livraison CRUD & Stock Management
     Route::post('livraisons/{livraison}/toggle-status', [LivraisonController::class, 'updateStatus'])->name('livraisons.toggle-status');
+    Route::get('api/livraisons/{livraison}', [LivraisonController::class, 'getLivraisonWithLines'])->name('api.livraisons.show');
     Route::resource('livraisons', LivraisonController::class);
 
     // Facture Vente CRUD

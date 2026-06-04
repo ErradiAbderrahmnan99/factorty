@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -13,9 +14,10 @@ interface Livraison {
     date_livraison: string;
     total_ht: number;
     total_ttc: number;
-    status: 'brouillon' | 'valide' | 'annule';
+    status: 'brouillon' | 'valide' | 'annule' | 'facturé' | 'facturé partiellement';
     devise: Devise;
     commande?: { id: number; ref: string } | null;
+    factures?: { id: number; ref: string }[] | null;
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -33,7 +35,35 @@ const STATUS_STYLING = {
     'brouillon': { badge: 'bg-slate-500/10 text-slate-650 dark:text-slate-400 border-slate-500/20', dot: 'bg-slate-500', label: 'Brouillon' },
     'valide':    { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Validé & Déduit' },
     'annule':    { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20', dot: 'bg-rose-500', label: 'Annulé' },
+    'facturé':   { badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20', dot: 'bg-indigo-505', label: 'Facturé' },
+    'facturé partiellement': { badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20', dot: 'bg-sky-505', label: 'Facturé Partiellement' },
 };
+
+interface CloneLine {
+    product_id: string;
+    qty: number;
+    max_qty: number;
+    sale_unit_id: string;
+    tva: number;
+    pu_ht: number;
+    pu_ttc: number;
+    remise: number;
+    rm: number;
+    total_ht: number;
+    total_ttc: number;
+    product: any;
+    sale_unit: any;
+}
+
+interface CloneFormState {
+    tier_id: string;
+    commercial: string;
+    date_facture: string;
+    date_echeance: string;
+    devise_id: string;
+    livraison_id: string;
+    lines: CloneLine[];
+}
 
 export default function Index({ livraisons, filters }: { livraisons: PaginatedLivraisons; filters: { search: string | null; status: string | null } }) {
     const { flash } = usePage().props as any;
@@ -43,6 +73,11 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
     const [deleteTarget, setDeleteTarget] = useState<Livraison | null>(null);
     const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const isFirstRender = useRef(true);
+
+    const [cloneForm, setCloneForm] = useState<CloneFormState | null>(null);
+    const [cloneTarget, setCloneTarget] = useState<Livraison | null>(null);
+    const [isSubmittingClone, setIsSubmittingClone] = useState(false);
+    const [cloneErrors, setCloneErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (flash?.success) {
@@ -70,6 +105,134 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
         router.post(route('livraisons.toggle-status', id), { status: newStatus }, {
             onSuccess: () => setStatusTarget(null),
             preserveScroll: true,
+        });
+    };
+
+    const startCloning = async (livraison: Livraison) => {
+        try {
+            const response = await axios.get(`/api/livraisons/${livraison.id}`);
+            const data = response.data;
+            setCloneTarget(livraison);
+            
+            const lines = data.lines
+                .map((line: any) => {
+                    const remainingQty = Math.max(0, Number(line.qty) - (Number(line.invoiced_qty) || 0));
+                    return {
+                        product_id: line.product_id.toString(),
+                        qty: remainingQty,
+                        max_qty: remainingQty,
+                        sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
+                        tva: Number(line.tva) || 20.00,
+                        pu_ht: Number(line.pu_ht),
+                        pu_ttc: Number(line.pu_ttc),
+                        remise: Number(line.remise) || 0,
+                        rm: Number(line.rm) || 0,
+                        total_ht: Number(line.total_ht),
+                        total_ttc: Number(line.total_ttc),
+                        product: line.product,
+                        sale_unit: line.sale_unit
+                    };
+                });
+
+            setCloneForm({
+                tier_id: data.tier_id.toString(),
+                commercial: data.commercial || '',
+                date_facture: new Date().toISOString().split('T')[0],
+                date_echeance: '',
+                devise_id: data.devise_id.toString(),
+                livraison_id: data.id.toString(),
+                lines: lines
+            });
+        } catch (error) {
+            console.error("Error fetching delivery note details for conversion", error);
+            alert("Erreur lors de la récupération des détails du bon de livraison.");
+        }
+    };
+
+    const handleCloneLineQtyChange = (index: number, val: string) => {
+        if (!cloneForm) return;
+        const line = cloneForm.lines[index];
+        const inputQty = Number(val) || 0;
+        const qty = Math.min(line.max_qty, Math.max(0, inputQty));
+
+        const updatedLines = [...cloneForm.lines];
+        
+        const lineHt = qty * line.pu_ht;
+        const discount = (lineHt * line.remise / 100) + line.rm;
+        const total_ht = Math.max(0, lineHt - discount);
+        const total_ttc = total_ht * (1 + line.tva / 100);
+
+        updatedLines[index] = {
+            ...line,
+            qty,
+            total_ht,
+            total_ttc,
+        };
+
+        setCloneForm({
+            ...cloneForm,
+            lines: updatedLines
+        });
+    };
+
+    const handleCloneLinePuChange = (index: number, val: string) => {
+        if (!cloneForm) return;
+        const line = cloneForm.lines[index];
+        const pu_ht = Math.max(0, Number(val) || 0);
+        const pu_ttc = pu_ht * (1 + line.tva / 100);
+
+        const updatedLines = [...cloneForm.lines];
+        
+        const lineHt = line.qty * pu_ht;
+        const discount = (lineHt * line.remise / 100) + line.rm;
+        const total_ht = Math.max(0, lineHt - discount);
+        const total_ttc = total_ht * (1 + line.tva / 100);
+
+        updatedLines[index] = {
+            ...line,
+            pu_ht,
+            pu_ttc,
+            total_ht,
+            total_ttc,
+        };
+
+        setCloneForm({
+            ...cloneForm,
+            lines: updatedLines
+        });
+    };
+
+    const submitClone = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!cloneForm) return;
+
+        const activeLines = cloneForm.lines.filter(l => l.qty > 0);
+        if (activeLines.length === 0) {
+            alert("Veuillez saisir une quantité supérieure à 0 pour au moins un produit.");
+            return;
+        }
+
+        setIsSubmittingClone(true);
+        setCloneErrors({});
+
+        const payload = {
+            ...cloneForm,
+            lines: activeLines
+        };
+
+        router.post(route('factures-vente.store'), payload as any, {
+            onSuccess: () => {
+                setCloneForm(null);
+                setCloneTarget(null);
+                setIsSubmittingClone(false);
+            },
+            onError: (errs) => {
+                setCloneErrors(errs);
+                setIsSubmittingClone(false);
+            },
+            onFinish: () => {
+                setIsSubmittingClone(false);
+            }
         });
     };
 
@@ -154,6 +317,19 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                                         </a>
                                                     </div>
                                                 )}
+                                                {item.factures && item.factures.length > 0 && (
+                                                    <div className="mt-1 flex flex-col space-y-0.5">
+                                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Factures liées :</span>
+                                                        {item.factures.map(facture => (
+                                                            <a key={facture.id} href={`/factures-vente`}
+                                                                className="text-[9px] font-extrabold text-teal-600 hover:text-teal-750 hover:underline block"
+                                                                title={`Voir la Facture ${facture.ref}`}
+                                                            >
+                                                                {facture.ref}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.tier ? item.tier.label : '—'}</div>
@@ -201,6 +377,14 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
                                                             </Link>
+                                                            {['valide', 'facturé partiellement'].includes(item.status) && (
+                                                                <button onClick={() => startCloning(item)}
+                                                                    className="p-1.5 text-teal-600 hover:text-teal-700 hover:bg-teal-500/10 rounded-xl transition-all" title="Convertir en Facture">
+                                                                    <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -250,9 +434,9 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                 </svg>
                                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Modifier le statut</h3>
                             </div>
-                            {statusTarget.status === 'valide' ? (
+                            {['valide', 'facturé', 'facturé partiellement'].includes(statusTarget.status) ? (
                                 <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
-                                    ⚠️ Ce bon de livraison a été validé et le stock a été déduit. Son statut est définitif et ne peut plus être modifié.
+                                    ⚠️ Ce bon de livraison a été validé ou facturé. Son statut est définitif et ne peut plus être modifié.
                                 </div>
                             ) : (
                                 <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
@@ -262,8 +446,8 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                             <p className="text-xs text-slate-500 mb-5">Modifier le statut du BL <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                             <div className="space-y-2 mb-6">
                                 {(['brouillon', 'valide', 'annule'] as const).map(statusOption => {
-                                    const st = STATUS_STYLING[statusOption];
-                                    const isDisabled = statusTarget.status === 'valide' && statusOption !== 'valide';
+                                    const st = STATUS_STYLING[statusOption] || STATUS_STYLING.brouillon;
+                                    const isDisabled = ['valide', 'facturé', 'facturé partiellement'].includes(statusTarget.status) && statusOption !== statusTarget.status;
                                     return (
                                         <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
                                             className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99]'} ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
@@ -308,6 +492,156 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                         </div>
                     </div>
                 )}
+
+            {/* Conversion Modal (Livraison -> Facture) */}
+            {cloneForm && cloneTarget && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-4xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4 mb-6">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                                    Convertir le Bon de Livraison en Facture
+                                </h3>
+                                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                                    Bon de Livraison Référence: {cloneTarget.ref}
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => { setCloneForm(null); setCloneTarget(null); }}
+                                className="p-1.5 text-slate-400 hover:text-slate-655 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={submitClone} className="space-y-6">
+                            {/* General Details */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Client</label>
+                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                        {cloneTarget.tier ? cloneTarget.tier.label : '—'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date de Facture <span className="text-rose-500">*</span></label>
+                                    <input type="date" className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-teal-500 text-slate-855 dark:text-slate-200 font-bold font-mono"
+                                        value={cloneForm.date_facture} onChange={e => setCloneForm({ ...cloneForm, date_facture: e.target.value })} required />
+                                    {cloneErrors.date_facture && <div className="text-rose-550 text-[10px] font-bold mt-1">{cloneErrors.date_facture}</div>}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date d'Échéance</label>
+                                    <input type="date" className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-teal-500 text-slate-855 dark:text-slate-200 font-bold font-mono"
+                                        value={cloneForm.date_echeance} onChange={e => setCloneForm({ ...cloneForm, date_echeance: e.target.value })} />
+                                    {cloneErrors.date_echeance && <div className="text-rose-550 text-[10px] font-bold mt-1">{cloneErrors.date_echeance}</div>}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Devise</label>
+                                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                        {cloneTarget.devise.code} ({cloneTarget.devise.symbol || ''})
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Lines Table */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">Lignes de la Facture</h4>
+                                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800/85 rounded-2xl">
+                                    <table className="w-full text-left min-w-[700px]">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/80 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
+                                                <th className="py-3 px-4">Produit</th>
+                                                <th className="py-3 px-2 w-32">Quantité à Facturer</th>
+                                                <th className="py-3 px-2 w-32">P.U. HT</th>
+                                                <th className="py-3 px-2 w-20 text-center">TVA</th>
+                                                <th className="py-3 px-2 w-24 text-right">Total HT</th>
+                                                <th className="py-3 px-4 text-right w-28">Total TTC</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                                            {cloneForm.lines.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="py-8 text-center text-xs font-bold text-slate-400">
+                                                        Tous les produits de ce bon de livraison ont déjà été entièrement facturés.
+                                                    </td>
+                                                </tr>
+                                            ) : cloneForm.lines.map((line, idx) => {
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
+                                                        <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                                                            {line.product?.label}
+                                                            <div className="text-[10px] text-slate-400 mt-0.5">
+                                                                Reste à facturer : <strong className="text-slate-600 dark:text-slate-350">{line.max_qty} {line.sale_unit ? line.sale_unit.symbol || line.sale_unit.code : ''}</strong>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3.5 px-2">
+                                                            <input type="number" step="any" min="0" max={line.max_qty}
+                                                                className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
+                                                                value={line.qty} onChange={e => handleCloneLineQtyChange(idx, e.target.value)} required />
+                                                            {cloneErrors[`lines.${idx}.qty`] && (
+                                                                <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.qty`]}</div>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3.5 px-2">
+                                                            <input type="number" step="any" min="0"
+                                                                className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
+                                                                value={line.pu_ht} onChange={e => handleCloneLinePuChange(idx, e.target.value)} required />
+                                                            {cloneErrors[`lines.${idx}.pu_ht`] && (
+                                                                <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.pu_ht`]}</div>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3.5 px-2 text-center font-semibold text-slate-500">
+                                                            {line.tva}%
+                                                        </td>
+                                                        <td className="py-3.5 px-2 text-right font-semibold text-slate-700 dark:text-slate-300">
+                                                            {line.total_ht.toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white">
+                                                            {line.total_ttc.toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Summary & Submission */}
+                            {cloneForm.lines.length > 0 && (
+                                <div className="flex flex-col md:flex-row items-center justify-between border-t border-slate-100 dark:border-slate-800/60 pt-6 gap-4">
+                                    <div className="text-right md:text-left bg-slate-50 dark:bg-slate-950/20 py-3 px-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+                                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Total Facture Estimé</div>
+                                        <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                            {cloneForm.lines.reduce((sum, l) => sum + l.total_ttc, 0).toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-3 w-full md:w-auto">
+                                        <button type="button" onClick={() => { setCloneForm(null); setCloneTarget(null); }}
+                                            className="w-full md:w-auto px-6 py-3 text-xs font-bold text-slate-655 dark:text-slate-350 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">
+                                            Annuler
+                                        </button>
+                                        <button type="submit" disabled={isSubmittingClone}
+                                            className="w-full md:w-auto inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest rounded-2xl h-[42px] px-6 shadow-lg shadow-indigo-500/20 active:scale-[0.97] transition-all disabled:opacity-50">
+                                            {isSubmittingClone ? (
+                                                <>
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    <span>Enregistrement...</span>
+                                                </>
+                                            ) : (
+                                                <span>Enregistrer la Facture</span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </form>
+                    </div>
+                </div>
+            )}
 
                 {/* Toast */}
                 {localFlash && (

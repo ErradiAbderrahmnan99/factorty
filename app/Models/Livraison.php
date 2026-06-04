@@ -53,4 +53,53 @@ class Livraison extends Model
     {
         return $this->hasMany(LivraisonLine::class, 'livraison_id');
     }
+
+    public function factures(): HasMany
+    {
+        return $this->hasMany(FactureVente::class, 'livraison_id');
+    }
+
+    public function syncFacturationStatus(): void
+    {
+        if (!in_array($this->status, ['valide', 'facturé', 'facturé partiellement'])) {
+            return;
+        }
+
+        $lines = $this->lines;
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $factureIds = FactureVente::where('livraison_id', $this->id)
+            ->where('status', '!=', 'annulee')
+            ->pluck('id');
+
+        $invoicedQuantities = FactureVenteLine::whereIn('facture_vente_id', $factureIds)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(qty) as total_qty')
+            ->pluck('total_qty', 'product_id');
+
+        $fullyInvoiced = true;
+        $anyInvoiced = false;
+
+        foreach ($lines as $line) {
+            $deliveredQty = (double)$line->qty;
+            $invoicedQty = (double)($invoicedQuantities[$line->product_id] ?? 0);
+
+            if ($invoicedQty > 0) {
+                $anyInvoiced = true;
+            }
+            if ($invoicedQty < $deliveredQty) {
+                $fullyInvoiced = false;
+            }
+        }
+
+        if ($fullyInvoiced) {
+            $this->update(['status' => 'facturé']);
+        } elseif ($anyInvoiced) {
+            $this->update(['status' => 'facturé partiellement']);
+        } else {
+            $this->update(['status' => 'valide']);
+        }
+    }
 }

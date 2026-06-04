@@ -24,7 +24,7 @@ class LivraisonController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Livraison::with(['tier', 'devise', 'commande'])
+        $query = Livraison::with(['tier', 'devise', 'commande', 'factures'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -113,12 +113,12 @@ class LivraisonController extends Controller
         DB::transaction(function () use ($request) {
             // Generate Reference automatically: BL-YYYYMM-XXXX
             $date = date('Ym', strtotime($request->input('date_livraison')));
-            $count = Livraison::whereYear('date_livraison', date('Y', strtotime($request->input('date_livraison'))))
-                ->whereMonth('date_livraison', date('m', strtotime($request->input('date_livraison'))))
-                ->count();
-            
-            $nextNum = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-            $ref = "BL-{$date}-{$nextNum}";
+            $i = 1;
+            do {
+                $nextNum = str_pad($i, 4, '0', STR_PAD_LEFT);
+                $ref = "BL-{$date}-{$nextNum}";
+                $i++;
+            } while (Livraison::where('ref', $ref)->exists());
 
             // Calculate totals
             $totalHt = 0;
@@ -232,8 +232,8 @@ class LivraisonController extends Controller
 
     public function update(Request $request, Livraison $livraison): RedirectResponse
     {
-        if ($livraison->status === 'valide') {
-            return back()->with('error', 'Un bon de livraison validé ne peut pas être modifié.');
+        if (in_array($livraison->status, ['valide', 'facturé', 'facturé partiellement'])) {
+            return back()->with('error', 'Un bon de livraison déjà validé ou facturé ne peut pas être modifié.');
         }
 
         $request->validate([
@@ -354,8 +354,8 @@ class LivraisonController extends Controller
      */
     public function updateStatus(Request $request, Livraison $livraison): RedirectResponse
     {
-        if ($livraison->status === 'valide') {
-            return back()->with('error', 'Un bon de livraison déjà validé ne peut plus être modifié.');
+        if (in_array($livraison->status, ['valide', 'facturé', 'facturé partiellement'])) {
+            return back()->with('error', 'Un bon de livraison déjà validé ou facturé ne peut plus être modifié.');
         }
 
         $request->validate([
@@ -378,5 +378,28 @@ class LivraisonController extends Controller
         }
 
         return back()->with('success', 'Statut du bon de livraison mis à jour.');
+    }
+
+    public function getLivraisonWithLines(Livraison $livraison)
+    {
+        $livraison->load(['lines.product', 'lines.saleUnit']);
+        
+        $factureIds = \App\Models\FactureVente::where('livraison_id', $livraison->id)
+            ->where('status', '!=', 'annulee')
+            ->pluck('id');
+
+        $invoicedQuantities = \App\Models\FactureVenteLine::whereIn('facture_vente_id', $factureIds)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(qty) as total_qty')
+            ->pluck('total_qty', 'product_id');
+
+        $lines = $livraison->lines->map(function ($line) use ($invoicedQuantities) {
+            $line->invoiced_qty = (double)($invoicedQuantities[$line->product_id] ?? 0);
+            return $line;
+        });
+
+        $livraison->setRelation('lines', $lines);
+
+        return response()->json($livraison);
     }
 }

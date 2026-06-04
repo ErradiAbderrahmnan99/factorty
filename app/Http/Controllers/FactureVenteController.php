@@ -24,7 +24,7 @@ class FactureVenteController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = FactureVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur'])
+        $query = FactureVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur', 'livraison.commande'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -80,6 +80,7 @@ class FactureVenteController extends Controller
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'livraison_id'           => ['nullable', 'exists:livraisons,id'],
             'lines'                  => ['required', 'array', 'min:1'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.sale_unit_id'   => ['nullable', 'exists:units,id'],
@@ -91,11 +92,48 @@ class FactureVenteController extends Controller
             'lines.*.rm'             => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        if ($request->filled('livraison_id')) {
+            $livraison = \App\Models\Livraison::with('lines')->find($request->input('livraison_id'));
+            
+            $factureIds = FactureVente::where('livraison_id', $livraison->id)
+                ->where('status', '!=', 'annulee')
+                ->pluck('id');
+
+            $invoicedQuantities = FactureVenteLine::whereIn('facture_vente_id', $factureIds)
+                ->groupBy('product_id')
+                ->selectRaw('product_id, SUM(qty) as total_qty')
+                ->pluck('total_qty', 'product_id');
+
+            $deliveryQuantities = [];
+            foreach ($livraison->lines as $line) {
+                $deliveredQty = (double)$line->qty;
+                $alreadyInvoicedQty = (double)($invoicedQuantities[$line->product_id] ?? 0);
+                $deliveryQuantities[$line->product_id] = max(0, $deliveredQty - $alreadyInvoicedQty);
+            }
+
+            foreach ($request->input('lines') as $index => $line) {
+                $productId = $line['product_id'];
+                $qty = (double)$line['qty'];
+
+                if (!isset($deliveryQuantities[$productId])) {
+                    return back()->withErrors(["lines.{$index}.product_id" => "Ce produit n'est pas présent dans le bon de livraison."]);
+                }
+
+                $remainingQty = $deliveryQuantities[$productId];
+                if (round($qty, 4) > round($remainingQty, 4)) {
+                    return back()->withErrors(["lines.{$index}.qty" => "La quantité facturée dépasse la quantité restante du bon de livraison (Restant: {$remainingQty})."]);
+                }
+            }
+        }
+
         DB::transaction(function () use ($request) {
             $date  = date('Ym', strtotime($request->input('date_facture')));
-            $count = FactureVente::whereYear('date_facture', date('Y', strtotime($request->input('date_facture'))))
-                ->whereMonth('date_facture', date('m', strtotime($request->input('date_facture'))))->count();
-            $ref = 'FV-' . $date . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            $i = 1;
+            do {
+                $nextNum = str_pad($i, 4, '0', STR_PAD_LEFT);
+                $ref = 'FV-' . $date . '-' . $nextNum;
+                $i++;
+            } while (FactureVente::where('ref', $ref)->exists());
 
             [$totalHt, $totalTtc, $linesData] = $this->calcLines($request->input('lines'));
 
@@ -115,6 +153,7 @@ class FactureVenteController extends Controller
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),
                 'note_private'           => $request->input('note_private'),
+                'livraison_id'           => $request->input('livraison_id'),
                 'status'                 => 'brouillon',
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
@@ -126,12 +165,19 @@ class FactureVenteController extends Controller
             }
         });
 
+        if ($request->filled('livraison_id')) {
+            $livraison = \App\Models\Livraison::find($request->input('livraison_id'));
+            if ($livraison) {
+                $livraison->syncFacturationStatus();
+            }
+        }
+
         return redirect()->route('factures-vente.index')->with('success', 'Facture de vente créée avec succès.');
     }
 
     public function edit(FactureVente $facturesVente): Response
     {
-        $facturesVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
+        $facturesVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur', 'livraison.commande']);
 
         return Inertia::render('FactureVente/Edit', [
             'facture'             => $facturesVente,
@@ -218,7 +264,17 @@ class FactureVenteController extends Controller
         if (in_array($facturesVente->status, ['payee', 'envoyee'])) {
             return back()->with('error', 'Une facture envoyée ou payée ne peut pas être supprimée.');
         }
+
+        $livraisonId = $facturesVente->livraison_id;
         $facturesVente->delete();
+
+        if ($livraisonId) {
+            $livraison = \App\Models\Livraison::find($livraisonId);
+            if ($livraison) {
+                $livraison->syncFacturationStatus();
+            }
+        }
+
         return redirect()->route('factures-vente.index')->with('success', 'Facture supprimée avec succès.');
     }
 
@@ -229,6 +285,14 @@ class FactureVenteController extends Controller
         ]);
 
         $facturesVente->update(['status' => $request->input('status')]);
+
+        if ($facturesVente->livraison_id) {
+            $livraison = \App\Models\Livraison::find($facturesVente->livraison_id);
+            if ($livraison) {
+                $livraison->syncFacturationStatus();
+            }
+        }
+
         return back()->with('success', 'Statut de la facture mis à jour.');
     }
 

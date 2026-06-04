@@ -5,6 +5,17 @@ import { useState, useEffect, useRef } from 'react';
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
 
+interface Commande {
+    id: number;
+    ref: string;
+}
+
+interface Livraison {
+    id: number;
+    ref: string;
+    commande: Commande | null;
+}
+
 interface FactureVente {
     id: number;
     ref: string;
@@ -15,6 +26,7 @@ interface FactureVente {
     total_ttc: number;
     status: 'brouillon' | 'envoyee' | 'payee' | 'annulee';
     devise: Devise;
+    livraison: Livraison | null;
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -142,7 +154,20 @@ export default function Index({ factures, filters }: { factures: PaginatedFactur
                                     const styling = STATUS_STYLING[item.status] || STATUS_STYLING.brouillon;
                                     return (
                                         <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
-                                            <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-slate-200">{item.ref}</td>
+                                            <td className="py-4 px-6">
+                                                <div className="text-xs font-black text-slate-800 dark:text-slate-200">{item.ref}</div>
+                                                {item.livraison && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Bon de livraison lié :</span>
+                                                        <a href="/livraisons"
+                                                            className="text-[9px] font-extrabold text-teal-650 hover:text-teal-750 hover:underline block"
+                                                            title={`Voir le Bon de livraison ${item.livraison.ref}`}
+                                                        >
+                                                            {item.livraison.ref}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="py-4 px-6">
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.tier ? item.tier.label : '—'}</div>
                                                 <div className="text-[10px] text-slate-400 font-medium">Commercial: {item.commercial || 'Aucun'}</div>

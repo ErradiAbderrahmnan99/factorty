@@ -144,7 +144,7 @@ export default function Edit({
         })) as LineItem[],
     });
 
-    const isReadOnly = livraison.status === 'valide';
+    const isReadOnly = ['valide', 'facturé', 'facturé partiellement'].includes(livraison.status);
 
     const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
 
@@ -311,7 +311,7 @@ export default function Edit({
                         <div>
                             <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800 dark:text-amber-400">Consultation en Lecture Seule</h4>
                             <p className="text-xs font-semibold text-amber-700 dark:text-amber-455 mt-0.5 leading-relaxed">
-                                Cette livraison est validée et verrouillée en écriture. Les modifications sont désactivées.
+                                Cette livraison est validée ou facturée et verrouillée en écriture. Les modifications sont désactivées.
                             </p>
                         </div>
                     </div>
