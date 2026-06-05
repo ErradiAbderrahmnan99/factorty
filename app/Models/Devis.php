@@ -53,4 +53,60 @@ class Devis extends Model
     {
         return $this->hasMany(Commande::class, 'devis_id');
     }
+
+    public function recalculateOrderStatus(): void
+    {
+        $commandeIds = \App\Models\Commande::where('devis_id', $this->id)
+            ->where('status', '!=', 'annule')
+            ->pluck('id');
+
+        $commandeLines = \App\Models\CommandeLine::whereIn('commande_id', $commandeIds)->get();
+
+        $orderedQtyByLine = [];
+        
+        foreach ($this->lines as $line) {
+            $orderedQtyByLine[$line->id] = 0.0;
+        }
+
+        foreach ($commandeLines as $cLine) {
+            if ($cLine->devis_line_id) {
+                if (isset($orderedQtyByLine[$cLine->devis_line_id])) {
+                    $orderedQtyByLine[$cLine->devis_line_id] += (double)$cLine->qty;
+                }
+            } else {
+                $matchingLine = $this->lines->where('product_id', $cLine->product_id)->first();
+                if ($matchingLine) {
+                    $orderedQtyByLine[$matchingLine->id] += (double)$cLine->qty;
+                }
+            }
+        }
+
+        $allFullyOrdered = true;
+        $anyOrdered = false;
+
+        foreach ($this->lines as $line) {
+            $orderedQty = (double)($orderedQtyByLine[$line->id] ?? 0);
+            $line->qty_commande = $orderedQty;
+            $line->save();
+
+            if ($orderedQty > 0) {
+                $anyOrdered = true;
+            }
+
+            if ($orderedQty < (double)$line->qty) {
+                $allFullyOrdered = false;
+            }
+        }
+
+        if ($this->lines->isEmpty()) {
+            $this->status = 'accepté';
+        } elseif ($allFullyOrdered) {
+            $this->status = 'commandé';
+        } elseif ($anyOrdered) {
+            $this->status = 'commandé partiellement';
+        } else {
+            $this->status = 'accepté';
+        }
+        $this->save();
+    }
 }

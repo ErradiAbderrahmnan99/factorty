@@ -15,6 +15,7 @@ class LivraisonLine extends Model
 
     protected $fillable = [
         'livraison_id',
+        'commande_line_id',
         'product_id',
         'entrepot_id',
         'sale_unit_id',
@@ -29,6 +30,7 @@ class LivraisonLine extends Model
     ];
 
     protected $casts = [
+        'commande_line_id' => 'integer',
         'tva' => 'double',
         'qty' => 'double',
         'pu_ht' => 'double',
@@ -42,6 +44,11 @@ class LivraisonLine extends Model
     public function livraison(): BelongsTo
     {
         return $this->belongsTo(Livraison::class, 'livraison_id');
+    }
+
+    public function commandeLine(): BelongsTo
+    {
+        return $this->belongsTo(CommandeLine::class, 'commande_line_id');
     }
 
     public function product(): BelongsTo

@@ -50,10 +50,8 @@ export default function Authenticated({
                 { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
                 { name: 'Devises', key: 'devises', group: 'Paramètres Tiers', href: route('devises.index') },
                 { name: 'Employés', key: 'employees', group: 'Paramètres Tiers', href: route('employees.index') },
-                { name: 'Modes de Règlement', key: 'modes_reglement', group: 'Paramètres Tiers', href: route('modes-reglement.index') },
                 { name: 'Conditions de Règlement', key: 'conditions_reglement', group: 'Paramètres Tiers', href: route('conditions-reglement.index') },
                 { name: 'Origines', key: 'origines', group: 'Paramètres Tiers', href: route('origines.index') },
-                { name: 'Comptes Bancaires', key: 'comptes_bancaires', group: 'Paramètres Tiers', href: route('comptes-bancaires.index') },
                 { name: 'Types d\'Approbateur', key: 'types_approbateur', group: 'Paramètres Tiers', href: route('types-approbateur.index') },
             ],
         },
@@ -93,6 +91,21 @@ export default function Authenticated({
                 { name: 'Factures Fournisseur', key: 'facture_f', href: route('factures-achat.index') },
                 { name: 'Avoirs Fournisseur', key: 'avoir_f', href: route('avoirs-achat.index') },
                 { name: 'Rapports Achat', key: 'rapport' },
+            ],
+        },
+        {
+            id: 'reglement',
+            title: 'Règlements',
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+            ),
+            items: [
+                { name: 'Règlements', key: 'reglements', href: route('reglements.index') },
+                { name: 'Modes de Règlement', key: 'modes_reglement', href: route('modes-reglement.index') },
+                { name: 'Statuts de Règlement', key: 'statuts_reglement', href: route('statuts-reglement.index') },
+                { name: 'Comptes Bancaires', key: 'comptes_bancaires', href: route('comptes-bancaires.index') },
             ],
         },
         {
@@ -174,6 +187,7 @@ export default function Authenticated({
             ddb: false,
             vente: false,
             achat: false,
+            reglement: false,
             accounting: false,
             stock: false,
         };

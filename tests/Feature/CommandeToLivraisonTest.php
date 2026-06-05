@@ -118,6 +118,7 @@ class CommandeToLivraisonTest extends TestCase
             'commande_id'    => $this->commande->id,
             'lines'          => [
                 [
+                    'commande_line_id' => $this->commande->lines->first()->id,
                     'product_id'   => $this->product->id,
                     'entrepot_id'  => $this->entrepot->id,
                     'sale_unit_id' => $this->unit->id,
@@ -195,7 +196,18 @@ class CommandeToLivraisonTest extends TestCase
             'total_ht'       => 100.00,
             'total_ttc'      => 120.00,
         ]);
-        $this->commande->update(['status' => 'livré']);
+        $livraison1->lines()->create([
+            'commande_line_id' => $this->commande->lines->first()->id,
+            'product_id'   => $this->product->id,
+            'entrepot_id'  => $this->entrepot->id,
+            'sale_unit_id' => $this->unit->id,
+            'tva'          => 20.00,
+            'qty'          => 0.5,
+            'pu_ht'        => 200.00,
+            'pu_ttc'       => 240.00,
+            'total_ht'     => 100.00,
+            'total_ttc'    => 120.00,
+        ]);
 
         // Create second Livraison
         $livraison2 = Livraison::create([
@@ -208,12 +220,25 @@ class CommandeToLivraisonTest extends TestCase
             'total_ht'       => 100.00,
             'total_ttc'      => 120.00,
         ]);
+        $livraison2->lines()->create([
+            'commande_line_id' => $this->commande->lines->first()->id,
+            'product_id'   => $this->product->id,
+            'entrepot_id'  => $this->entrepot->id,
+            'sale_unit_id' => $this->unit->id,
+            'tva'          => 20.00,
+            'qty'          => 0.5,
+            'pu_ht'        => 200.00,
+            'pu_ttc'       => 240.00,
+            'total_ht'     => 100.00,
+            'total_ttc'    => 120.00,
+        ]);
 
+        $this->commande->recalculateDeliveryStatus();
         $this->assertEquals('livré', $this->commande->fresh()->status);
 
-        // Delete first Livraison - commande status should remain 'livré' because $livraison2 is still linked
+        // Delete first Livraison - commande status should become 'livré partiellement' because $livraison2 is still linked (0.5 qty)
         $this->actingAs($this->user)->delete(route('livraisons.destroy', $livraison1->id));
-        $this->assertEquals('livré', $this->commande->fresh()->status);
+        $this->assertEquals('livré partiellement', $this->commande->fresh()->status);
 
         // Delete second Livraison - commande status should revert to 'valide'
         $this->actingAs($this->user)->delete(route('livraisons.destroy', $livraison2->id));

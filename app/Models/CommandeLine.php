@@ -15,11 +15,13 @@ class CommandeLine extends Model
 
     protected $fillable = [
         'commande_id',
+        'devis_line_id',
         'product_id',
         'entrepot_id',
         'sale_unit_id',
         'tva',
         'qty',
+        'qty_livre',
         'pu_ht',
         'pu_ttc',
         'remise',
@@ -29,8 +31,10 @@ class CommandeLine extends Model
     ];
 
     protected $casts = [
+        'devis_line_id' => 'integer',
         'tva' => 'double',
         'qty' => 'double',
+        'qty_livre' => 'double',
         'pu_ht' => 'double',
         'pu_ttc' => 'double',
         'remise' => 'double',
@@ -42,6 +46,11 @@ class CommandeLine extends Model
     public function commande(): BelongsTo
     {
         return $this->belongsTo(Commande::class, 'commande_id');
+    }
+
+    public function devisLine(): BelongsTo
+    {
+        return $this->belongsTo(DevisLine::class, 'devis_line_id');
     }
 
     public function product(): BelongsTo

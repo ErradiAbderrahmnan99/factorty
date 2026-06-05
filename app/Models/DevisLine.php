@@ -16,6 +16,7 @@ class DevisLine extends Model
         'sale_unit_id',
         'tva',
         'qty',
+        'qty_commande',
         'pu_ht',
         'pu_ttc',
         'remise',
@@ -27,6 +28,7 @@ class DevisLine extends Model
     protected $casts = [
         'tva' => 'double',
         'qty' => 'double',
+        'qty_commande' => 'double',
         'pu_ht' => 'double',
         'pu_ttc' => 'double',
         'remise' => 'double',

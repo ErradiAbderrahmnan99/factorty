@@ -25,6 +25,9 @@ interface CloneLineLot {
 }
 
 interface CloneLineItem {
+    commande_line_id?: number;
+    original_qty?: number;
+    qty_livre?: number;
     product_id: string;
     qty: number;
     sale_unit_id: string;
@@ -73,7 +76,7 @@ interface Commande {
     ref: string;
     commercial: string | null;
     date_commande: string;
-    status: 'brouillon' | 'valide' | 'annule' | 'livré';
+    status: 'brouillon' | 'valide' | 'annule' | 'livré' | 'livré partiellement';
     total_ht: number;
     total_tva: number;
     total_ttc: number;
@@ -102,7 +105,8 @@ const STATUS_STYLING = {
     'brouillon': { badge: 'bg-slate-500/10 text-slate-650 dark:text-slate-400 border-slate-500/20', dot: 'bg-slate-500', label: 'Brouillon' },
     'valide':    { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Validé' },
     'annule':    { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20', dot: 'bg-rose-500', label: 'Annulé' },
-    'livré':     { badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20', dot: 'bg-violet-500', label: 'Livré' }
+    'livré':     { badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20', dot: 'bg-violet-500', label: 'Livré' },
+    'livré partiellement': { badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20', dot: 'bg-blue-500', label: 'Partiellement Livré' }
 };
 
 export default function Index({ 
@@ -189,27 +193,42 @@ export default function Index({
                 date_livraison: new Date().toISOString().split('T')[0],
                 devise_id: data.devise_id.toString(),
                 commande_id: data.id.toString(),
-                lines: data.lines.map((line: any) => ({
-                    product_id: line.product_id.toString(),
-                    qty: line.qty,
-                    sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
-                    tva: Number(line.tva) || 20.00,
-                    pu_ht: Number(line.pu_ht),
-                    pu_ttc: Number(line.pu_ttc),
-                    remise: Number(line.remise) || 0,
-                    rm: Number(line.rm) || 0,
-                    total_ht: Number(line.total_ht),
-                    total_ttc: Number(line.total_ttc),
-                    entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
-                    lots: line.lots ? line.lots.map((l: any) => ({
-                        lot_number: l.lot_number,
-                        quantity: Number(l.quantity),
-                        fabrication_date: l.fabrication_date,
-                        expiration_date: l.expiration_date
-                    })) : [],
-                    product: line.product,
-                    sale_unit: line.sale_unit
-                }))
+                lines: data.lines.map((line: any) => {
+                    const qty = Math.max(0, Number(line.qty) - (Number(line.qty_livre) || 0));
+                    const pu_ht = Number(line.pu_ht);
+                    const tva = Number(line.tva) || 20.00;
+                    const remise = Number(line.remise) || 0;
+                    const rm = Number(line.rm) || 0;
+                    const lineHt = qty * pu_ht;
+                    const discount = (lineHt * remise / 100) + rm;
+                    const total_ht = Math.max(0, lineHt - discount);
+                    const total_ttc = total_ht * (1 + tva / 100);
+
+                    return {
+                        commande_line_id: line.id,
+                        product_id: line.product_id.toString(),
+                        qty: qty,
+                        original_qty: Number(line.qty),
+                        qty_livre: Number(line.qty_livre) || 0,
+                        sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
+                        tva: tva,
+                        pu_ht: pu_ht,
+                        pu_ttc: Number(line.pu_ttc),
+                        remise: remise,
+                        rm: rm,
+                        total_ht: total_ht,
+                        total_ttc: total_ttc,
+                        entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
+                        lots: line.lots ? line.lots.map((l: any) => ({
+                            lot_number: l.lot_number,
+                            quantity: Number(l.quantity),
+                            fabrication_date: l.fabrication_date,
+                            expiration_date: l.expiration_date
+                        })) : [],
+                        product: line.product,
+                        sale_unit: line.sale_unit
+                    };
+                })
             });
         } catch (error) {
             console.error("Error fetching order details for conversion", error);
@@ -541,6 +560,8 @@ export default function Index({
                             <option value="brouillon">Brouillon</option>
                             <option value="valide">Validé & Déduit</option>
                             <option value="annule">Annulé</option>
+                            <option value="livré">Livré</option>
+                            <option value="livré partiellement">Partiellement Livré</option>
                         </select>
                     </div>
                 </div>
@@ -657,7 +678,7 @@ export default function Index({
                                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                     </svg>
                                                                 </Link>
-                                                                {(item.status === 'valide' || item.status === 'livré') && (
+                                                                {(item.status === 'valide' || item.status === 'livré partiellement') && (
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => startCloning(item)}
@@ -746,16 +767,18 @@ export default function Index({
                                 Modifier le statut
                             </h3>
                         </div>
-                        {statusTarget.status === 'livré' && (
+                        {(statusTarget.status === 'livré' || statusTarget.status === 'livré partiellement') && (
                             <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
-                                ⚠️ Cette commande a été livrée. Son statut est définitif et ne peut plus être modifié.
+                                ⚠️ Cette commande a été livrée ou partiellement livrée. Son statut est géré par les bons de livraison et ne peut plus être modifié manuellement.
                             </div>
                         )}
                         <p className="text-xs text-slate-500 mb-5">Modifier le statut de la commande <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                         <div className="space-y-2 mb-6">
-                            {['brouillon', 'valide', 'annule', 'livré'].map(statusOption => {
+                            {['brouillon', 'valide', 'annule', 'livré', 'livré partiellement'].map(statusOption => {
                                 const st = STATUS_STYLING[statusOption as keyof typeof STATUS_STYLING];
-                                const isDisabled = (statusTarget.status === 'livré' && statusOption !== 'livré') || (statusOption === 'livré' && statusTarget.status !== 'livré');
+                                const isTargetDelivered = statusTarget.status === 'livré' || statusTarget.status === 'livré partiellement';
+                                const isDisabled = (isTargetDelivered && statusOption !== statusTarget.status) || 
+                                                   ((statusOption === 'livré' || statusOption === 'livré partiellement') && statusTarget.status !== statusOption);
                                 return (
                                     <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
                                         className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${
@@ -852,7 +875,7 @@ export default function Index({
             {/* Conversion Modal (Commande -> Bon de Livraison) */}
             {cloneForm && cloneTarget && (
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-4xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4 mb-6">
                             <div>
                                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
@@ -937,7 +960,12 @@ export default function Index({
                                                 return (
                                                     <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/5 transition-all">
                                                         <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
-                                                            {line.product?.ref ? `[${line.product.ref}] ` : ''}{line.product?.label}
+                                                            <div>{line.product?.ref ? `[${line.product.ref}] ` : ''}{line.product?.label}</div>
+                                                            {line.commande_line_id && (
+                                                                <div className="text-[10px] text-slate-450 mt-0.5 font-medium">
+                                                                    Commandé: <span className="font-bold text-slate-600 dark:text-slate-400">{line.original_qty}</span> | Déjà livré: <span className="font-bold text-slate-600 dark:text-slate-400">{line.qty_livre}</span>
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="py-3 px-2 font-bold font-mono text-slate-700 dark:text-slate-300">
                                                             <div className="flex items-center space-x-1">

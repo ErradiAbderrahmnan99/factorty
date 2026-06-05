@@ -94,6 +94,7 @@ class CommandeController extends Controller
             'devise_id'            => ['required', 'exists:devises,id'],
             'devis_id'             => ['nullable', 'exists:devis,id'],
             'lines'                => ['required', 'array', 'min:1'],
+            'lines.*.devis_line_id'=> ['nullable', 'exists:devis_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -141,6 +142,7 @@ class CommandeController extends Controller
                 $totalTtc += $lineTotalTtc;
 
                 $linesData[] = [
+                    'devis_line_id' => $line['devis_line_id'] ?? null,
                     'product_id'   => $line['product_id'],
                     'entrepot_id'  => $line['entrepot_id'],
                     'sale_unit_id' => $line['sale_unit_id'] ?? null,
@@ -171,11 +173,6 @@ class CommandeController extends Controller
                 'total_ttc'     => $totalTtc,
             ]);
 
-            if ($request->filled('devis_id')) {
-                \App\Models\Devis::where('id', $request->input('devis_id'))
-                    ->update(['status' => 'commandé']);
-            }
-
             foreach ($linesData as $lData) {
                 $lots = $lData['lots'];
                 unset($lData['lots']);
@@ -189,6 +186,13 @@ class CommandeController extends Controller
                         'fabrication_date' => $lot['fabrication_date'] ?? null,
                         'expiration_date'  => $lot['expiration_date'] ?? null,
                     ]);
+                }
+            }
+
+            if ($request->filled('devis_id')) {
+                $devis = \App\Models\Devis::find($request->input('devis_id'));
+                if ($devis) {
+                    $devis->recalculateOrderStatus();
                 }
             }
         });
@@ -232,8 +236,8 @@ class CommandeController extends Controller
 
     public function update(Request $request, Commande $commande): RedirectResponse
     {
-        if ($commande->status === 'valide') {
-            return back()->with('error', 'Une commande validée ne peut pas être modifiée.');
+        if (in_array($commande->status, ['valide', 'livré', 'livré partiellement'])) {
+            return back()->with('error', 'Une commande validée, livrée ou partiellement livrée ne peut pas être modifiée.');
         }
 
         $request->validate([
@@ -242,6 +246,7 @@ class CommandeController extends Controller
             'date_commande'        => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
             'lines'                => ['required', 'array', 'min:1'],
+            'lines.*.devis_line_id'=> ['nullable', 'exists:devis_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -280,6 +285,7 @@ class CommandeController extends Controller
                 $totalTtc += $lineTotalTtc;
 
                 $linesData[] = [
+                    'devis_line_id' => $line['devis_line_id'] ?? null,
                     'product_id'   => $line['product_id'],
                     'entrepot_id'  => $line['entrepot_id'],
                     'sale_unit_id' => $line['sale_unit_id'] ?? null,
@@ -325,6 +331,13 @@ class CommandeController extends Controller
                     ]);
                 }
             }
+
+            if ($commande->devis_id) {
+                $devis = \App\Models\Devis::find($commande->devis_id);
+                if ($devis) {
+                    $devis->recalculateOrderStatus();
+                }
+            }
         });
 
         return redirect()->route('commandes.index')->with('success', 'Commande mise à jour avec succès.');
@@ -332,8 +345,8 @@ class CommandeController extends Controller
 
     public function destroy(Commande $commande): RedirectResponse
     {
-        if ($commande->status === 'valide') {
-            return back()->with('error', 'Une commande validée ne peut pas être supprimée.');
+        if (in_array($commande->status, ['valide', 'livré', 'livré partiellement'])) {
+            return back()->with('error', 'Une commande validée, livrée ou partiellement livrée ne peut pas être supprimée.');
         }
 
         $devisId = $commande->devis_id;
@@ -341,9 +354,9 @@ class CommandeController extends Controller
         $commande->delete();
 
         if ($devisId) {
-            $hasOtherCommandes = Commande::where('devis_id', $devisId)->exists();
-            if (!$hasOtherCommandes) {
-                \App\Models\Devis::where('id', $devisId)->update(['status' => 'accepté']);
+            $devis = \App\Models\Devis::find($devisId);
+            if ($devis) {
+                $devis->recalculateOrderStatus();
             }
         }
 
@@ -355,8 +368,8 @@ class CommandeController extends Controller
      */
     public function valider(Commande $commande): RedirectResponse
     {
-        if ($commande->status === 'valide') {
-            return redirect()->route('commandes.index')->with('error', 'Cette commande est déjà validée.');
+        if (in_array($commande->status, ['valide', 'livré', 'livré partiellement'])) {
+            return redirect()->route('commandes.index')->with('error', 'Cette commande est déjà validée ou livrée.');
         }
 
         $commande->status = 'valide';
@@ -415,17 +428,24 @@ class CommandeController extends Controller
      */
     public function updateStatus(Request $request, Commande $commande): RedirectResponse
     {
-        if ($commande->status === 'livré') {
+        if ($commande->status === 'livré' || $commande->status === 'livré partiellement') {
             return back()->with('error', 'Le statut d\'une commande livrée ne peut pas être modifié.');
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,valide,annule,livré'],
+            'status' => ['required', 'string', 'in:brouillon,valide,annule,livré,livré partiellement'],
         ]);
 
         $commande->update([
             'status' => $request->input('status'),
         ]);
+
+        if ($commande->devis_id) {
+            $devis = \App\Models\Devis::find($commande->devis_id);
+            if ($devis) {
+                $devis->recalculateOrderStatus();
+            }
+        }
 
         return back()->with('success', 'Statut de la commande mis à jour.');
     }

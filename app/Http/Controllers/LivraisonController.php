@@ -94,6 +94,7 @@ class LivraisonController extends Controller
             'devise_id'            => ['required', 'exists:devises,id'],
             'commande_id'          => ['nullable', 'exists:commandes,id'],
             'lines'                => ['required', 'array', 'min:1'],
+            'lines.*.commande_line_id' => ['nullable', 'exists:commande_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -141,6 +142,7 @@ class LivraisonController extends Controller
                 $totalTtc += $lineTotalTtc;
 
                 $linesData[] = [
+                    'commande_line_id' => $line['commande_line_id'] ?? null,
                     'product_id'   => $line['product_id'],
                     'entrepot_id'  => $line['entrepot_id'],
                     'sale_unit_id' => $line['sale_unit_id'] ?? null,
@@ -188,8 +190,10 @@ class LivraisonController extends Controller
             }
 
             if ($request->filled('commande_id')) {
-                \App\Models\Commande::where('id', $request->input('commande_id'))
-                    ->update(['status' => 'livré']);
+                $commande = \App\Models\Commande::find($request->input('commande_id'));
+                if ($commande) {
+                    $commande->recalculateDeliveryStatus();
+                }
             }
         });
 
@@ -242,6 +246,7 @@ class LivraisonController extends Controller
             'date_livraison'       => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
             'lines'                => ['required', 'array', 'min:1'],
+            'lines.*.commande_line_id' => ['nullable', 'exists:commande_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'  => ['required', 'exists:entrepots,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -280,6 +285,7 @@ class LivraisonController extends Controller
                 $totalTtc += $lineTotalTtc;
 
                 $linesData[] = [
+                    'commande_line_id' => $line['commande_line_id'] ?? null,
                     'product_id'   => $line['product_id'],
                     'entrepot_id'  => $line['entrepot_id'],
                     'sale_unit_id' => $line['sale_unit_id'] ?? null,
@@ -325,6 +331,10 @@ class LivraisonController extends Controller
                     ]);
                 }
             }
+
+            if ($livraison->commande_id) {
+                $livraison->commande->recalculateDeliveryStatus();
+            }
         });
 
         return redirect()->route('livraisons.index')->with('success', 'Bon de livraison mis à jour avec succès.');
@@ -340,9 +350,9 @@ class LivraisonController extends Controller
         $livraison->delete();
 
         if ($commandeId) {
-            $hasOtherDeliveries = Livraison::where('commande_id', $commandeId)->exists();
-            if (!$hasOtherDeliveries) {
-                \App\Models\Commande::where('id', $commandeId)->update(['status' => 'valide']);
+            $commande = \App\Models\Commande::find($commandeId);
+            if ($commande) {
+                $commande->recalculateDeliveryStatus();
             }
         }
 
@@ -375,6 +385,10 @@ class LivraisonController extends Controller
             $livraison->update([
                 'status' => $newStatus,
             ]);
+        }
+
+        if ($livraison->commande_id) {
+            $livraison->commande->recalculateDeliveryStatus();
         }
 
         return back()->with('success', 'Statut du bon de livraison mis à jour.');

@@ -195,7 +195,20 @@ class DevisToCommandeTest extends TestCase
             'total_ht'      => 100.00,
             'total_ttc'     => 120.00,
         ]);
-        $this->devis->update(['status' => 'commandé']);
+        $commande1->lines()->create([
+            'product_id'    => $this->product->id,
+            'entrepot_id'   => $this->entrepot->id,
+            'sale_unit_id'  => $this->unit->id,
+            'tva'           => 20.00,
+            'qty'           => 0.5,
+            'pu_ht'         => 200.00,
+            'pu_ttc'        => 240.00,
+            'total_ht'      => 100.00,
+            'total_ttc'     => 120.00,
+            'devis_line_id' => $this->devis->lines->first()->id,
+        ]);
+
+        $this->devis->recalculateOrderStatus();
 
         // Create second Commande
         $commande2 = Commande::create([
@@ -208,12 +221,26 @@ class DevisToCommandeTest extends TestCase
             'total_ht'      => 100.00,
             'total_ttc'     => 120.00,
         ]);
+        $commande2->lines()->create([
+            'product_id'    => $this->product->id,
+            'entrepot_id'   => $this->entrepot->id,
+            'sale_unit_id'  => $this->unit->id,
+            'tva'           => 20.00,
+            'qty'           => 0.5,
+            'pu_ht'         => 200.00,
+            'pu_ttc'        => 240.00,
+            'total_ht'      => 100.00,
+            'total_ttc'     => 120.00,
+            'devis_line_id' => $this->devis->lines->first()->id,
+        ]);
+
+        $this->devis->recalculateOrderStatus();
 
         $this->assertEquals('commandé', $this->devis->fresh()->status);
 
-        // Delete first Commande - devis status should remain 'commandé' because $commande2 is still linked
+        // Delete first Commande - devis status should become 'commandé partiellement' because $commande2 is still linked with 0.5 qty
         $this->actingAs($this->user)->delete(route('commandes.destroy', $commande1->id));
-        $this->assertEquals('commandé', $this->devis->fresh()->status);
+        $this->assertEquals('commandé partiellement', $this->devis->fresh()->status);
 
         // Delete second Commande - devis status should revert to 'accepté'
         $this->actingAs($this->user)->delete(route('commandes.destroy', $commande2->id));

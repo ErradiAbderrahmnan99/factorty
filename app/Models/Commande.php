@@ -58,4 +58,45 @@ class Commande extends Model
     {
         return $this->hasMany(Livraison::class, 'commande_id');
     }
+
+    public function recalculateDeliveryStatus(): void
+    {
+        $livraisonIds = \App\Models\Livraison::where('commande_id', $this->id)
+            ->where('status', '!=', 'annule')
+            ->pluck('id');
+
+        $deliveredQtyByLine = \App\Models\LivraisonLine::whereIn('livraison_id', $livraisonIds)
+            ->whereNotNull('commande_line_id')
+            ->groupBy('commande_line_id')
+            ->selectRaw('commande_line_id, SUM(qty) as total_qty')
+            ->pluck('total_qty', 'commande_line_id');
+
+        $allFullyDelivered = true;
+        $anyDelivered = false;
+
+        foreach ($this->lines as $line) {
+            $deliveredQty = (double)($deliveredQtyByLine[$line->id] ?? 0);
+            $line->qty_livre = $deliveredQty;
+            $line->save();
+
+            if ($deliveredQty > 0) {
+                $anyDelivered = true;
+            }
+
+            if ($deliveredQty < (double)$line->qty) {
+                $allFullyDelivered = false;
+            }
+        }
+
+        if ($this->lines->isEmpty()) {
+            $this->status = 'valide';
+        } elseif ($allFullyDelivered) {
+            $this->status = 'livré';
+        } elseif ($anyDelivered) {
+            $this->status = 'livré partiellement';
+        } else {
+            $this->status = 'valide';
+        }
+        $this->save();
+    }
 }

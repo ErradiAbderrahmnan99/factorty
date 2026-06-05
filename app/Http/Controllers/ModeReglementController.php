@@ -11,7 +11,7 @@ class ModeReglementController extends Controller
     public function index(): Response
     {
         return Inertia::render('ModeReglement/Index', [
-            'items' => ModeReglement::orderBy('label')->get(),
+            'items' => ModeReglement::with('statuts')->orderBy('label')->get(),
         ]);
     }
 

@@ -306,7 +306,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
 
             <form onSubmit={handleSubmit} className="max-w-7xl mx-auto space-y-6">
                 {/* Main Card */}
-                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6">
+                <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-6">
                     <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 dark:border-slate-800/60 pb-5">
                         <div>
                             <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Nouveau Retour de Vente</h2>
@@ -367,7 +367,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
 
                 {/* Step 2: Select BLs */}
                 {data.tier_id && (
-                    <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-xl space-y-4">
+                    <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-4">
                         <div className="border-b border-slate-100 dark:border-slate-800/60 pb-3">
                             <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Sélectionner un ou plusieurs Bons de Livraison</h3>
                             <p className="text-[11px] text-slate-450 mt-0.5">Cochez les BLs desquels vous souhaitez retourner les articles.</p>
@@ -408,7 +408,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
 
                 {/* Step 3: Load and select lines to return */}
                 {selectedBlIds.length > 0 && data.lines.length > 0 && (
-                    <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden backdrop-blur-xl shadow-xl">
+                    <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl overflow-hidden backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/20">
                             <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Sélectionner et Ajuster les quantités à retourner</h3>
                             <p className="text-[11px] text-slate-450 mt-0.5">Cochez les lignes à inclure et saisissez la quantité. Celle-ci ne peut dépasser le reste à retourner.</p>

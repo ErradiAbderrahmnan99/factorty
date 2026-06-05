@@ -19,7 +19,7 @@ interface Devis {
     commercial: string | null;
     date_devis: string;
     duree_validite: number;
-    status: 'brouillon' | 'envoyé' | 'accepté' | 'refusé' | 'commandé';
+    status: 'brouillon' | 'envoyé' | 'accepté' | 'refusé' | 'commandé' | 'commandé partiellement';
     total_ht: number;
     total_tva: number;
     total_ttc: number;
@@ -65,6 +65,9 @@ interface CloneLineLot {
 }
 
 interface CloneLineItem {
+    devis_line_id?: string | null;
+    original_qty?: number;
+    qty_commande?: number;
     product_id: string;
     qty: number;
     sale_unit_id: string;
@@ -101,7 +104,8 @@ const STATUS_STYLING = {
     'envoyé':    { badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20', dot: 'bg-indigo-500', label: 'Envoyé' },
     'accepté':   { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Accepté' },
     'refusé':    { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20', dot: 'bg-rose-500', label: 'Refusé' },
-    'commandé':  { badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20', dot: 'bg-violet-500', label: 'Commandé' }
+    'commandé':  { badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20', dot: 'bg-violet-500', label: 'Commandé' },
+    'commandé partiellement': { badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20', dot: 'bg-sky-500', label: 'Commandé Partiellement' }
 };
 
 export default function Index({ 
@@ -151,22 +155,31 @@ export default function Index({
             .then(res => res.json())
             .then((data: any) => {
                 const today = new Date().toISOString().split('T')[0];
-                const initialLines = data.lines.map((line: any) => ({
-                    product_id: line.product_id.toString(),
-                    qty: Number(line.qty),
-                    sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
-                    tva: Number(line.tva),
-                    pu_ht: Number(line.pu_ht),
-                    pu_ttc: Number(line.pu_ttc),
-                    remise: Number(line.remise || 0),
-                    rm: Number(line.rm || 0),
-                    total_ht: Number(line.total_ht),
-                    total_ttc: Number(line.total_ttc),
-                    entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
-                    lots: [],
-                    product: line.product,
-                    sale_unit: line.sale_unit
-                }));
+                const initialLines = data.lines.map((line: any) => {
+                    const originalQty = Number(line.qty);
+                    const qtyCommande = Number(line.qty_commande || 0);
+                    const defaultQty = Math.max(0, originalQty - qtyCommande);
+                    
+                    return {
+                        devis_line_id: line.id.toString(),
+                        original_qty: originalQty,
+                        qty_commande: qtyCommande,
+                        product_id: line.product_id.toString(),
+                        qty: defaultQty,
+                        sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
+                        tva: Number(line.tva),
+                        pu_ht: Number(line.pu_ht),
+                        pu_ttc: Number(line.pu_ttc),
+                        remise: Number(line.remise || 0),
+                        rm: Number(line.rm || 0),
+                        total_ht: Number(line.total_ht),
+                        total_ttc: Number(line.total_ttc),
+                        entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
+                        lots: [],
+                        product: line.product,
+                        sale_unit: line.sale_unit
+                    };
+                });
 
                 setCloneForm({
                     tier_id: data.tier_id.toString(),
@@ -447,6 +460,7 @@ export default function Index({
 
         // Strip helper fields and format lines
         const formattedLines = cloneForm.lines.map(line => ({
+            devis_line_id: line.devis_line_id || null,
             product_id: line.product_id,
             entrepot_id: line.entrepot_id,
             sale_unit_id: line.sale_unit_id || null,
@@ -607,6 +621,7 @@ export default function Index({
                             <option value="accepté">Accepté</option>
                             <option value="refusé">Refusé</option>
                             <option value="commandé">Commandé</option>
+                            <option value="commandé partiellement">Commandé Partiellement</option>
                         </select>
                     </div>
                 </div>
@@ -684,7 +699,7 @@ export default function Index({
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <div className="flex items-center justify-center space-x-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                    {(item.status === 'accepté' || item.status === 'commandé') && (
+                                                    {(item.status === 'accepté' || item.status === 'commandé partiellement') && (
                                                         <button onClick={() => startCloning(item)}
                                                             title="Cloner en Commande Client"
                                                             className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10 rounded-xl transition-all">
@@ -693,14 +708,29 @@ export default function Index({
                                                             </svg>
                                                         </button>
                                                     )}
-                                                    <Link href={route('devis.edit', item.id)}
-                                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all">
-                                                        <svg className="h-4 w-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                    </Link>
-                                                    <button onClick={() => setDeleteTarget(item)}
-                                                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all">
-                                                        <svg className="h-4 w-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
+                                                    {['commandé', 'commandé partiellement'].includes(item.status) ? (
+                                                        <Link href={route('devis.edit', item.id)}
+                                                            title="Voir le Devis"
+                                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all">
+                                                            <svg className="h-4 w-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                        </Link>
+                                                    ) : (
+                                                        <>
+                                                            <Link href={route('devis.edit', item.id)}
+                                                                title="Modifier le Devis"
+                                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all">
+                                                                <svg className="h-4 w-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                            </Link>
+                                                            <button onClick={() => setDeleteTarget(item)}
+                                                                title="Supprimer le Devis"
+                                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all">
+                                                                <svg className="h-4 w-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -746,13 +776,24 @@ export default function Index({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-md p-4">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-3xl shadow-2xl p-6">
                         <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white mb-4">Changer le statut</h3>
+                        {['commandé', 'commandé partiellement'].includes(statusTarget.status) ? (
+                            <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
+                                ⚠️ Ce devis a été commandé. Son statut est définitif et ne peut plus être modifié.
+                            </div>
+                        ) : null}
                         <p className="text-xs text-slate-500 mb-5">Modifier le statut du devis <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                         <div className="space-y-2">
-                            {['brouillon', 'envoyé', 'accepté', 'refusé', 'commandé'].map(statusOption => {
+                            {['brouillon', 'envoyé', 'accepté', 'refusé', 'commandé', 'commandé partiellement'].map(statusOption => {
                                 const st = STATUS_STYLING[statusOption as keyof typeof STATUS_STYLING];
+                                const isDisabled = statusOption !== statusTarget.status && (
+                                    ['commandé', 'commandé partiellement'].includes(statusTarget.status) ||
+                                    ['commandé', 'commandé partiellement'].includes(statusOption)
+                                );
                                 return (
-                                    <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs font-extrabold uppercase tracking-wider transition-all hover:bg-slate-50 dark:hover:bg-slate-850 ${
+                                    <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs font-extrabold uppercase tracking-wider transition-all ${
+                                            isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-850'
+                                        }  ${
                                             statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'
                                         }`}>
                                         <div className="flex items-center space-x-2">
@@ -847,7 +888,7 @@ export default function Index({
             {/* Clone Devis to Commande Client Modal */}
             {cloneForm && cloneTarget && (
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-4xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4 mb-6">
                             <div>
                                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
@@ -930,9 +971,14 @@ export default function Index({
                                                 })();
 
                                                 return (
-                                                    <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/5 transition-all">
+                                                    <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-855/5 transition-all">
                                                         <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
-                                                            {line.product?.ref ? `[${line.product.ref}] ` : ''}{line.product?.label}
+                                                            <div className="font-bold text-slate-900 dark:text-white">{line.product?.ref ? `[${line.product.ref}] ` : ''}{line.product?.label}</div>
+                                                            {line.devis_line_id && (
+                                                                <div className="text-[10px] text-slate-455 mt-0.5 font-medium">
+                                                                    Qté Devis: <span className="font-bold text-slate-600 dark:text-slate-400">{line.original_qty} {line.sale_unit?.code || ''}</span> | Qté Commandé: <span className="font-bold text-slate-600 dark:text-slate-400">{line.qty_commande} {line.sale_unit?.code || ''}</span>
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="py-3 px-2 font-bold font-mono text-slate-700 dark:text-slate-300">
                                                             <div className="flex items-center space-x-1">

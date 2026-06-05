@@ -205,6 +205,10 @@ class DevisController extends Controller
 
     public function update(Request $request, Devis $devis): RedirectResponse
     {
+        if (in_array($devis->status, ['commandé', 'commandé partiellement'])) {
+            return back()->with('error', 'Un devis commandé ou partiellement commandé ne peut pas être modifié.');
+        }
+
         $request->validate([
             'tier_id'         => ['required', 'exists:tiers,id'],
             'commercial'      => ['nullable', 'string', 'max:255'],
@@ -282,9 +286,17 @@ class DevisController extends Controller
 
     public function updateStatus(Request $request, Devis $devis): RedirectResponse
     {
+        if (in_array($devis->status, ['commandé', 'commandé partiellement'])) {
+            return back()->with('error', 'Le statut d\'un devis commandé ou partiellement commandé ne peut pas être modifié.');
+        }
+
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,envoyé,accepté,refusé'],
+            'status' => ['required', 'string', 'in:brouillon,envoyé,accepté,refusé,commandé,commandé partiellement'],
         ]);
+
+        if (in_array($request->input('status'), ['commandé', 'commandé partiellement'])) {
+            return back()->with('error', 'Le statut du devis ne peut pas être modifié manuellement vers commandé ou commandé partiellement.');
+        }
 
         $devis->update([
             'status' => $request->input('status'),
@@ -737,6 +749,9 @@ class DevisController extends Controller
 
     public function destroy(Devis $devis): RedirectResponse
     {
+        if (in_array($devis->status, ['commandé', 'commandé partiellement'])) {
+            return back()->with('error', 'Un devis commandé ou partiellement commandé ne peut pas être supprimé.');
+        }
         $devis->delete();
         return redirect()->route('devis.index')->with('success', 'Devis supprimé.');
     }

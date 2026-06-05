@@ -33,6 +33,8 @@ use App\Http\Controllers\CompteBancaireController;
 use App\Http\Controllers\TypeApprobateurController;
 use App\Http\Controllers\RetourVenteController;
 use App\Http\Controllers\RetourAchatController;
+use App\Http\Controllers\ReglementController;
+use App\Http\Controllers\StatutReglementController;
 use App\Http\Controllers\EntreeStockController;
 use App\Http\Controllers\SortieStockController;
 use Illuminate\Support\Facades\Route;
@@ -194,10 +196,12 @@ Route::middleware('auth')->group(function () {
 
     // New Facturation/Payment/Referential CRUDs
     Route::resource('modes-reglement', ModeReglementController::class)->except(['create', 'edit', 'show']);
+    Route::resource('statuts-reglement', StatutReglementController::class)->except(['create', 'edit', 'show']);
     Route::resource('conditions-reglement', ConditionReglementController::class)->except(['create', 'edit', 'show']);
     Route::resource('origines', OrigineController::class)->except(['create', 'edit', 'show']);
     Route::resource('comptes-bancaires', CompteBancaireController::class)->except(['create', 'edit', 'show']);
     Route::resource('types-approbateur', TypeApprobateurController::class)->except(['create', 'edit', 'show']);
+    Route::resource('reglements', ReglementController::class);
 });
 
 require __DIR__.'/auth.php';

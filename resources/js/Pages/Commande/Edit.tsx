@@ -143,7 +143,7 @@ export default function Edit({
         })) as LineItem[],
     });
 
-    const isReadOnly = commande.status === 'valide';
+    const isReadOnly = commande.status === 'valide' || commande.status === 'livré' || commande.status === 'livré partiellement';
 
     // Lot Allocation Modal State
     const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
@@ -594,6 +594,11 @@ export default function Edit({
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
                                                     value={line.qty} onChange={e => updateLineField(idx, 'qty', e.target.value)} required disabled={isReadOnly} />
+                                                {(commande.lines[idx] as any)?.qty_livre > 0 && (
+                                                    <div className="text-[10px] text-emerald-600 dark:text-emerald-450 mt-1 font-bold select-none leading-none">
+                                                        Livré: {(commande.lines[idx] as any).qty_livre}
+                                                    </div>
+                                                )}
                                                 {(() => {
                                                     if (!selectedProd) return null;
                                                     const activeUnitId = line.sale_unit_id || selectedProd.sale_unit_id;
