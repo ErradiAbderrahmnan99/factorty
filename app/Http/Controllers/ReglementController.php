@@ -112,9 +112,16 @@ class ReglementController extends Controller
                 'string',
                 'in:d,c',
                 function ($attribute, $value, $fail) use ($request) {
-                    $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    $originType = $request->input('origin_type');
+                    if ($originType === 'App\\Models\\AvoirVente') {
+                        $expected = 'c';
+                    } elseif ($originType === 'App\\Models\\AvoirAchat') {
+                        $expected = 'd';
+                    } else {
+                        $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    }
                     if ($value !== $expected) {
-                        $fail('Le sens comptable doit être Débit pour une vente et Crédit pour un achat.');
+                        $fail('Le sens comptable n\'est pas correct pour le type de document.');
                     }
                 }
             ],
@@ -209,9 +216,16 @@ class ReglementController extends Controller
                 'string',
                 'in:d,c',
                 function ($attribute, $value, $fail) use ($request) {
-                    $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    $originType = $request->input('origin_type');
+                    if ($originType === 'App\\Models\\AvoirVente') {
+                        $expected = 'c';
+                    } elseif ($originType === 'App\\Models\\AvoirAchat') {
+                        $expected = 'd';
+                    } else {
+                        $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    }
                     if ($value !== $expected) {
-                        $fail('Le sens comptable doit être Débit pour une vente et Crédit pour un achat.');
+                        $fail('Le sens comptable n\'est pas correct pour le type de document.');
                     }
                 }
             ],

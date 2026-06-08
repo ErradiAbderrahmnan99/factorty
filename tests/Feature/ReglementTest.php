@@ -86,6 +86,32 @@ class ReglementTest extends TestCase
         ]);
     }
 
+    public function test_can_create_reglement_for_avoir_vente_with_correct_sense(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'vente',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 1500,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'c', // Correct (AvoirVente must be 'c')
+                'origin_type' => 'App\Models\AvoirVente',
+                'origin_id' => 1,
+            ]);
+
+        $response->assertRedirect(route('reglements.index'));
+        $this->assertDatabaseHas('reglements', [
+            'type' => 'vente',
+            'sense' => 'c',
+            'montant_ttc' => 1500,
+            'origin_type' => 'App\Models\AvoirVente',
+        ]);
+    }
+
     public function test_reglement_creates_cloned_ecriture_bancaire_and_updates_balance(): void
     {
         // 1. Create a Reglement (vente = debit = +1500)

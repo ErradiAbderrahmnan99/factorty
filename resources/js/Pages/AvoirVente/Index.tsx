@@ -1,9 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
+interface ModeReglement { id: number; label: string; }
+interface StatutReglement { id: number; label: string; mode_reglement_id: number; is_banque: boolean; }
+interface CompteBancaire { id: number; label: string; }
 
 interface AvoirVente {
     id: number;
@@ -13,8 +16,10 @@ interface AvoirVente {
     date_avoir: string;
     total_ht: number;
     total_ttc: number;
-    status: 'brouillon' | 'valide' | 'annule';
+    status: 'brouillon' | 'valide' | 'paye' | 'paye partiellement' | 'annule';
     devise: Devise;
+    reglements_sum_montant_ttc?: number | null;
+    mode_reglement_id?: number | null;
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -28,20 +33,106 @@ interface PaginatedAvoirs {
     links: PaginationLink[];
 }
 
-const STATUS_STYLING = {
+const STATUS_STYLING: Record<string, {badge: string; dot: string; label: string}> = {
     'brouillon': { badge: 'bg-slate-500/10 text-slate-655 dark:text-slate-400 border-slate-500/20', dot: 'bg-slate-500', label: 'Brouillon' },
-    'valide':    { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Validé' },
+    'valide':    { badge: 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border-indigo-500/20', dot: 'bg-indigo-500', label: 'Validé' },
+    'paye':      { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Payé' },
+    'paye partiellement': { badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-450 border-sky-500/20', dot: 'bg-sky-500', label: 'Payé Partiellement' },
     'annule':    { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20', dot: 'bg-rose-500', label: 'Annulé' },
 };
 
-export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; filters: { search: string | null; status: string | null } }) {
+export default function Index({
+    avoirs,
+    filters,
+    tiers = [],
+    modes = [],
+    comptes = [],
+    statuts = [],
+}: {
+    avoirs: PaginatedAvoirs;
+    filters: { search: string | null; status: string | null };
+    tiers?: Tier[];
+    modes?: ModeReglement[];
+    comptes?: CompteBancaire[];
+    statuts?: StatutReglement[];
+}) {
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [statusTarget, setStatusTarget] = useState<AvoirVente | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AvoirVente | null>(null);
+    const [paymentInvoice, setPaymentInvoice] = useState<AvoirVente | null>(null);
     const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const isFirstRender = useRef(true);
+
+    const paymentForm = useForm({
+        type: 'vente',
+        tier_id: '',
+        date_saisie: new Date().toISOString().split('T')[0],
+        date_reglement: new Date().toISOString().split('T')[0],
+        montant_ttc: '',
+        mode_reglement_id: '',
+        statut_reglement_id: '',
+        compte_bancaire_id: '',
+        numero_transaction: '',
+        emetteur: '',
+        banque_cheque: '',
+        commentaire: '',
+        sense: 'c',
+        origin_type: 'App\\Models\\AvoirVente',
+        origin_id: '',
+    });
+
+    useEffect(() => {
+        if (paymentInvoice) {
+            const remaining = (paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0)).toFixed(4);
+            paymentForm.setData({
+                type: 'vente',
+                tier_id: String(paymentInvoice.tier.id),
+                date_saisie: new Date().toISOString().split('T')[0],
+                date_reglement: new Date().toISOString().split('T')[0],
+                montant_ttc: remaining,
+                mode_reglement_id: paymentInvoice.mode_reglement_id ? String(paymentInvoice.mode_reglement_id) : '',
+                statut_reglement_id: '',
+                compte_bancaire_id: '',
+                numero_transaction: '',
+                emetteur: '',
+                banque_cheque: '',
+                commentaire: '',
+                sense: 'c',
+                origin_type: 'App\\Models\\AvoirVente',
+                origin_id: String(paymentInvoice.id),
+            });
+            paymentForm.clearErrors();
+        }
+    }, [paymentInvoice]);
+
+    const filteredStatuts = statuts.filter(
+        (s) => String(s.mode_reglement_id) === String(paymentForm.data.mode_reglement_id)
+    );
+
+    const selectedStatut = statuts.find(
+        (s) => String(s.id) === String(paymentForm.data.statut_reglement_id)
+    );
+    const isBanqueRequired = selectedStatut?.is_banque === true;
+
+    const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newModeId = e.target.value;
+        paymentForm.setData((d) => ({
+            ...d,
+            mode_reglement_id: newModeId,
+            statut_reglement_id: '', // reset status when mode changes
+        }));
+    };
+
+    const handlePaymentSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        paymentForm.post(route('reglements.store'), {
+            onSuccess: () => {
+                setPaymentInvoice(null);
+            }
+        });
+    };
 
     useEffect(() => {
         if (flash?.success) {
@@ -110,6 +201,8 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                         <option value="">Tous les statuts</option>
                         <option value="brouillon">Brouillon</option>
                         <option value="valide">Validé</option>
+                        <option value="paye">Payé</option>
+                        <option value="paye partiellement">Payé Partiellement</option>
                         <option value="annule">Annulé</option>
                     </select>
                 </div>
@@ -153,12 +246,19 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                                                 {item.total_ttc.toFixed(2)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                <button onClick={() => setStatusTarget(item)}
-                                                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
-                                                    <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
-                                                    <span>{styling.label}</span>
-                                                    <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                                </button>
+                                                {item.status === 'paye' || item.status === 'paye partiellement' ? (
+                                                    <span className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                    </span>
+                                                ) : (
+                                                    <button onClick={() => setStatusTarget(item)}
+                                                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                        <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                                                    </button>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center justify-center space-x-1">
@@ -187,6 +287,19 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
                                                             </Link>
+                                                            {['valide', 'paye partiellement'].includes(item.status) && (
+                                                                <button
+                                                                    onClick={() => setPaymentInvoice(item)}
+                                                                    className="p-1.5 text-slate-455 hover:text-emerald-650 hover:bg-emerald-500/10 rounded-xl transition-all"
+                                                                    title="Ajouter un règlement"
+                                                                >
+                                                                    <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                                                                        <circle cx="12" cy="12" r="2.5" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12h.01M18 12h.01" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -236,18 +349,21 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                                 </svg>
                                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Modifier le statut</h3>
                             </div>
-                            {statusTarget.status !== 'valide' && (
+                            {(statusTarget.status !== 'valide' && statusTarget.status !== 'paye' && statusTarget.status !== 'paye partiellement') && (
                                 <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
                                     ⚠️ Passer à <strong>Validé</strong> finalise l'avoir comptable. Cette action est irréversible.
                                 </div>
                             )}
                             <p className="text-xs text-slate-500 mb-5">Modifier le statut de l'avoir <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                             <div className="space-y-2 mb-6">
-                                {(['brouillon', 'valide', 'annule'] as const).map(statusOption => {
+                                {(statusTarget.status === 'valide' || statusTarget.status === 'paye' || statusTarget.status === 'paye partiellement'
+                                    ? (['valide', 'paye', 'paye partiellement', 'annule'] as const)
+                                    : (['brouillon', 'valide', 'annule'] as const)
+                                ).map(statusOption => {
                                     const st = STATUS_STYLING[statusOption];
                                     return (
                                         <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99] ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
+                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all hover:bg-slate-50/50 dark:hover:bg-slate-850/50 active:scale-[0.99] ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
                                             <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
                                                 <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                                 <span>{st.label}</span>
@@ -276,7 +392,7 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                                 </svg>
                                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Supprimer l'Avoir</h3>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed mb-6">
+                            <p className="text-xs text-slate-500 dark:text-slate-455 leading-relaxed mb-6">
                                 Êtes-vous sûr de vouloir supprimer l'avoir <strong>"{deleteTarget.ref}"</strong> ? Cette action est irréversible.
                             </p>
                             <div className="flex items-center justify-end space-x-3">
@@ -286,6 +402,213 @@ export default function Index({ avoirs, filters }: { avoirs: PaginatedAvoirs; fi
                                     Supprimer
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Payment Modal */}
+                {paymentInvoice && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 overflow-y-auto animate-fade-in">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-[2rem] shadow-3xl p-6 relative my-8">
+                            <button
+                                onClick={() => setPaymentInvoice(null)}
+                                className="absolute right-6 top-6 p-2 text-slate-400 hover:text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+
+                            <div className="flex items-center space-x-3 text-indigo-500 mb-2">
+                                <svg className="h-6 w-6 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                                    <circle cx="12" cy="12" r="2.5" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12h.01M18 12h.01" />
+                                </svg>
+                                <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Ajouter un règlement</h3>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-6">
+                                Enregistrer un paiement pour l'avoir <strong className="text-slate-800 dark:text-slate-200">"{paymentInvoice.ref}"</strong> :
+                            </p>
+
+                            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Tiers</label>
+                                        <input
+                                            type="text"
+                                            disabled
+                                            value={paymentInvoice.tier.label}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-100 dark:bg-slate-950/40 text-xs font-semibold text-slate-550 dark:text-slate-400 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all cursor-not-allowed"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Montant TTC <span className="text-rose-500">*</span></label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min="0.0001"
+                                                value={paymentForm.data.montant_ttc}
+                                                onChange={(e) => paymentForm.setData('montant_ttc', e.target.value)}
+                                                required
+                                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-black text-slate-850 dark:text-slate-200 py-3 pl-4 pr-12 focus:outline-none focus:border-indigo-500 transition-all"
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">DH</span>
+                                        </div>
+                                        {paymentForm.errors.montant_ttc && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.montant_ttc}</span>}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Date Saisie <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="date"
+                                            value={paymentForm.data.date_saisie}
+                                            onChange={(e) => paymentForm.setData('date_saisie', e.target.value)}
+                                            required
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        {paymentForm.errors.date_saisie && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.date_saisie}</span>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Date Règlement <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="date"
+                                            value={paymentForm.data.date_reglement}
+                                            onChange={(e) => paymentForm.setData('date_reglement', e.target.value)}
+                                            required
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        {paymentForm.errors.date_reglement && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.date_reglement}</span>}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Mode <span className="text-rose-500">*</span></label>
+                                        <select
+                                            value={paymentForm.data.mode_reglement_id}
+                                            onChange={handleModeChange}
+                                            required
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        >
+                                            <option value="">Choisir...</option>
+                                            {modes.map((m) => (
+                                                <option key={m.id} value={m.id}>{m.label}</option>
+                                            ))}
+                                        </select>
+                                        {paymentForm.errors.mode_reglement_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.mode_reglement_id}</span>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Statut <span className="text-rose-500">*</span></label>
+                                        <select
+                                            value={paymentForm.data.statut_reglement_id}
+                                            onChange={(e) => paymentForm.setData('statut_reglement_id', e.target.value)}
+                                            required
+                                            disabled={!paymentForm.data.mode_reglement_id}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-55"
+                                        >
+                                            <option value="">
+                                                {paymentForm.data.mode_reglement_id ? 'Sélectionner...' : 'Sélectionner...'}
+                                            </option>
+                                            {filteredStatuts.map((st) => (
+                                                <option key={st.id} value={st.id}>{st.label}</option>
+                                            ))}
+                                        </select>
+                                        {paymentForm.errors.statut_reglement_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.statut_reglement_id}</span>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">
+                                            Banque {isBanqueRequired && <span className="text-rose-500">*</span>}
+                                        </label>
+                                        <select
+                                            value={paymentForm.data.compte_bancaire_id}
+                                            onChange={(e) => paymentForm.setData('compte_bancaire_id', e.target.value)}
+                                            required={isBanqueRequired}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        >
+                                            <option value="">Sélectionner...</option>
+                                            {comptes.map((c) => (
+                                                <option key={c.id} value={c.id}>{c.label}</option>
+                                            ))}
+                                        </select>
+                                        {paymentForm.errors.compte_bancaire_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.compte_bancaire_id}</span>}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Numéro Chèque/Virement</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: CHQ-879872"
+                                            value={paymentForm.data.numero_transaction}
+                                            onChange={(e) => paymentForm.setData('numero_transaction', e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        {paymentForm.errors.numero_transaction && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.numero_transaction}</span>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Émetteur</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: Client SARL"
+                                            value={paymentForm.data.emetteur}
+                                            onChange={(e) => paymentForm.setData('emetteur', e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        {paymentForm.errors.emetteur && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.emetteur}</span>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Banque du chèque</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: Attijariwafa Bank"
+                                            value={paymentForm.data.banque_cheque}
+                                            onChange={(e) => paymentForm.setData('banque_cheque', e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        {paymentForm.errors.banque_cheque && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.banque_cheque}</span>}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Commentaire</label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Notes sur la transaction..."
+                                        value={paymentForm.data.commentaire}
+                                        onChange={(e) => paymentForm.setData('commentaire', e.target.value)}
+                                        className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all resize-none"
+                                    />
+                                    {paymentForm.errors.commentaire && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{paymentForm.errors.commentaire}</span>}
+                                </div>
+
+                                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentInvoice(null)}
+                                        className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-355 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all active:scale-95"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={paymentForm.processing}
+                                        className="px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl transition-all shadow-md shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {paymentForm.processing ? 'Enregistrement...' : 'Valider le Règlement'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 )}
