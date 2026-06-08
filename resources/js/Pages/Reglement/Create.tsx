@@ -30,36 +30,47 @@ export default function Create({
     modes,
     comptes,
     statuts,
+    origin,
 }: {
     tiers: Tier[];
     modes: ModeReglement[];
     comptes: CompteBancaire[];
     statuts: StatutReglement[];
+    origin?: {
+        id: number;
+        ref: string;
+        tier_id?: number;
+        mode_reglement_id?: number | null;
+    } | null;
 }) {
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const paramType = params?.get('type') || 'vente';
+    const paramTier = params?.get('tier_id') || '';
+    const paramAmount = params?.get('montant_ttc') || '';
+    const paramOriginType = params?.get('origin_type') || '';
+    const paramOriginId = params?.get('origin_id') || '';
+
+    const initialModeReglementId = origin?.mode_reglement_id ? String(origin.mode_reglement_id) : '';
+
     const { data, setData, post, processing, errors } = useForm({
-        type: 'vente',
-        tier_id: '',
+        type: paramType,
+        tier_id: origin?.tier_id ? String(origin.tier_id) : paramTier,
         date_saisie: new Date().toISOString().split('T')[0],
         date_reglement: new Date().toISOString().split('T')[0],
-        montant_ttc: '',
-        mode_reglement_id: '',
+        montant_ttc: paramAmount,
+        mode_reglement_id: initialModeReglementId,
         statut_reglement_id: '',
         compte_bancaire_id: '',
         numero_transaction: '',
         emetteur: '',
         banque_cheque: '',
         commentaire: '',
-        sense: 'd',
+        sense: paramType === 'vente' ? 'd' : 'c',
+        origin_type: paramOriginType,
+        origin_id: paramOriginId,
     });
 
-    // Auto-update sense and filter tiers when type changes
-    useEffect(() => {
-        if (data.type === 'vente') {
-            setData((d) => ({ ...d, sense: 'd', tier_id: '' }));
-        } else {
-            setData((d) => ({ ...d, sense: 'c', tier_id: '' }));
-        }
-    }, [data.type]);
+    const hasOrigin = !!origin || !!paramOriginId || !!data.origin_id;
 
     const filteredTiers = tiers.filter(
         (t) => t.type === (data.type === 'vente' ? 'client' : 'fournisseur')
@@ -122,6 +133,17 @@ export default function Create({
                     </div>
                 </div>
 
+                {origin && (
+                    <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-3xl p-5 flex items-center space-x-3">
+                        <svg className="h-5 w-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                            Ce règlement est lié à l'origine : <strong className="font-extrabold">{origin.ref}</strong>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Core Fields */}
                     <div className="lg:col-span-2 space-y-6">
@@ -133,9 +155,18 @@ export default function Create({
                                     <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Type de Règlement <span className="text-rose-500">*</span></label>
                                     <select
                                         value={data.type}
-                                        onChange={(e) => setData('type', e.target.value)}
+                                        onChange={(e) => {
+                                            const newType = e.target.value;
+                                            setData((d) => ({
+                                                ...d,
+                                                type: newType,
+                                                sense: newType === 'vente' ? 'd' : 'c',
+                                                tier_id: '',
+                                            }));
+                                        }}
+                                        disabled={hasOrigin}
                                         required
-                                        className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="vente">Vente (Encaissement Client)</option>
                                         <option value="achat">Achat (Décaissement Fournisseur)</option>
@@ -148,8 +179,9 @@ export default function Create({
                                     <select
                                         value={data.tier_id}
                                         onChange={(e) => setData('tier_id', e.target.value)}
+                                        disabled={hasOrigin}
                                         required
-                                        className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all"
+                                        className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="">Choisir un tiers...</option>
                                         {filteredTiers.map((t) => (
@@ -269,27 +301,28 @@ export default function Create({
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setData('sense', 'd')}
-                                        className={`py-3 rounded-2xl text-xs font-extrabold transition-all border ${
+                                        disabled={true}
+                                        className={`py-3 rounded-2xl text-xs font-extrabold transition-all border cursor-not-allowed opacity-75 ${
                                             data.sense === 'd'
                                                 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'
-                                                : 'bg-slate-50/40 border-slate-200/80 text-slate-450 hover:bg-slate-100/50'
+                                                : 'bg-slate-50/40 border-slate-200/80 text-slate-450'
                                         }`}
                                     >
                                         Débit (+)
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setData('sense', 'c')}
-                                        className={`py-3 rounded-2xl text-xs font-extrabold transition-all border ${
+                                        disabled={true}
+                                        className={`py-3 rounded-2xl text-xs font-extrabold transition-all border cursor-not-allowed opacity-75 ${
                                             data.sense === 'c'
                                                 ? 'bg-rose-500/10 text-rose-600 border-rose-500/20 shadow-sm'
-                                                : 'bg-slate-50/40 border-slate-200/80 text-slate-450 hover:bg-slate-100/50'
+                                                : 'bg-slate-50/40 border-slate-200/80 text-slate-450'
                                         }`}
                                     >
                                         Crédit (-)
                                     </button>
                                 </div>
+                                <span className="text-[10px] text-slate-400 font-medium mt-1 block">Déterminé automatiquement par le type de règlement choisi.</span>
                                 {errors.sense && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.sense}</span>}
                             </div>
 

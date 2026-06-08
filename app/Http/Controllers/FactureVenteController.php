@@ -14,6 +14,7 @@ use App\Models\ConditionReglement;
 use App\Models\Origine;
 use App\Models\TypeApprobateur;
 use App\Models\CompteBancaire;
+use App\Models\StatutReglement;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ class FactureVenteController extends Controller
     public function index(Request $request): Response
     {
         $query = FactureVente::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur', 'livraison.commande'])
+            ->withSum('reglements', 'montant_ttc')
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -43,6 +45,10 @@ class FactureVenteController extends Controller
         return Inertia::render('FactureVente/Index', [
             'factures' => $query->paginate(10)->withQueryString(),
             'filters'  => $request->only('search', 'status'),
+            'tiers'    => Tier::where('status', 'actif')->orderBy('label')->get(),
+            'modes'    => ModeReglement::orderBy('label')->get(),
+            'comptes'  => CompteBancaire::orderBy('label')->get(),
+            'statuts'  => StatutReglement::orderBy('label')->get(),
         ]);
     }
 
@@ -280,8 +286,12 @@ class FactureVenteController extends Controller
 
     public function updateStatus(Request $request, FactureVente $facturesVente): RedirectResponse
     {
+        if (in_array($facturesVente->status, ['payee', 'payee partiellement'])) {
+            return back()->with('error', 'Le statut d\'une facture payée ou partiellement payée ne peut pas être modifié manuellement.');
+        }
+
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,envoyee,payee,annulee'],
+            'status' => ['required', 'string', 'in:brouillon,envoyee,annulee'],
         ]);
 
         $facturesVente->update(['status' => $request->input('status')]);

@@ -72,6 +72,7 @@ export default function Index({
 
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const toastTimer = useRef<any>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Reglement | null>(null);
 
     const showToast = (message: string, type: 'success' | 'error' = 'error') => {
         if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -95,11 +96,17 @@ export default function Index({
         router.get(route('reglements.index'));
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce règlement ?')) {
-            router.delete(route('reglements.destroy', id), {
-                onSuccess: () => showToast('Règlement supprimé avec succès.', 'success'),
-                onError: (err: any) => showToast(err.message || 'Une erreur est survenue.'),
+    const handleDeleteConfirm = () => {
+        if (deleteTarget) {
+            router.delete(route('reglements.destroy', deleteTarget.id), {
+                onSuccess: () => {
+                    setDeleteTarget(null);
+                    showToast('Règlement supprimé avec succès.', 'success');
+                },
+                onError: (err: any) => {
+                    setDeleteTarget(null);
+                    showToast(err.message || 'Une erreur est survenue.');
+                },
             });
         }
     };
@@ -284,7 +291,7 @@ export default function Index({
                                                         </svg>
                                                     </Link>
                                                     <button
-                                                        onClick={() => handleDelete(item.id)}
+                                                        onClick={() => setDeleteTarget(item)}
                                                         className="h-7 w-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 transition-all"
                                                         title="Supprimer"
                                                     >
@@ -328,6 +335,30 @@ export default function Index({
                     )}
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-[2rem] shadow-3xl p-6">
+                        <div className="flex items-center space-x-3 text-rose-500 mb-3">
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">Supprimer le Règlement</h3>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed mb-6">
+                            Êtes-vous sûr de vouloir supprimer le règlement <strong>"{deleteTarget.ref}"</strong> ? Cette action est irréversible.
+                        </p>
+                        <div className="flex items-center justify-end space-x-3">
+                            <button onClick={() => setDeleteTarget(null)} className="px-5 py-2.5 text-xs font-bold text-slate-650 dark:text-slate-350 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">Annuler</button>
+                            <button onClick={handleDeleteConfirm}
+                                className="px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-2xl transition-all shadow-md shadow-rose-500/20 active:scale-[0.97]">
+                                Supprimer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Toast alerts */}
             {toast && (

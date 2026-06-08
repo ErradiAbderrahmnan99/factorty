@@ -14,6 +14,7 @@ use App\Models\ConditionReglement;
 use App\Models\Origine;
 use App\Models\CompteBancaire;
 use App\Models\TypeApprobateur;
+use App\Models\StatutReglement;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class FactureAchatController extends Controller
     public function index(Request $request): Response
     {
         $query = FactureAchat::with(['tier', 'devise'])
+            ->withSum('reglements', 'montant_ttc')
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -43,6 +45,10 @@ class FactureAchatController extends Controller
         return Inertia::render('FactureAchat/Index', [
             'factures' => $query->paginate(10)->withQueryString(),
             'filters'  => $request->only('search', 'status'),
+            'tiers'    => Tier::where('status', 'actif')->orderBy('label')->get(),
+            'modes'    => ModeReglement::orderBy('label')->get(),
+            'comptes'  => CompteBancaire::orderBy('label')->get(),
+            'statuts'  => StatutReglement::orderBy('label')->get(),
         ]);
     }
 
@@ -155,8 +161,8 @@ class FactureAchatController extends Controller
 
     public function update(Request $request, FactureAchat $facturesAchat): RedirectResponse
     {
-        if (in_array($facturesAchat->status, ['payee', 'annulee'])) {
-            return back()->with('error', 'Cette facture ne peut plus être modifiée.');
+        if (in_array($facturesAchat->status, ['payee', 'payee partiellement', 'annulee'])) {
+            return redirect()->route('factures-achat.index')->with('error', 'Cette facture ne peut plus être modifiée.');
         }
 
         $request->validate([
@@ -223,8 +229,8 @@ class FactureAchatController extends Controller
 
     public function destroy(FactureAchat $facturesAchat): RedirectResponse
     {
-        if (in_array($facturesAchat->status, ['payee'])) {
-            return back()->with('error', 'Une facture payée ne peut pas être supprimée.');
+        if (in_array($facturesAchat->status, ['payee', 'payee partiellement'])) {
+            return back()->with('error', 'Une facture payée ou partiellement payée ne peut pas être supprimée.');
         }
 
         $facturesAchat->delete();
@@ -233,8 +239,8 @@ class FactureAchatController extends Controller
 
     public function updateStatus(Request $request, FactureAchat $facturesAchat): RedirectResponse
     {
-        if ($facturesAchat->status === 'payee') {
-            return back()->with('error', 'Une facture payée ne peut plus changer de statut.');
+        if (in_array($facturesAchat->status, ['payee', 'payee partiellement'])) {
+            return back()->with('error', 'Le statut d\'une facture payée ou partiellement payée ne peut pas être modifié manuellement.');
         }
 
         if ($facturesAchat->status === 'annulee') {
@@ -242,7 +248,7 @@ class FactureAchatController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,payee,annulee'],
+            'status' => ['required', 'string', 'in:brouillon,annulee'],
         ]);
 
         $facturesAchat->update(['status' => $request->input('status')]);

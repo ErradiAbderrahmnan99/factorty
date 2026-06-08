@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Reglement;
 
 class FactureAchat extends Model
 {
@@ -83,5 +85,36 @@ class FactureAchat extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(FactureAchatLine::class, 'facture_achat_id');
+    }
+
+    public function reglements(): MorphMany
+    {
+        return $this->morphMany(Reglement::class, 'origin');
+    }
+
+    public function recalculatePaymentStatus(): void
+    {
+        $totalPaid = Reglement::where('origin_type', self::class)
+            ->where('origin_id', $this->id)
+            ->sum('montant_ttc');
+
+        if ($totalPaid >= $this->total_ttc) {
+            $this->updateQuietly(['status' => 'payee']);
+        } elseif ($totalPaid > 0) {
+            $this->updateQuietly(['status' => 'payee partiellement']);
+        } else {
+            if (in_array($this->status, ['payee', 'payee partiellement'])) {
+                $this->updateQuietly(['status' => 'brouillon']);
+            }
+        }
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($facture) {
+            if ($facture->isDirty('total_ttc')) {
+                $facture->recalculatePaymentStatus();
+            }
+        });
     }
 }

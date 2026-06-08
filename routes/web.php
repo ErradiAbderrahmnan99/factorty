@@ -199,6 +199,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('statuts-reglement', StatutReglementController::class)->except(['create', 'edit', 'show']);
     Route::resource('conditions-reglement', ConditionReglementController::class)->except(['create', 'edit', 'show']);
     Route::resource('origines', OrigineController::class)->except(['create', 'edit', 'show']);
+    Route::get('comptes-bancaires/{compte}/ecritures', [CompteBancaireController::class, 'ecritures'])->name('comptes-bancaires.ecritures');
     Route::resource('comptes-bancaires', CompteBancaireController::class)->except(['create', 'edit', 'show']);
     Route::resource('types-approbateur', TypeApprobateurController::class)->except(['create', 'edit', 'show']);
     Route::resource('reglements', ReglementController::class);

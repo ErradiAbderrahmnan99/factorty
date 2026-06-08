@@ -123,6 +123,8 @@ export default function Edit({
     typesApprobateur?: LookupItem[];
     approbateurs?: (Tier & { type_approbateur?: { label: string } })[];
 }) {
+    const isReadOnly = facture.status !== 'brouillon';
+
     const initialType = approbateurs.find(item => item.id.toString() === (facture.approbateur_id || '').toString())?.type_approbateur_id?.toString() || '';
     const [selectedTypeApprobateur, setSelectedTypeApprobateur] = useState(initialType);
     const filteredApprobateurs = selectedTypeApprobateur
@@ -160,6 +162,7 @@ export default function Edit({
     });
 
     const addLine = () => {
+        if (isReadOnly) return;
         const newLine: LineItem = {
             product_id: '',
             sale_unit_id: '',
@@ -176,12 +179,14 @@ export default function Edit({
     };
 
     const removeLine = (index: number) => {
+        if (isReadOnly) return;
         const updated = [...data.lines];
         updated.splice(index, 1);
         setData('lines', updated);
     };
 
     const updateLineField = (index: number, field: keyof LineItem, value: any) => {
+        if (isReadOnly) return;
         const updated = [...data.lines];
         const line = { ...updated[index] };
 
@@ -234,6 +239,7 @@ export default function Edit({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isReadOnly) return;
         put(route('factures-vente.update', facture.id));
     };
 
@@ -257,16 +263,22 @@ export default function Edit({
         }>
             <Head title={`Modifier la Facture ${facture.ref}`} />
             <form onSubmit={submit} className="max-w-7xl mx-auto space-y-6">
-                
-                {/* General Information */}
+                                {/* General Information */}
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
-                    <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales</h3>
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">1. Informations Générales</h3>
+                        {isReadOnly && (
+                            <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/20 select-none">
+                                Mode Consultation Uniquement (Facture Verrouillée)
+                            </span>
+                        )}
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Client <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
-                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} required>
+                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} required disabled={isReadOnly}>
                                 <option value="">Sélectionner un client...</option>
                                 {tiers.map(t => (
                                     <option key={t.id} value={t.id}>{t.label}</option>
@@ -274,11 +286,11 @@ export default function Edit({
                             </select>
                             <InputError message={errors.tier_id} className="mt-1" />
                         </div>
-
+ 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Commercial / Agent</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.commercial} onChange={e => setData('commercial', e.target.value)}>
+                                value={data.commercial} onChange={e => setData('commercial', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner un commercial...</option>
                                 {commercials.map(c => {
                                     const fullName = `${c.last_name} ${c.first_name}`;
@@ -289,18 +301,18 @@ export default function Edit({
                             </select>
                             <InputError message={errors.commercial} className="mt-1" />
                         </div>
-
+ 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Date de Facture <span className="text-rose-500">*</span></label>
                             <input type="date" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-mono"
-                                value={data.date_facture} onChange={e => setData('date_facture', e.target.value)} required />
+                                value={data.date_facture} onChange={e => setData('date_facture', e.target.value)} required disabled={isReadOnly} />
                             <InputError message={errors.date_facture} className="mt-1" />
                         </div>
-
+ 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Devise <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required>
+                                value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required disabled={isReadOnly}>
                                 {devises.map(d => (
                                     <option key={d.id} value={d.id}>{d.label} ({d.symbol || d.code})</option>
                                 ))}
@@ -318,7 +330,7 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Mode de règlement</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.mode_reglement_id} onChange={e => setData('mode_reglement_id', e.target.value)}>
+                                value={data.mode_reglement_id} onChange={e => setData('mode_reglement_id', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner...</option>
                                 {modesReglement.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -330,7 +342,7 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Conditions de règlement</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.condition_reglement_id} onChange={e => setData('condition_reglement_id', e.target.value)}>
+                                value={data.condition_reglement_id} onChange={e => setData('condition_reglement_id', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner...</option>
                                 {conditionsReglement.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -342,7 +354,7 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Compte bancaire</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.compte_bancaire_id} onChange={e => setData('compte_bancaire_id', e.target.value)}>
+                                value={data.compte_bancaire_id} onChange={e => setData('compte_bancaire_id', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner...</option>
                                 {comptesBancaires.map(item => (
                                     <option key={item.id} value={item.id}>{item.label} {item.code ? `(${item.code})` : ''}</option>
@@ -354,7 +366,7 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Origine</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.origine_id} onChange={e => setData('origine_id', e.target.value)}>
+                                value={data.origine_id} onChange={e => setData('origine_id', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner...</option>
                                 {origines.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -366,25 +378,26 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Délai de livraison (jours)</label>
                             <input type="number" placeholder="Ex: 5" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.delai_livraison} onChange={e => setData('delai_livraison', e.target.value)} />
+                                value={data.delai_livraison} onChange={e => setData('delai_livraison', e.target.value)} disabled={isReadOnly} />
                             <InputError message={errors.delai_livraison} className="mt-1" />
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Date limite de livraison</label>
-                            <input type="date" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-mono"
-                                value={data.date_livraison} onChange={e => setData('date_livraison', e.target.value)} />
+                            <input type="date" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-555 transition-all text-slate-800 dark:text-slate-200 font-mono"
+                                value={data.date_livraison} onChange={e => setData('date_livraison', e.target.value)} disabled={isReadOnly} />
                             <InputError message={errors.date_livraison} className="mt-1" />
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Type d'Approbateur</label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
                                 value={selectedTypeApprobateur}
                                 onChange={e => {
                                     setSelectedTypeApprobateur(e.target.value);
                                     setData('approbateur_id', '');
-                                }}>
+                                }}
+                                disabled={isReadOnly}>
                                 <option value="">Tous les types...</option>
                                 {typesApprobateur.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -395,7 +408,7 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Approbateur</label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
-                                value={data.approbateur_id} onChange={e => setData('approbateur_id', e.target.value)}>
+                                value={data.approbateur_id} onChange={e => setData('approbateur_id', e.target.value)} disabled={isReadOnly}>
                                 <option value="">Sélectionner...</option>
                                 {filteredApprobateurs.map(item => (
                                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -410,11 +423,13 @@ export default function Edit({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl overflow-hidden p-6 backdrop-blur-xl space-y-6">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                         <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">3. Lignes de Facture</h3>
-                        <button type="button" onClick={addLine}
-                            className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-2xl transition-all shadow-md shadow-indigo-500/10 active:scale-95">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-                            <span>Ajouter un produit</span>
-                        </button>
+                        {!isReadOnly && (
+                            <button type="button" onClick={addLine}
+                                className="inline-flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-2xl transition-all shadow-md shadow-indigo-500/10 active:scale-95">
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                                <span>Ajouter un produit</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="overflow-x-auto">
@@ -446,8 +461,8 @@ export default function Edit({
                                     return (
                                         <tr key={idx} className="group hover:bg-slate-50/20 dark:hover:bg-slate-850/5 transition-all">
                                             <td className="py-3 pr-2">
-                                                <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold"
-                                                    value={line.product_id} onChange={e => updateLineField(idx, 'product_id', e.target.value)} required>
+                                                <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-800 dark:text-slate-200"
+                                                    value={line.product_id} onChange={e => updateLineField(idx, 'product_id', e.target.value)} required disabled={isReadOnly}>
                                                     <option value="">Choisir...</option>
                                                     {products.map(p => (
                                                         <option key={p.id} value={p.id}>{p.ref ? `[${p.ref}] ` : ''}{p.label}</option>
@@ -456,11 +471,11 @@ export default function Edit({
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.tva} onChange={e => updateLineField(idx, 'tva', e.target.value)} required />
+                                                    value={line.tva} onChange={e => updateLineField(idx, 'tva', e.target.value)} required disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.qty} onChange={e => updateLineField(idx, 'qty', e.target.value)} required />
+                                                    value={line.qty} onChange={e => updateLineField(idx, 'qty', e.target.value)} required disabled={isReadOnly} />
                                                 {(() => {
                                                     if (!selectedProd) return null;
                                                     const activeUnitId = line.sale_unit_id || selectedProd.sale_unit_id;
@@ -480,8 +495,8 @@ export default function Edit({
                                                 })()}
                                             </td>
                                             <td className="py-3 px-2">
-                                                <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold"
-                                                    value={line.sale_unit_id} onChange={e => updateLineField(idx, 'sale_unit_id', e.target.value)}>
+                                                <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-800 dark:text-slate-200"
+                                                    value={line.sale_unit_id} onChange={e => updateLineField(idx, 'sale_unit_id', e.target.value)} disabled={isReadOnly}>
                                                     <option value="">Standard</option>
                                                     {units
                                                         .filter(u => !selectedProd || u.unit_category_id === (selectedProd as any).unit_category_id)
@@ -492,28 +507,30 @@ export default function Edit({
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required />
+                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required />
+                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
-                                                    value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} />
+                                                    value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
-                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} />
+                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 text-right pr-2 font-mono text-xs font-black text-slate-800 dark:text-slate-100 select-none">
                                                 {line.total_ht.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="py-3 text-center">
-                                                <button type="button" onClick={() => removeLine(idx)}
-                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all">
-                                                    <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
+                                                {!isReadOnly && (
+                                                    <button type="button" onClick={() => removeLine(idx)}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all">
+                                                        <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -521,7 +538,6 @@ export default function Edit({
                             </tbody>
                         </table>
                     </div>
-
                     <InputError message={errors.lines} className="mt-2 text-xs" />
                 </div>
 
@@ -533,12 +549,12 @@ export default function Edit({
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Note Publique (affichée sur la facture)</label>
                             <textarea rows={3} placeholder="Saisir une note publique..." className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.note_public} onChange={e => setData('note_public', e.target.value)} />
+                                value={data.note_public} onChange={e => setData('note_public', e.target.value)} disabled={isReadOnly} />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Note Privée (réservée à l'usage interne)</label>
                             <textarea rows={3} placeholder="Saisir une note privée..." className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.note_private} onChange={e => setData('note_private', e.target.value)} />
+                                value={data.note_private} onChange={e => setData('note_private', e.target.value)} disabled={isReadOnly} />
                         </div>
                     </div>
                 </div>
@@ -555,12 +571,14 @@ export default function Edit({
                             </div>
                             <div className="flex items-center space-x-3 pt-6 border-t border-slate-100 dark:border-slate-800 mt-6 font-semibold">
                                 <Link href={route('factures-vente.index')} className="px-5 py-2.5 text-xs font-bold text-slate-655 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-250 dark:hover:bg-slate-750 transition-all select-none">
-                                    Annuler
+                                    {isReadOnly ? 'Retour' : 'Annuler'}
                                 </Link>
-                                <button type="submit" disabled={processing || data.lines.length === 0}
-                                    className="px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl active:scale-[0.97] transition-all disabled:opacity-50 select-none shadow-md shadow-indigo-500/10">
-                                    Enregistrer la Facture
-                                </button>
+                                {!isReadOnly && (
+                                    <button type="submit" disabled={processing || data.lines.length === 0}
+                                        className="px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl active:scale-[0.97] transition-all disabled:opacity-50 select-none shadow-md shadow-indigo-500/10">
+                                        Mettre à jour la Facture
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Reglement;
 
 class FactureVente extends Model
 {
@@ -42,4 +44,31 @@ class FactureVente extends Model
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(FactureVenteLine::class, 'facture_vente_id'); }
     public function livraison(): BelongsTo           { return $this->belongsTo(Livraison::class, 'livraison_id'); }
+    public function reglements(): MorphMany            { return $this->morphMany(Reglement::class, 'origin'); }
+
+    public function recalculatePaymentStatus(): void
+    {
+        $totalPaid = Reglement::where('origin_type', self::class)
+            ->where('origin_id', $this->id)
+            ->sum('montant_ttc');
+
+        if ($totalPaid >= $this->total_ttc) {
+            $this->updateQuietly(['status' => 'payee']);
+        } elseif ($totalPaid > 0) {
+            $this->updateQuietly(['status' => 'payee partiellement']);
+        } else {
+            if (in_array($this->status, ['payee', 'payee partiellement'])) {
+                $this->updateQuietly(['status' => 'envoyee']);
+            }
+        }
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($facture) {
+            if ($facture->isDirty('total_ttc')) {
+                $facture->recalculatePaymentStatus();
+            }
+        });
+    }
 }

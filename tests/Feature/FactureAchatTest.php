@@ -9,6 +9,10 @@ use App\Models\Devise;
 use App\Models\Unit;
 use App\Models\UnitCategory;
 use App\Models\FactureAchat;
+use App\Models\ModeReglement;
+use App\Models\StatutReglement;
+use App\Models\CompteBancaire;
+use App\Models\Reglement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +25,9 @@ class FactureAchatTest extends TestCase
     private $devise;
     private $unit;
     private $product;
+    private $mode;
+    private $statut;
+    private $compte;
 
     protected function setUp(): void
     {
@@ -62,6 +69,14 @@ class FactureAchatTest extends TestCase
             'sale_price'       => 200.00,
             'status'           => 'actif',
         ]);
+
+        $this->mode = ModeReglement::create(['label' => 'Espèces']);
+        $this->statut = StatutReglement::create([
+            'label' => 'Encaissé',
+            'mode_reglement_id' => $this->mode->id,
+            'is_banque' => false,
+        ]);
+        $this->compte = CompteBancaire::create(['label' => 'Caisse Centrale']);
     }
 
     public function test_can_view_facture_achat_index()
@@ -176,10 +191,12 @@ class FactureAchatTest extends TestCase
             'tier_id'      => $this->fournisseur->id,
             'date_facture' => '2026-06-01',
             'devise_id'    => $this->devise->id,
-            'status'       => 'payee',
+            'status'       => 'brouillon',
             'total_ht'     => 150.00,
             'total_ttc'    => 180.00,
         ]);
+
+        $this->markAsPaid($facture);
 
         $updateData = [
             'tier_id'       => $this->fournisseur->id,
@@ -201,13 +218,13 @@ class FactureAchatTest extends TestCase
             ->from(route('factures-achat.edit', $facture->id))
             ->put(route('factures-achat.update', $facture->id), $updateData);
 
-        $response->assertRedirect(route('factures-achat.edit', $facture->id));
+        $response->assertRedirect(route('factures-achat.index'));
         $response->assertSessionHas('error', 'Cette facture ne peut plus être modifiée.');
 
         $this->assertEquals('payee', $facture->fresh()->status);
     }
 
-    public function test_can_toggle_status_to_payee_or_annulee()
+    public function test_can_toggle_status_to_annulee()
     {
         $facture = FactureAchat::create([
             'ref'          => 'FA-202606-0003',
@@ -220,10 +237,10 @@ class FactureAchatTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)
-            ->post(route('factures-achat.toggle-status', $facture->id), ['status' => 'payee']);
+            ->post(route('factures-achat.toggle-status', $facture->id), ['status' => 'annulee']);
 
         $response->assertSessionHas('success');
-        $this->assertEquals('payee', $facture->fresh()->status);
+        $this->assertEquals('annulee', $facture->fresh()->status);
     }
 
     public function test_cannot_change_status_after_locked()
@@ -233,15 +250,17 @@ class FactureAchatTest extends TestCase
             'tier_id'      => $this->fournisseur->id,
             'date_facture' => '2026-06-01',
             'devise_id'    => $this->devise->id,
-            'status'       => 'payee',
+            'status'       => 'brouillon',
             'total_ht'     => 150.00,
             'total_ttc'    => 180.00,
         ]);
 
+        $this->markAsPaid($facture);
+
         $response = $this->actingAs($this->user)
             ->post(route('factures-achat.toggle-status', $facture->id), ['status' => 'brouillon']);
 
-        $response->assertSessionHas('error', 'Une facture payée ne peut plus changer de statut.');
+        $response->assertSessionHas('error', 'Le statut d\'une facture payée ou partiellement payée ne peut pas être modifié manuellement.');
         $this->assertEquals('payee', $facture->fresh()->status);
     }
 
@@ -271,17 +290,37 @@ class FactureAchatTest extends TestCase
             'tier_id'      => $this->fournisseur->id,
             'date_facture' => '2026-06-01',
             'devise_id'    => $this->devise->id,
-            'status'       => 'payee',
+            'status'       => 'brouillon',
             'total_ht'     => 150.00,
             'total_ttc'    => 180.00,
         ]);
+
+        $this->markAsPaid($facture);
 
         $response = $this->actingAs($this->user)
             ->from(route('factures-achat.index'))
             ->delete(route('factures-achat.destroy', $facture->id));
 
         $response->assertRedirect(route('factures-achat.index'));
-        $response->assertSessionHas('error', 'Une facture payée ne peut pas être supprimée.');
+        $response->assertSessionHas('error', 'Une facture payée ou partiellement payée ne peut pas être supprimée.');
         $this->assertDatabaseHas('factures_achat', ['id' => $facture->id]);
+    }
+
+    private function markAsPaid(FactureAchat $facture): void
+    {
+        Reglement::create([
+            'ref' => 'REG-' . uniqid(),
+            'type' => 'achat',
+            'tier_id' => $this->fournisseur->id,
+            'date_saisie' => date('Y-m-d'),
+            'date_reglement' => date('Y-m-d'),
+            'montant_ttc' => $facture->total_ttc,
+            'mode_reglement_id' => $this->mode->id,
+            'statut_reglement_id' => $this->statut->id,
+            'compte_bancaire_id' => $this->compte->id,
+            'sense' => 'c',
+            'origin_type' => FactureAchat::class,
+            'origin_id' => $facture->id,
+        ]);
     }
 }

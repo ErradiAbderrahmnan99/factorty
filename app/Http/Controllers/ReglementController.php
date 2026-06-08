@@ -54,7 +54,7 @@ class ReglementController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $tiers = Tier::where('status', 'actif')
             ->orderBy('label')
@@ -64,11 +64,20 @@ class ReglementController extends Controller
         $comptes = CompteBancaire::orderBy('label')->get();
         $statuts = StatutReglement::orderBy('label')->get();
 
+        $origin = null;
+        if ($request->filled('origin_type') && $request->filled('origin_id')) {
+            $originClass = $request->input('origin_type');
+            if (class_exists($originClass)) {
+                $origin = $originClass::find($request->input('origin_id'));
+            }
+        }
+
         return Inertia::render('Reglement/Create', [
             'tiers' => $tiers,
             'modes' => $modes,
             'comptes' => $comptes,
             'statuts' => $statuts,
+            'origin' => $origin,
         ]);
     }
 
@@ -96,7 +105,19 @@ class ReglementController extends Controller
             'emetteur' => ['nullable', 'string', 'max:150'],
             'banque_cheque' => ['nullable', 'string', 'max:150'],
             'commentaire' => ['nullable', 'string'],
-            'sense' => ['required', 'string', 'in:d,c'],
+            'origin_type' => ['nullable', 'string'],
+            'origin_id' => ['nullable', 'integer'],
+            'sense' => [
+                'required',
+                'string',
+                'in:d,c',
+                function ($attribute, $value, $fail) use ($request) {
+                    $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    if ($value !== $expected) {
+                        $fail('Le sens comptable doit être Débit pour une vente et Crédit pour un achat.');
+                    }
+                }
+            ],
         ]);
 
         try {
@@ -126,6 +147,8 @@ class ReglementController extends Controller
                 'banque_cheque' => $request->input('banque_cheque'),
                 'commentaire' => $request->input('commentaire'),
                 'sense' => $request->input('sense'),
+                'origin_type' => $request->input('origin_type'),
+                'origin_id' => $request->input('origin_id'),
             ]);
 
             return redirect()->route('reglements.index')->with('success', 'Règlement créé avec succès.');
@@ -136,6 +159,8 @@ class ReglementController extends Controller
 
     public function edit(Reglement $reglement): Response
     {
+        $reglement->load('origin');
+
         $tiers = Tier::where('status', 'actif')
             ->orderBy('label')
             ->get();
@@ -177,7 +202,19 @@ class ReglementController extends Controller
             'emetteur' => ['nullable', 'string', 'max:150'],
             'banque_cheque' => ['nullable', 'string', 'max:150'],
             'commentaire' => ['nullable', 'string'],
-            'sense' => ['required', 'string', 'in:d,c'],
+            'origin_type' => ['nullable', 'string'],
+            'origin_id' => ['nullable', 'integer'],
+            'sense' => [
+                'required',
+                'string',
+                'in:d,c',
+                function ($attribute, $value, $fail) use ($request) {
+                    $expected = $request->input('type') === 'vente' ? 'd' : 'c';
+                    if ($value !== $expected) {
+                        $fail('Le sens comptable doit être Débit pour une vente et Crédit pour un achat.');
+                    }
+                }
+            ],
         ]);
 
         try {
@@ -195,6 +232,8 @@ class ReglementController extends Controller
                 'banque_cheque' => $request->input('banque_cheque'),
                 'commentaire' => $request->input('commentaire'),
                 'sense' => $request->input('sense'),
+                'origin_type' => $request->input('origin_type'),
+                'origin_id' => $request->input('origin_id'),
             ]);
 
             return redirect()->route('reglements.index')->with('success', 'Règlement mis à jour avec succès.');
