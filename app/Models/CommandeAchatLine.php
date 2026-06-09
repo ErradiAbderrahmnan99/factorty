@@ -25,6 +25,7 @@ class CommandeAchatLine extends Model
         'rm',
         'total_ht',
         'total_ttc',
+        'demande_prix_line_id',
     ];
 
     protected $casts = [
@@ -61,5 +62,10 @@ class CommandeAchatLine extends Model
     public function lots(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(CommandeAchatLineLot::class, 'commande_achat_line_id');
+    }
+
+    public function demandePrixLine(): BelongsTo
+    {
+        return $this->belongsTo(DemandePrixLine::class, 'demande_prix_line_id');
     }
 }

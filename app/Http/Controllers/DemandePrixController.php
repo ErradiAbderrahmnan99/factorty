@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\ModeReglement;
 use App\Models\ConditionReglement;
 use App\Models\CompteBancaire;
+use App\Models\Entrepot;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ class DemandePrixController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = DemandePrix::with(['employee', 'tier', 'devise'])
+        $query = DemandePrix::with(['employee', 'tier', 'devise', 'commandesAchat'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -41,6 +42,9 @@ class DemandePrixController extends Controller
         return Inertia::render('DemandePrix/Index', [
             'demandes' => $query->paginate(10)->withQueryString(),
             'filters'  => $request->only('search', 'status'),
+            'entrepots' => Entrepot::orderBy('label')->get(),
+            'units'     => Unit::orderBy('label')->get(),
+            'products'  => Product::where('status', 'actif')->with(['purchaseUnit', 'stockUnit'])->orderBy('label')->get(),
         ]);
     }
 
@@ -194,11 +198,17 @@ class DemandePrixController extends Controller
     public function updateStatus(Request $request, DemandePrix $demandesPrix): RedirectResponse
     {
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,envoyee,repondue,annulee'],
+            'status' => ['required', 'string', 'in:brouillon,valide,annulee,commande,commande partiellement'],
         ]);
 
         $demandesPrix->update(['status' => $request->input('status')]);
         return back()->with('success', 'Statut de la demande de prix mis à jour.');
+    }
+
+    public function getDemandePrixWithLines(DemandePrix $demandesPrix)
+    {
+        $demandesPrix->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise']);
+        return response()->json($demandesPrix);
     }
 
     private function calcLines(array $lines): array

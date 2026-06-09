@@ -28,6 +28,7 @@ class CommandeAchat extends Model
         'total_ht',
         'total_tva',
         'total_ttc',
+        'demande_prix_id',
     ];
 
     protected $casts = [
@@ -66,5 +67,10 @@ class CommandeAchat extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(CommandeAchatLine::class, 'commande_achat_id');
+    }
+
+    public function demandePrix(): BelongsTo
+    {
+        return $this->belongsTo(DemandePrix::class, 'demande_prix_id');
     }
 }

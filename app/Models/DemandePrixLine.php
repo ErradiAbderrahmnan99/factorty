@@ -14,11 +14,11 @@ class DemandePrixLine extends Model
 
     protected $fillable = [
         'demande_prix_id', 'product_id', 'purchase_unit_id',
-        'tva', 'qty', 'pu_ht', 'pu_ttc', 'remise', 'rm', 'total_ht', 'total_ttc',
+        'tva', 'qty', 'qty_commande', 'pu_ht', 'pu_ttc', 'remise', 'rm', 'total_ht', 'total_ttc',
     ];
 
     protected $casts = [
-        'tva' => 'double', 'qty' => 'double', 'pu_ht' => 'double',
+        'tva' => 'double', 'qty' => 'double', 'qty_commande' => 'double', 'pu_ht' => 'double',
         'pu_ttc' => 'double', 'remise' => 'double', 'rm' => 'double',
         'total_ht' => 'double', 'total_ttc' => 'double',
     ];

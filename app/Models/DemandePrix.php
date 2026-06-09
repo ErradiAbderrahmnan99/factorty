@@ -35,4 +35,61 @@ class DemandePrix extends Model
     public function conditionReglement(): BelongsTo { return $this->belongsTo(ConditionReglement::class, 'condition_reglement_id'); }
     public function compteBancaire(): BelongsTo     { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
     public function lines(): HasMany          { return $this->hasMany(DemandePrixLine::class, 'demande_prix_id'); }
+    public function commandesAchat(): HasMany { return $this->hasMany(CommandeAchat::class, 'demande_prix_id'); }
+
+    public function recalculateOrderStatus(): void
+    {
+        $commandeIds = \App\Models\CommandeAchat::where('demande_prix_id', $this->id)
+            ->where('status', '!=', 'annulee')
+            ->pluck('id');
+
+        $commandeLines = \App\Models\CommandeAchatLine::whereIn('commande_achat_id', $commandeIds)->get();
+
+        $orderedQtyByLine = [];
+        
+        foreach ($this->lines as $line) {
+            $orderedQtyByLine[$line->id] = 0.0;
+        }
+
+        foreach ($commandeLines as $cLine) {
+            if ($cLine->demande_prix_line_id) {
+                if (isset($orderedQtyByLine[$cLine->demande_prix_line_id])) {
+                    $orderedQtyByLine[$cLine->demande_prix_line_id] += (double)$cLine->qty;
+                }
+            } else {
+                $matchingLine = $this->lines->where('product_id', $cLine->product_id)->first();
+                if ($matchingLine) {
+                    $orderedQtyByLine[$matchingLine->id] += (double)$cLine->qty;
+                }
+            }
+        }
+
+        $allFullyOrdered = true;
+        $anyOrdered = false;
+
+        foreach ($this->lines as $line) {
+            $orderedQty = (double)($orderedQtyByLine[$line->id] ?? 0);
+            $line->qty_commande = $orderedQty;
+            $line->save();
+
+            if ($orderedQty > 0) {
+                $anyOrdered = true;
+            }
+
+            if ($orderedQty < (double)$line->qty) {
+                $allFullyOrdered = false;
+            }
+        }
+
+        if ($this->lines->isEmpty()) {
+            $this->status = 'valide';
+        } elseif ($allFullyOrdered) {
+            $this->status = 'commande';
+        } elseif ($anyOrdered) {
+            $this->status = 'commande partiellement';
+        } else {
+            $this->status = 'valide';
+        }
+        $this->save();
+    }
 }

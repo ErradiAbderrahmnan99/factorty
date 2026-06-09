@@ -158,6 +158,7 @@ Route::middleware('auth')->group(function () {
     ]);
 
     // Demande Prix CRUD
+    Route::get('api/demandes-prix/{demandesPrix}', [DemandePrixController::class, 'getDemandePrixWithLines'])->name('api.demandes-prix.show');
     Route::post('demandes-prix/{demandesPrix}/toggle-status', [DemandePrixController::class, 'updateStatus'])->name('demandes-prix.toggle-status');
     Route::resource('demandes-prix', DemandePrixController::class)->parameters([
         'demandes-prix' => 'demandesPrix'

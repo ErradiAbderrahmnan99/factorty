@@ -69,7 +69,9 @@ class CommandeAchatController extends Controller
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'demande_prix_id'        => ['nullable', 'exists:demandes_prix,id'],
             'lines'                  => ['required', 'array', 'min:1'],
+            'lines.*.demande_prix_line_id' => ['nullable', 'exists:demande_prix_lines,id'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
@@ -110,21 +112,23 @@ class CommandeAchatController extends Controller
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
                 'total_ttc'              => $totalTtc,
+                'demande_prix_id'        => $request->input('demande_prix_id'),
             ]);
 
             foreach ($linesData as $lData) {
                 $createdLine = $commande->lines()->create([
-                    'product_id'       => $lData['product_id'],
-                    'entrepot_id'      => $lData['entrepot_id'],
-                    'purchase_unit_id' => $lData['purchase_unit_id'],
-                    'tva'              => $lData['tva'],
-                    'qty'              => $lData['qty'],
-                    'pu_ht'            => $lData['pu_ht'],
-                    'pu_ttc'           => $lData['pu_ttc'],
-                    'remise'           => $lData['remise'],
-                    'rm'               => $lData['rm'],
-                    'total_ht'         => $lData['total_ht'],
-                    'total_ttc'        => $lData['total_ttc'],
+                    'product_id'           => $lData['product_id'],
+                    'entrepot_id'          => $lData['entrepot_id'],
+                    'purchase_unit_id'     => $lData['purchase_unit_id'],
+                    'tva'                  => $lData['tva'],
+                    'qty'                  => $lData['qty'],
+                    'pu_ht'                => $lData['pu_ht'],
+                    'pu_ttc'               => $lData['pu_ttc'],
+                    'remise'               => $lData['remise'],
+                    'rm'                   => $lData['rm'],
+                    'total_ht'             => $lData['total_ht'],
+                    'total_ttc'            => $lData['total_ttc'],
+                    'demande_prix_line_id' => $lData['demande_prix_line_id'],
                 ]);
 
                 if (!empty($lData['lots'])) {
@@ -139,6 +143,13 @@ class CommandeAchatController extends Controller
                 }
             }
         });
+
+        if ($request->filled('demande_prix_id')) {
+            $dem = \App\Models\DemandePrix::find($request->input('demande_prix_id'));
+            if ($dem) {
+                $dem->recalculateOrderStatus();
+            }
+        }
 
         return redirect()->route('commandes-achat.index')->with('success', 'Commande d\'achat créée avec succès.');
     }
@@ -176,7 +187,9 @@ class CommandeAchatController extends Controller
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'demande_prix_id'        => ['nullable', 'exists:demandes_prix,id'],
             'lines'                  => ['required', 'array', 'min:1'],
+            'lines.*.demande_prix_line_id' => ['nullable', 'exists:demande_prix_lines,id'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
@@ -193,7 +206,10 @@ class CommandeAchatController extends Controller
             'lines.*.lots.*.expiration_date' => ['nullable', 'date'],
         ]);
 
-        DB::transaction(function () use ($request, $commandesAchat) {
+        $oldDemandeId = $commandesAchat->demande_prix_id;
+        $newDemandeId = $request->input('demande_prix_id');
+
+        DB::transaction(function () use ($request, $commandesAchat, $newDemandeId) {
             [$totalHt, $totalTtc, $linesData] = $this->calcLines($request->input('lines'));
 
             $commandesAchat->update([
@@ -209,22 +225,24 @@ class CommandeAchatController extends Controller
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
                 'total_ttc'              => $totalTtc,
+                'demande_prix_id'        => $newDemandeId,
             ]);
 
             $commandesAchat->lines()->delete();
             foreach ($linesData as $lData) {
                 $createdLine = $commandesAchat->lines()->create([
-                    'product_id'       => $lData['product_id'],
-                    'entrepot_id'      => $lData['entrepot_id'],
-                    'purchase_unit_id' => $lData['purchase_unit_id'],
-                    'tva'              => $lData['tva'],
-                    'qty'              => $lData['qty'],
-                    'pu_ht'            => $lData['pu_ht'],
-                    'pu_ttc'           => $lData['pu_ttc'],
-                    'remise'           => $lData['remise'],
-                    'rm'               => $lData['rm'],
-                    'total_ht'         => $lData['total_ht'],
-                    'total_ttc'        => $lData['total_ttc'],
+                    'product_id'           => $lData['product_id'],
+                    'entrepot_id'          => $lData['entrepot_id'],
+                    'purchase_unit_id'     => $lData['purchase_unit_id'],
+                    'tva'                  => $lData['tva'],
+                    'qty'                  => $lData['qty'],
+                    'pu_ht'                => $lData['pu_ht'],
+                    'pu_ttc'               => $lData['pu_ttc'],
+                    'remise'               => $lData['remise'],
+                    'rm'                   => $lData['rm'],
+                    'total_ht'             => $lData['total_ht'],
+                    'total_ttc'            => $lData['total_ttc'],
+                    'demande_prix_line_id' => $lData['demande_prix_line_id'],
                 ]);
 
                 if (!empty($lData['lots'])) {
@@ -240,6 +258,15 @@ class CommandeAchatController extends Controller
             }
         });
 
+        if ($newDemandeId) {
+            $dem = \App\Models\DemandePrix::find($newDemandeId);
+            if ($dem) { $dem->recalculateOrderStatus(); }
+        }
+        if ($oldDemandeId && $oldDemandeId != $newDemandeId) {
+            $dem = \App\Models\DemandePrix::find($oldDemandeId);
+            if ($dem) { $dem->recalculateOrderStatus(); }
+        }
+
         return redirect()->route('commandes-achat.index')->with('success', 'Commande d\'achat mise à jour avec succès.');
     }
 
@@ -249,7 +276,14 @@ class CommandeAchatController extends Controller
             return back()->with('error', 'Une commande reçue ne peut pas être supprimée.');
         }
 
+        $demandeId = $commandesAchat->demande_prix_id;
         $commandesAchat->delete();
+
+        if ($demandeId) {
+            $dem = \App\Models\DemandePrix::find($demandeId);
+            if ($dem) { $dem->recalculateOrderStatus(); }
+        }
+
         return redirect()->route('commandes-achat.index')->with('success', 'Commande d\'achat supprimée avec succès.');
     }
 
@@ -260,6 +294,12 @@ class CommandeAchatController extends Controller
         ]);
 
         $commandesAchat->update(['status' => $request->input('status')]);
+
+        if ($commandesAchat->demande_prix_id) {
+            $dem = \App\Models\DemandePrix::find($commandesAchat->demande_prix_id);
+            if ($dem) { $dem->recalculateOrderStatus(); }
+        }
+
         return back()->with('success', 'Statut de la commande mis à jour.');
     }
 
@@ -285,6 +325,7 @@ class CommandeAchatController extends Controller
             $totalTtc += $lineTotalTtc;
 
             $linesData[] = [
+                'demande_prix_line_id' => $line['demande_prix_line_id'] ?? null,
                 'product_id'       => $line['product_id'],
                 'entrepot_id'      => $line['entrepot_id'],
                 'purchase_unit_id' => $line['purchase_unit_id'] ?? null,
