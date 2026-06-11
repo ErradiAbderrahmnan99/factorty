@@ -16,7 +16,7 @@ interface FactureAchat {
     date_echeance: string | null;
     total_ht: number;
     total_ttc: number;
-    status: 'brouillon' | 'payee' | 'payee partiellement' | 'annulee';
+    status: 'brouillon' | 'validee' | 'payee' | 'payee partiellement' | 'annulee';
     devise: Devise;
     reglements_sum_montant_ttc?: number | null;
     mode_reglement_id?: number | null;
@@ -35,6 +35,7 @@ interface PaginatedFactures {
 
 const STATUS_STYLING: Record<string, {badge: string; dot: string; label: string}> = {
     'brouillon': { badge: 'bg-slate-500/10 text-slate-650 dark:text-slate-400 border-slate-500/20',   dot: 'bg-slate-500',   label: 'Brouillon' },
+    'validee':   { badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',            dot: 'bg-sky-500',    label: 'Validée' },
     'payee':     { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Payée' },
     'payee partiellement': { badge: 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border-indigo-500/20', dot: 'bg-indigo-500', label: 'Payée Partiellement' },
     'annulee':   { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20',        dot: 'bg-rose-500',   label: 'Annulée' },
@@ -126,6 +127,14 @@ export default function Index({
 
     const handlePaymentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (paymentInvoice) {
+            const remaining = paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0);
+            const inputVal = parseFloat(paymentForm.data.montant_ttc);
+            if (inputVal > remaining + 0.0001) {
+                paymentForm.setError('montant_ttc', `Le montant ne peut pas dépasser le reste à payer (${remaining.toFixed(2)} DH).`);
+                return;
+            }
+        }
         paymentForm.post(route('reglements.store'), {
             onSuccess: () => {
                 setPaymentInvoice(null);
@@ -199,7 +208,9 @@ export default function Index({
                         value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                         <option value="">Tous les statuts</option>
                         <option value="brouillon">Brouillon</option>
+                        <option value="validee">Validée</option>
                         <option value="payee">Payée</option>
+                        <option value="payee partiellement">Payée Partiellement</option>
                         <option value="annulee">Annulée</option>
                     </select>
                 </div>
@@ -244,18 +255,18 @@ export default function Index({
                                                 {item.total_ttc.toFixed(2)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                {item.status === 'brouillon' ? (
+                                                {item.status === 'payee' || item.status === 'payee partiellement' ? (
+                                                    <span className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                    </span>
+                                                ) : (
                                                     <button onClick={() => setStatusTarget(item)}
                                                         className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
                                                         <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
                                                         <span>{styling.label}</span>
                                                         <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
                                                     </button>
-                                                ) : (
-                                                    <span className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${styling.badge}`}>
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
-                                                        <span>{styling.label}</span>
-                                                    </span>
                                                 )}
                                             </td>
                                             <td className="py-4 px-6">
@@ -268,17 +279,6 @@ export default function Index({
                                                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                                  </svg>
                                                              </Link>
-                                                             <button
-                                                                 onClick={() => setPaymentInvoice(item)}
-                                                                 className="p-1.5 text-slate-455 hover:text-emerald-650 hover:bg-emerald-500/10 rounded-xl transition-all"
-                                                                 title="Ajouter un règlement"
-                                                             >
-                                                                 <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                     <rect x="2" y="6" width="20" height="12" rx="2" />
-                                                                     <circle cx="12" cy="12" r="2.5" />
-                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12h.01M18 12h.01" />
-                                                                 </svg>
-                                                             </button>
                                                              <button onClick={() => setDeleteTarget(item)}
                                                                  className="p-1.5 text-slate-455 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all" title="Supprimer">
                                                                  <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,13 +290,13 @@ export default function Index({
                                                      {item.status !== 'brouillon' && (
                                                          <div className="flex items-center space-x-1">
                                                              <Link href={route('factures-achat.edit', item.id)}
-                                                                 className="p-1.5 text-slate-450 hover:text-indigo-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Consulter les détails">
+                                                                 className="p-1.5 text-slate-455 hover:text-indigo-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Consulter les détails">
                                                                  <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                  </svg>
                                                              </Link>
-                                                             {['payee partiellement'].includes(item.status) && (
+                                                             {['validee', 'payee partiellement'].includes(item.status) && (
                                                                  <button
                                                                      onClick={() => setPaymentInvoice(item)}
                                                                      className="p-1.5 text-slate-455 hover:text-emerald-650 hover:bg-emerald-500/10 rounded-xl transition-all"
@@ -360,7 +360,7 @@ export default function Index({
                             </div>
                             <p className="text-xs text-slate-500 mb-5">Modifier le statut de la facture <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                             <div className="space-y-2 mb-6">
-                                {(['brouillon', 'payee', 'annulee'] as const).map(statusOption => {
+                                {(['brouillon', 'validee', 'annulee'] as const).map(statusOption => {
                                     const st = STATUS_STYLING[statusOption];
                                     return (
                                         <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
@@ -451,8 +451,19 @@ export default function Index({
                                                 type="number"
                                                 step="any"
                                                 min="0.0001"
+                                                max={paymentInvoice ? (paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0)).toFixed(4) : undefined}
                                                 value={paymentForm.data.montant_ttc}
-                                                onChange={(e) => paymentForm.setData('montant_ttc', e.target.value)}
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    if (paymentInvoice && val !== '') {
+                                                        const remaining = paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0);
+                                                        const floatVal = parseFloat(val);
+                                                        if (!isNaN(floatVal) && floatVal > remaining) {
+                                                            val = remaining.toFixed(4);
+                                                        }
+                                                    }
+                                                    paymentForm.setData('montant_ttc', val);
+                                                }}
                                                 required
                                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-black text-slate-850 dark:text-slate-200 py-3 pl-4 pr-12 focus:outline-none focus:border-indigo-500 transition-all"
                                             />

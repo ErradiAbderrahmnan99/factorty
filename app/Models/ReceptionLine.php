@@ -26,6 +26,7 @@ class ReceptionLine extends Model
         'rm',
         'total_ht',
         'total_ttc',
+        'commande_achat_line_id',
     ];
 
     protected $casts = [
@@ -62,5 +63,10 @@ class ReceptionLine extends Model
     public function lots(): HasMany
     {
         return $this->hasMany(ReceptionLineLot::class, 'reception_line_id');
+    }
+
+    public function commandeAchatLine(): BelongsTo
+    {
+        return $this->belongsTo(CommandeAchatLine::class, 'commande_achat_line_id');
     }
 }

@@ -127,6 +127,28 @@ class ReglementController extends Controller
             ],
         ]);
 
+        $originType = $request->input('origin_type');
+        $originId = $request->input('origin_id');
+        if ($originType && $originId && in_array($originType, ['App\\Models\\FactureVente', 'App\\Models\\FactureAchat', 'App\\Models\\AvoirVente', 'App\\Models\\AvoirAchat'])) {
+            $document = $originType::find($originId);
+            if ($document) {
+                $query = Reglement::where('origin_type', $originType)
+                    ->where('origin_id', $originId);
+                $alreadyPaid = (double)$query->sum('montant_ttc');
+                $remaining = (double)$document->total_ttc - $alreadyPaid;
+                
+                if ($remaining < 0) {
+                    $remaining = 0.0;
+                }
+
+                if (round((double)$request->input('montant_ttc'), 4) > round($remaining, 4)) {
+                    return back()->withErrors([
+                        'montant_ttc' => "Le montant du règlement (" . number_format($request->input('montant_ttc'), 2) . ") dépasse le montant restant à payer de ce document (" . number_format($remaining, 2) . ")."
+                    ])->withInput();
+                }
+            }
+        }
+
         try {
             $type = $request->input('type');
             $date = date('Ym', strtotime($request->input('date_reglement')));
@@ -230,6 +252,29 @@ class ReglementController extends Controller
                 }
             ],
         ]);
+
+        $originType = $request->input('origin_type');
+        $originId = $request->input('origin_id');
+        if ($originType && $originId && in_array($originType, ['App\\Models\\FactureVente', 'App\\Models\\FactureAchat', 'App\\Models\\AvoirVente', 'App\\Models\\AvoirAchat'])) {
+            $document = $originType::find($originId);
+            if ($document) {
+                $query = Reglement::where('origin_type', $originType)
+                    ->where('origin_id', $originId)
+                    ->where('id', '!=', $reglement->id);
+                $alreadyPaid = (double)$query->sum('montant_ttc');
+                $remaining = (double)$document->total_ttc - $alreadyPaid;
+                
+                if ($remaining < 0) {
+                    $remaining = 0.0;
+                }
+
+                if (round((double)$request->input('montant_ttc'), 4) > round($remaining, 4)) {
+                    return back()->withErrors([
+                        'montant_ttc' => "Le montant du règlement (" . number_format($request->input('montant_ttc'), 2) . ") dépasse le montant restant à payer de ce document (" . number_format($remaining, 2) . ")."
+                    ])->withInput();
+                }
+            }
+        }
 
         try {
             $reglement->update([

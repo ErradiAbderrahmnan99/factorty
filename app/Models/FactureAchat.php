@@ -35,6 +35,7 @@ class FactureAchat extends Model
         'date_livraison',
         'note_public',
         'note_private',
+        'reception_id',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class FactureAchat extends Model
         'total_tva'       => 'double',
         'total_ttc'       => 'double',
         'delai_livraison' => 'integer',
+        'reception_id'    => 'integer',
     ];
 
     public function tier(): BelongsTo
@@ -87,6 +89,11 @@ class FactureAchat extends Model
         return $this->hasMany(FactureAchatLine::class, 'facture_achat_id');
     }
 
+    public function reception(): BelongsTo
+    {
+        return $this->belongsTo(Reception::class, 'reception_id');
+    }
+
     public function reglements(): MorphMany
     {
         return $this->morphMany(Reglement::class, 'origin');
@@ -104,7 +111,7 @@ class FactureAchat extends Model
             $this->updateQuietly(['status' => 'payee partiellement']);
         } else {
             if (in_array($this->status, ['payee', 'payee partiellement'])) {
-                $this->updateQuietly(['status' => 'brouillon']);
+                $this->updateQuietly(['status' => 'validee']);
             }
         }
     }

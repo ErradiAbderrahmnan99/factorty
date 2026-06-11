@@ -37,4 +37,31 @@ class AvoirAchat extends Model
     public function compteBancaire(): BelongsTo      { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(AvoirAchatLine::class, 'avoir_achat_id'); }
+    public function reglements(): \Illuminate\Database\Eloquent\Relations\MorphMany  { return $this->morphMany(Reglement::class, 'origin'); }
+
+    public function recalculatePaymentStatus(): void
+    {
+        $totalPaid = Reglement::where('origin_type', self::class)
+            ->where('origin_id', $this->id)
+            ->sum('montant_ttc');
+
+        if ($totalPaid >= $this->total_ttc) {
+            $this->updateQuietly(['status' => 'paye']);
+        } elseif ($totalPaid > 0) {
+            $this->updateQuietly(['status' => 'paye partiellement']);
+        } else {
+            if (in_array($this->status, ['paye', 'paye partiellement'])) {
+                $this->updateQuietly(['status' => 'valide']);
+            }
+        }
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($avoir) {
+            if ($avoir->isDirty('total_ttc')) {
+                $avoir->recalculatePaymentStatus();
+            }
+        });
+    }
 }

@@ -22,7 +22,7 @@ class CommandeAchatController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = CommandeAchat::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'compteBancaire'])
+        $query = CommandeAchat::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'compteBancaire', 'receptions'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -40,6 +40,9 @@ class CommandeAchatController extends Controller
         return Inertia::render('CommandeAchat/Index', [
             'commandes' => $query->paginate(10)->withQueryString(),
             'filters'   => $request->only('search', 'status'),
+            'products'  => Product::where('status', 'actif')->with(['purchaseUnit', 'stockUnit'])->orderBy('label')->get(),
+            'entrepots' => Entrepot::orderBy('label')->get(),
+            'units'     => Unit::orderBy('label')->get(),
         ]);
     }
 
@@ -301,6 +304,12 @@ class CommandeAchatController extends Controller
         }
 
         return back()->with('success', 'Statut de la commande mis à jour.');
+    }
+
+    public function getCommandeWithLines(CommandeAchat $commandesAchat)
+    {
+        $commandesAchat->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise']);
+        return response()->json($commandesAchat);
     }
 
     private function calcLines(array $lines): array

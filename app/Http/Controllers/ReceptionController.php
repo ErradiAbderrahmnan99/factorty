@@ -24,7 +24,7 @@ class ReceptionController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Reception::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'compteBancaire'])
+        $query = Reception::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'compteBancaire', 'commandeAchat', 'factures'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -70,6 +70,7 @@ class ReceptionController extends Controller
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'commande_achat_id'      => ['nullable', 'exists:commandes_achat,id'],
             'lines'                  => ['required', 'array', 'min:1'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
@@ -80,6 +81,7 @@ class ReceptionController extends Controller
             'lines.*.pu_ttc'         => ['required', 'numeric', 'min:0'],
             'lines.*.remise'         => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.rm'             => ['nullable', 'numeric', 'min:0'],
+            'lines.*.commande_achat_line_id' => ['nullable', 'exists:commande_achat_lines,id'],
             'lines.*.lots'           => ['nullable', 'array'],
             'lines.*.lots.*.lot_number' => ['required_with:lines.*.lots', 'string'],
             'lines.*.lots.*.quantity' => ['required_with:lines.*.lots', 'numeric', 'min:0.0001'],
@@ -87,7 +89,7 @@ class ReceptionController extends Controller
             'lines.*.lots.*.expiration_date' => ['nullable', 'date'],
         ]);
 
-        DB::transaction(function () use ($request) {
+        $reception = DB::transaction(function () use ($request) {
             // Generate Reference automatically: BR-YYYYMM-XXXX
             $date  = date('Ym', strtotime($request->input('date_reception')));
             $count = Reception::whereYear('date_reception', date('Y', strtotime($request->input('date_reception'))))
@@ -110,6 +112,7 @@ class ReceptionController extends Controller
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
                 'total_ttc'              => $totalTtc,
+                'commande_achat_id'      => $request->input('commande_achat_id'),
             ]);
 
             foreach ($linesData as $lData) {
@@ -125,6 +128,7 @@ class ReceptionController extends Controller
                     'rm'               => $lData['rm'],
                     'total_ht'         => $lData['total_ht'],
                     'total_ttc'        => $lData['total_ttc'],
+                    'commande_achat_line_id' => $lData['commande_achat_line_id'],
                 ]);
 
                 if (!empty($lData['lots'])) {
@@ -138,7 +142,13 @@ class ReceptionController extends Controller
                     }
                 }
             }
+
+            return $reception;
         });
+
+        if ($reception->commande_achat_id) {
+            $reception->commandeAchat->recalculateOrderStatus();
+        }
 
         return redirect()->route('receptions.index')->with('success', 'Bon de réception créé avec succès.');
     }
@@ -175,6 +185,7 @@ class ReceptionController extends Controller
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'commande_achat_id'      => ['nullable', 'exists:commandes_achat,id'],
             'lines'                  => ['required', 'array', 'min:1'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
@@ -185,12 +196,15 @@ class ReceptionController extends Controller
             'lines.*.pu_ttc'         => ['required', 'numeric', 'min:0'],
             'lines.*.remise'         => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.rm'             => ['nullable', 'numeric', 'min:0'],
+            'lines.*.commande_achat_line_id' => ['nullable', 'exists:commande_achat_lines,id'],
             'lines.*.lots'           => ['nullable', 'array'],
             'lines.*.lots.*.lot_number' => ['required_with:lines.*.lots', 'string'],
             'lines.*.lots.*.quantity' => ['required_with:lines.*.lots', 'numeric', 'min:0.0001'],
             'lines.*.lots.*.fabrication_date' => ['nullable', 'date'],
             'lines.*.lots.*.expiration_date' => ['nullable', 'date'],
         ]);
+
+        $oldCommandeAchatId = $reception->commande_achat_id;
 
         DB::transaction(function () use ($request, $reception) {
             [$totalHt, $totalTtc, $linesData] = $this->calcLines($request->input('lines'));
@@ -207,6 +221,7 @@ class ReceptionController extends Controller
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
                 'total_ttc'              => $totalTtc,
+                'commande_achat_id'      => $request->input('commande_achat_id'),
             ]);
 
             // Recreate Lines
@@ -225,6 +240,7 @@ class ReceptionController extends Controller
                     'rm'               => $lData['rm'],
                     'total_ht'         => $lData['total_ht'],
                     'total_ttc'        => $lData['total_ttc'],
+                    'commande_achat_line_id' => $lData['commande_achat_line_id'],
                 ]);
 
                 if (!empty($lData['lots'])) {
@@ -240,6 +256,14 @@ class ReceptionController extends Controller
             }
         });
 
+        if ($oldCommandeAchatId) {
+            $oldCmd = \App\Models\CommandeAchat::find($oldCommandeAchatId);
+            if ($oldCmd) { $oldCmd->recalculateOrderStatus(); }
+        }
+        if ($reception->commande_achat_id && $reception->commande_achat_id != $oldCommandeAchatId) {
+            $reception->commandeAchat->recalculateOrderStatus();
+        }
+
         return redirect()->route('receptions.index')->with('success', 'Bon de réception mis à jour avec succès.');
     }
 
@@ -249,7 +273,13 @@ class ReceptionController extends Controller
             return back()->with('error', 'Un bon de réception validé ne peut pas être supprimé.');
         }
 
+        $commandeAchat = $reception->commandeAchat;
         $reception->delete();
+
+        if ($commandeAchat) {
+            $commandeAchat->recalculateOrderStatus();
+        }
+
         return redirect()->route('receptions.index')->with('success', 'Bon de réception supprimé avec succès.');
     }
 
@@ -278,6 +308,10 @@ class ReceptionController extends Controller
             }
         } else {
             $reception->update(['status' => $newStatus]);
+        }
+
+        if ($reception->commande_achat_id) {
+            $reception->commandeAchat->recalculateOrderStatus();
         }
 
         return back()->with('success', 'Statut du bon de réception mis à jour.');
@@ -317,9 +351,33 @@ class ReceptionController extends Controller
                 'total_ht'         => $lineTotalHt,
                 'total_ttc'        => $lineTotalTtc,
                 'lots'             => $line['lots'] ?? [],
+                'commande_achat_line_id' => $line['commande_achat_line_id'] ?? null,
             ];
         }
 
         return [$totalHt, $totalTtc, $linesData];
+    }
+
+    public function getReceptionWithLines(Reception $reception)
+    {
+        $reception->load(['lines.product', 'lines.purchaseUnit']);
+        
+        $factureIds = \App\Models\FactureAchat::where('reception_id', $reception->id)
+            ->where('status', '!=', 'annulee')
+            ->pluck('id');
+
+        $invoicedQuantities = \App\Models\FactureAchatLine::whereIn('facture_achat_id', $factureIds)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(qty) as total_qty')
+            ->pluck('total_qty', 'product_id');
+
+        $lines = $reception->lines->map(function ($line) use ($invoicedQuantities) {
+            $line->invoiced_qty = (double)($invoicedQuantities[$line->product_id] ?? 0);
+            return $line;
+        });
+
+        $reception->setRelation('lines', $lines);
+
+        return response()->json($reception);
     }
 }

@@ -15,6 +15,7 @@ use App\Models\Origine;
 use App\Models\TypeApprobateur;
 use App\Models\CompteBancaire;
 use App\Models\FactureAchat;
+use App\Models\StatutReglement;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class AvoirAchatController extends Controller
     public function index(Request $request): Response
     {
         $query = AvoirAchat::with(['tier', 'devise', 'modeReglement', 'conditionReglement', 'origine', 'compteBancaire', 'approbateur.typeApprobateur'])
+            ->withSum('reglements', 'montant_ttc')
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -44,6 +46,10 @@ class AvoirAchatController extends Controller
         return Inertia::render('AvoirAchat/Index', [
             'avoirs'  => $query->paginate(10)->withQueryString(),
             'filters' => $request->only('search', 'status'),
+            'tiers'   => Tier::where('status', 'actif')->orderBy('label')->get(),
+            'modes'   => ModeReglement::orderBy('label')->get(),
+            'comptes' => CompteBancaire::orderBy('label')->get(),
+            'statuts' => StatutReglement::orderBy('label')->get(),
         ]);
     }
 
@@ -150,7 +156,7 @@ class AvoirAchatController extends Controller
 
     public function update(Request $request, AvoirAchat $avoirsAchat): RedirectResponse
     {
-        if ($avoirsAchat->status === 'valide') {
+        if (in_array($avoirsAchat->status, ['valide', 'paye', 'paye partiellement'])) {
             return back()->with('error', 'Cet avoir ne peut plus être modifié.');
         }
 
@@ -210,8 +216,8 @@ class AvoirAchatController extends Controller
 
     public function destroy(AvoirAchat $avoirsAchat): RedirectResponse
     {
-        if ($avoirsAchat->status === 'valide') {
-            return back()->with('error', 'Un avoir validé ne peut pas être supprimé.');
+        if (in_array($avoirsAchat->status, ['valide', 'paye', 'paye partiellement'])) {
+            return back()->with('error', 'Un avoir validé ou payé ne peut pas être supprimé.');
         }
         $avoirsAchat->delete();
         return redirect()->route('avoirs-achat.index')->with('success', 'Avoir fournisseur supprimé avec succès.');
@@ -219,6 +225,14 @@ class AvoirAchatController extends Controller
 
     public function updateStatus(Request $request, AvoirAchat $avoirsAchat): RedirectResponse
     {
+        if (in_array($avoirsAchat->status, ['paye', 'paye partiellement'])) {
+            return back()->with('error', 'Le statut d\'un avoir payé ou partiellement payé ne peut pas être modifié manuellement.');
+        }
+
+        if ($avoirsAchat->status === 'annule') {
+            return back()->with('error', 'Un avoir annulé ne peut plus changer de statut.');
+        }
+
         $request->validate([
             'status' => ['required', 'string', 'in:brouillon,valide,annule'],
         ]);

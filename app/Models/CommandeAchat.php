@@ -73,4 +73,47 @@ class CommandeAchat extends Model
     {
         return $this->belongsTo(DemandePrix::class, 'demande_prix_id');
     }
+
+    public function receptions(): HasMany
+    {
+        return $this->hasMany(Reception::class, 'commande_achat_id');
+    }
+
+    public function recalculateOrderStatus(): void
+    {
+        foreach ($this->lines as $line) {
+            $receivedQty = ReceptionLine::where('commande_achat_line_id', $line->id)
+                ->whereHas('reception', function ($query) {
+                    $query->where('status', '!=', 'annulee');
+                })->sum('qty');
+
+            $line->update(['qty_receptionnee' => $receivedQty]);
+        }
+
+        $allFullyReceived = true;
+        $anyReceived = false;
+
+        foreach ($this->lines as $line) {
+            $receivedQty = (double)$line->qty_receptionnee;
+            if ($receivedQty > 0) {
+                $anyReceived = true;
+            }
+            if ($receivedQty < (double)$line->qty) {
+                $allFullyReceived = false;
+            }
+        }
+
+        if (in_array($this->status, ['commandee', 'recue', 'recue partiellement'])) {
+            if ($this->lines->isEmpty()) {
+                $this->status = 'commandee';
+            } elseif ($allFullyReceived) {
+                $this->status = 'recue';
+            } elseif ($anyReceived) {
+                $this->status = 'recue partiellement';
+            } else {
+                $this->status = 'commandee';
+            }
+            $this->save();
+        }
+    }
 }

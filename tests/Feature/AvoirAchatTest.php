@@ -274,7 +274,7 @@ class AvoirAchatTest extends TestCase
             ->delete(route('avoirs-achat.destroy', $avoir->id));
 
         $response->assertRedirect(route('avoirs-achat.index'));
-        $response->assertSessionHas('error', 'Un avoir validé ne peut pas être supprimé.');
+        $response->assertSessionHas('error', 'Un avoir validé ou payé ne peut pas être supprimé.');
         $this->assertDatabaseHas('avoirs_achat', ['id' => $avoir->id]);
     }
 }

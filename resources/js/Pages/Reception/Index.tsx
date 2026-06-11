@@ -1,9 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
+
+interface Facture { id: number; ref: string; }
 
 interface Reception {
     id: number;
@@ -12,8 +15,36 @@ interface Reception {
     date_reception: string;
     total_ht: number;
     total_ttc: number;
-    status: 'brouillon' | 'valide' | 'annulee';
+    status: 'brouillon' | 'valide' | 'annulee' | 'facturé' | 'facturé partiellement';
     devise: Devise;
+    commande_achat?: { id: number; ref: string } | null;
+    factures?: Facture[] | null;
+}
+
+interface CloneLine {
+    product_id: string;
+    qty: number | string;
+    max_qty: number;
+    purchase_unit_id: string;
+    tva: number;
+    pu_ht: number;
+    pu_ttc: number;
+    remise: number;
+    rm: number;
+    total_ht: number;
+    total_ttc: number;
+    product: any;
+    purchaseUnit: any;
+}
+
+interface CloneFormState {
+    tier_id: string;
+    commercial: string;
+    date_facture: string;
+    date_echeance: string;
+    devise_id: string;
+    reception_id: string;
+    lines: CloneLine[];
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -28,8 +59,10 @@ interface PaginatedReceptions {
 }
 
 const STATUS_STYLING: Record<string, {badge: string; dot: string; label: string}> = {
-    'brouillon': { badge: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',   dot: 'bg-slate-500',   label: 'Brouillon' },
+    'brouillon': { badge: 'bg-slate-500/10 text-slate-650 dark:text-slate-400 border-slate-500/20',   dot: 'bg-slate-500',   label: 'Brouillon' },
     'valide':    { badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border-emerald-500/20', dot: 'bg-emerald-500', label: 'Validé' },
+    'facturé':   { badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20', dot: 'bg-indigo-505', label: 'Facturé' },
+    'facturé partiellement': { badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20', dot: 'bg-sky-505', label: 'Facturé Partiellement' },
     'annulee':   { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20',        dot: 'bg-rose-500',   label: 'Annulé' },
 };
 
@@ -41,6 +74,11 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
     const [deleteTarget, setDeleteTarget] = useState<Reception | null>(null);
     const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const isFirstRender = useRef(true);
+
+    const [cloneForm, setCloneForm] = useState<CloneFormState | null>(null);
+    const [cloneTarget, setCloneTarget] = useState<Reception | null>(null);
+    const [isSubmittingClone, setIsSubmittingClone] = useState(false);
+    const [cloneErrors, setCloneErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (flash?.success) {
@@ -68,6 +106,154 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
         router.post(route('receptions.toggle-status', id), { status: newStatus }, {
             onSuccess: () => setStatusTarget(null),
             preserveScroll: true,
+        });
+    };
+
+    const startCloning = async (reception: Reception) => {
+        try {
+            const response = await axios.get(`/api/receptions/${reception.id}`);
+            const data = response.data;
+            setCloneTarget(reception);
+            
+            const lines = data.lines
+                .map((line: any) => {
+                    const remainingQty = Math.max(0, Number(line.qty) - (Number(line.invoiced_qty) || 0));
+                    return {
+                        product_id: line.product_id.toString(),
+                        qty: remainingQty.toString(),
+                        max_qty: remainingQty,
+                        purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
+                        tva: Number(line.tva) || 20.00,
+                        pu_ht: Number(line.pu_ht),
+                        pu_ttc: Number(line.pu_ttc),
+                        remise: Number(line.remise) || 0,
+                        rm: Number(line.rm) || 0,
+                        total_ht: Number(line.total_ht),
+                        total_ttc: Number(line.total_ttc),
+                        product: line.product,
+                        purchaseUnit: line.purchase_unit
+                    };
+                });
+
+            setCloneForm({
+                tier_id: data.tier_id.toString(),
+                commercial: data.commercial || '',
+                date_facture: new Date().toISOString().split('T')[0],
+                date_echeance: '',
+                devise_id: data.devise_id.toString(),
+                reception_id: data.id.toString(),
+                lines: lines
+            });
+        } catch (error) {
+            console.error("Error fetching reception details for conversion", error);
+            alert("Erreur lors de la récupération des détails du bon de réception.");
+        }
+    };
+
+    const handleCloneLineQtyChange = (index: number, val: string) => {
+        if (!cloneForm) return;
+        const line = cloneForm.lines[index];
+        const numQty = Number(val) || 0;
+        
+        let qtyToUse = numQty;
+        let finalVal = val;
+        
+        if (numQty > line.max_qty) {
+            qtyToUse = line.max_qty;
+            finalVal = line.max_qty.toString();
+        } else if (numQty < 0) {
+            qtyToUse = 0;
+            finalVal = "0";
+        }
+
+        const updatedLines = [...cloneForm.lines];
+        
+        const lineHt = qtyToUse * line.pu_ht;
+        const discount = (lineHt * line.remise / 100) + line.rm;
+        const total_ht = Math.max(0, lineHt - discount);
+        const total_ttc = total_ht * (1 + line.tva / 100);
+
+        updatedLines[index] = {
+            ...line,
+            qty: finalVal,
+            total_ht,
+            total_ttc,
+        };
+
+        setCloneForm({
+            ...cloneForm,
+            lines: updatedLines
+        });
+    };
+
+    const handleCloneLinePuChange = (index: number, val: string) => {
+        if (!cloneForm) return;
+        const line = cloneForm.lines[index];
+        const pu_ht = Math.max(0, Number(val) || 0);
+        const pu_ttc = pu_ht * (1 + line.tva / 100);
+
+        const updatedLines = [...cloneForm.lines];
+        
+        const numQty = Number(line.qty) || 0;
+        const lineHt = numQty * pu_ht;
+        const discount = (lineHt * line.remise / 100) + line.rm;
+        const total_ht = Math.max(0, lineHt - discount);
+        const total_ttc = total_ht * (1 + line.tva / 100);
+
+        updatedLines[index] = {
+            ...line,
+            pu_ht,
+            pu_ttc,
+            total_ht,
+            total_ttc,
+        };
+
+        setCloneForm({
+            ...cloneForm,
+            lines: updatedLines
+        });
+    };
+
+    const submitClone = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!cloneForm) return;
+
+        const activeLines = cloneForm.lines
+            .filter(l => (Number(l.qty) || 0) > 0)
+            .map(l => {
+                const finalQty = Math.min(l.max_qty, Math.max(0.0001, Number(l.qty) || 0));
+                return {
+                    ...l,
+                    qty: finalQty
+                };
+            });
+
+        if (activeLines.length === 0) {
+            alert("Veuillez saisir une quantité supérieure à 0 pour au moins un produit.");
+            return;
+        }
+
+        setIsSubmittingClone(true);
+        setCloneErrors({});
+
+        const payload = {
+            ...cloneForm,
+            lines: activeLines
+        };
+
+        router.post(route('factures-achat.store'), payload as any, {
+            onSuccess: () => {
+                setCloneForm(null);
+                setCloneTarget(null);
+                setIsSubmittingClone(false);
+            },
+            onError: (errs) => {
+                setCloneErrors(errs);
+                setIsSubmittingClone(false);
+            },
+            onFinish: () => {
+                setIsSubmittingClone(false);
+            }
         });
     };
 
@@ -139,7 +325,33 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                     const styling = STATUS_STYLING[item.status] || STATUS_STYLING.brouillon;
                                     return (
                                         <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
-                                            <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-slate-200">{item.ref}</td>
+                                            <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-slate-200">
+                                                {item.ref}
+                                                {item.commande_achat && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Commande liée :</span>
+                                                        <a href="/commandes-achat"
+                                                            className="text-[9px] font-extrabold text-indigo-500 hover:text-indigo-750 hover:underline block"
+                                                            title={`Voir la Commande ${item.commande_achat.ref}`}
+                                                        >
+                                                            {item.commande_achat.ref}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {item.factures && item.factures.length > 0 && (
+                                                    <div className="mt-1 flex flex-col space-y-0.5">
+                                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Factures liées :</span>
+                                                        {item.factures.map(facture => (
+                                                            <a key={facture.id} href={`/factures-achat`}
+                                                                className="text-[9px] font-extrabold text-teal-600 hover:text-teal-750 hover:underline block"
+                                                                title={`Voir la Facture ${facture.ref}`}
+                                                            >
+                                                                {facture.ref}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="py-4 px-6">
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.tier ? item.tier.label : '—'}</div>
                                             </td>
@@ -170,7 +382,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                                     {item.status === 'brouillon' && (
                                                         <>
                                                             <Link href={route('receptions.edit', item.id)}
-                                                                className="p-1.5 text-slate-450 hover:text-indigo-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Modifier">
+                                                                className="p-1.5 text-slate-450 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Modifier">
                                                                 <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                                 </svg>
@@ -186,12 +398,20 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                                     {item.status !== 'brouillon' && (
                                                         <div className="flex items-center space-x-1">
                                                             <Link href={route('receptions.edit', item.id)}
-                                                                className="p-1.5 text-slate-450 hover:text-indigo-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Consulter les détails">
+                                                                className="p-1.5 text-slate-450 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Consulter les détails">
                                                                 <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
                                                             </Link>
+                                                            {['valide', 'facturé partiellement'].includes(item.status) && (
+                                                                <button onClick={() => startCloning(item)}
+                                                                    className="p-1.5 text-teal-600 hover:text-teal-700 hover:bg-teal-500/10 rounded-xl transition-all" title="Convertir en Facture">
+                                                                    <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -221,7 +441,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                     if (!link.url) return <span key={idx} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 dark:text-slate-700 select-none cursor-not-allowed border border-transparent">{renderLabel()}</span>;
                                     return (
                                         <Link key={idx} href={link.url} preserveScroll
-                                            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150 active:scale-90 border ${link.active ? 'bg-indigo-650 text-white border-indigo-650 shadow-lg shadow-indigo-600/20' : 'bg-transparent text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-800 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'}`}>
+                                            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150 active:scale-90 border ${link.active ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' : 'bg-transparent text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-800 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'}`}>
                                             {renderLabel()}
                                         </Link>
                                     );
@@ -233,7 +453,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
 
                 {/* Change Status Modal */}
                 {statusTarget && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-fade-in">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/60 backdrop-blur-md p-4 animate-fade-in">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-[2rem] shadow-3xl p-6">
                             <div className="flex items-center space-x-3 text-indigo-500 mb-3">
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -241,13 +461,23 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                 </svg>
                                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">Modifier le statut</h3>
                             </div>
+                            {['valide', 'facturé', 'facturé partiellement'].includes(statusTarget.status) ? (
+                                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
+                                    ⚠️ Ce bon de réception a été validé ou facturé. Son statut est définitif et ne peut plus être modifié.
+                                </div>
+                            ) : (
+                                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
+                                    ⚠️ Passer à <strong>Validé</strong> ajoutera automatiquement le stock à l'entrepôt. Cette action est irréversible.
+                                </div>
+                            )}
                             <p className="text-xs text-slate-500 mb-5">Modifier le statut du bon de réception <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
                             <div className="space-y-2 mb-6">
                                 {(['brouillon', 'valide', 'annulee'] as const).map(statusOption => {
                                     const st = STATUS_STYLING[statusOption];
+                                    const isDisabled = ['valide', 'facturé', 'facturé partiellement'].includes(statusTarget.status) && statusOption !== statusTarget.status;
                                     return (
-                                        <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all hover:bg-slate-55/50 dark:hover:bg-slate-800/50 active:scale-[0.99] ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-5/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
+                                        <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
+                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99]'} ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-5/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
                                             <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
                                                 <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                                 <span>{st.label}</span>
@@ -286,6 +516,156 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                     Supprimer
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Conversion Modal (Reception -> Facture) */}
+                {cloneForm && cloneTarget && (
+                    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 overflow-y-auto">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-5xl rounded-[2.5rem] shadow-3xl p-6 lg:p-8 my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-4 mb-6">
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                                        Convertir le Bon de Réception en Facture d'Achat
+                                    </h3>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                                        Bon de Réception Référence: {cloneTarget.ref}
+                                    </p>
+                                </div>
+                                <button type="button" onClick={() => { setCloneForm(null); setCloneTarget(null); }}
+                                    className="p-1.5 text-slate-400 hover:text-slate-655 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
+                                    <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <form onSubmit={submitClone} className="space-y-6">
+                                {/* General Details */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-55 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Fournisseur</label>
+                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-905 rounded-xl border border-slate-202/50 dark:border-slate-802/50">
+                                            {cloneTarget.tier ? cloneTarget.tier.label : '—'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date de Facture <span className="text-rose-500">*</span></label>
+                                        <input type="date" className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-teal-500 text-slate-855 dark:text-slate-200 font-bold font-mono"
+                                            value={cloneForm.date_facture} onChange={e => setCloneForm({ ...cloneForm, date_facture: e.target.value })} required />
+                                        {cloneErrors.date_facture && <div className="text-rose-550 text-[10px] font-bold mt-1">{cloneErrors.date_facture}</div>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date d'Échéance</label>
+                                        <input type="date" className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-teal-500 text-slate-855 dark:text-slate-200 font-bold font-mono"
+                                            value={cloneForm.date_echeance} onChange={e => setCloneForm({ ...cloneForm, date_echeance: e.target.value })} />
+                                        {cloneErrors.date_echeance && <div className="text-rose-555 text-[10px] font-bold mt-1">{cloneErrors.date_echeance}</div>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Devise</label>
+                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-905 rounded-xl border border-slate-202/50 dark:border-slate-802/50">
+                                            {cloneTarget.devise.code} ({cloneTarget.devise.symbol || ''})
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Lines Table */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">Lignes de la Facture</h4>
+                                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800/85 rounded-2xl">
+                                        <table className="w-full text-left min-w-[700px]">
+                                            <thead>
+                                                <tr className="bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/80 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
+                                                    <th className="py-3 px-4">Produit</th>
+                                                    <th className="py-3 px-2 w-32">Quantité à Facturer</th>
+                                                    <th className="py-3 px-2 w-32">P.U. HT</th>
+                                                    <th className="py-3 px-2 w-20 text-center">TVA</th>
+                                                    <th className="py-3 px-2 w-24 text-right">Total HT</th>
+                                                    <th className="py-3 px-4 text-right w-28">Total TTC</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                                                {cloneForm.lines.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="py-8 text-center text-xs font-bold text-slate-400">
+                                                            Tous les produits de ce bon de réception ont déjà été entièrement facturés.
+                                                        </td>
+                                                    </tr>
+                                                ) : cloneForm.lines.map((line, idx) => {
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
+                                                            <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                                                                {line.product?.label}
+                                                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                                                    Reste à facturer : <strong className="text-slate-600 dark:text-slate-350">{line.max_qty} {line.purchaseUnit ? line.purchaseUnit.symbol || line.purchaseUnit.code : ''}</strong>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3.5 px-2">
+                                                                <input type="number" step="any" min="0" max={line.max_qty}
+                                                                    className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
+                                                                    value={line.qty} onChange={e => handleCloneLineQtyChange(idx, e.target.value)} required />
+                                                                {cloneErrors[`lines.${idx}.qty`] && (
+                                                                    <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.qty`]}</div>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3.5 px-2">
+                                                                <input type="number" step="any" min="0"
+                                                                    className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
+                                                                    value={line.pu_ht} onChange={e => handleCloneLinePuChange(idx, e.target.value)} required />
+                                                                {cloneErrors[`lines.${idx}.pu_ht`] && (
+                                                                    <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.pu_ht`]}</div>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3.5 px-2 text-center font-semibold text-slate-500">
+                                                                {line.tva}%
+                                                            </td>
+                                                            <td className="py-3.5 px-2 text-right font-semibold text-slate-700 dark:text-slate-300">
+                                                                {Number(line.total_ht || 0).toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                            </td>
+                                                            <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white">
+                                                                {Number(line.total_ttc || 0).toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Summary & Submission */}
+                                {cloneForm.lines.length > 0 && (
+                                    <div className="flex flex-col md:flex-row items-center justify-between border-t border-slate-100 dark:border-slate-800/60 pt-6 gap-4">
+                                        <div className="text-right md:text-left bg-slate-50 dark:bg-slate-950/20 py-3 px-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+                                            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Total Facture Estimé</div>
+                                            <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                                                {cloneForm.lines.reduce((sum, l) => sum + Number(l.total_ttc || 0), 0).toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center space-x-3 w-full md:w-auto">
+                                            <button type="button" onClick={() => { setCloneForm(null); setCloneTarget(null); }}
+                                                className="w-full md:w-auto px-6 py-3 text-xs font-bold text-slate-655 dark:text-slate-355 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">
+                                                Annuler
+                                            </button>
+                                            <button type="submit" disabled={isSubmittingClone}
+                                                className="w-full md:w-auto inline-flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest rounded-2xl h-[42px] px-6 shadow-lg shadow-indigo-500/20 active:scale-[0.97] transition-all disabled:opacity-50">
+                                                {isSubmittingClone ? (
+                                                    <>
+                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                        </svg>
+                                                        <span>Enregistrement...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Enregistrer la Facture</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </form>
                         </div>
                     </div>
                 )}

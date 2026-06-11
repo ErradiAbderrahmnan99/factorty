@@ -139,6 +139,14 @@ export default function Index({
 
     const handlePaymentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (paymentInvoice) {
+            const remaining = paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0);
+            const inputVal = parseFloat(paymentForm.data.montant_ttc);
+            if (inputVal > remaining + 0.0001) {
+                paymentForm.setError('montant_ttc', `Le montant ne peut pas dépasser le reste à payer (${remaining.toFixed(2)} DH).`);
+                return;
+            }
+        }
         paymentForm.post(route('reglements.store'), {
             onSuccess: () => {
                 setPaymentInvoice(null);
@@ -466,8 +474,19 @@ export default function Index({
                                                 type="number"
                                                 step="any"
                                                 min="0.0001"
+                                                max={paymentInvoice ? (paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0)).toFixed(4) : undefined}
                                                 value={paymentForm.data.montant_ttc}
-                                                onChange={(e) => paymentForm.setData('montant_ttc', e.target.value)}
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    if (paymentInvoice && val !== '') {
+                                                        const remaining = paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0);
+                                                        const floatVal = parseFloat(val);
+                                                        if (!isNaN(floatVal) && floatVal > remaining) {
+                                                            val = remaining.toFixed(4);
+                                                        }
+                                                    }
+                                                    paymentForm.setData('montant_ttc', val);
+                                                }}
                                                 required
                                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-black text-slate-850 dark:text-slate-200 py-3 pl-4 pr-12 focus:outline-none focus:border-indigo-500 transition-all"
                                             />

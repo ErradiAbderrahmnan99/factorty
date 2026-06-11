@@ -26,6 +26,7 @@ class CommandeAchatLine extends Model
         'total_ht',
         'total_ttc',
         'demande_prix_line_id',
+        'qty_receptionnee',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class CommandeAchatLine extends Model
         'rm' => 'double',
         'total_ht' => 'double',
         'total_ttc' => 'double',
+        'qty_receptionnee' => 'double',
     ];
 
     public function commandeAchat(): BelongsTo

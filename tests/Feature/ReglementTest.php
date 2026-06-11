@@ -188,4 +188,174 @@ class ReglementTest extends TestCase
             'reglement_id' => $reglement->id,
         ]);
     }
+
+    public function test_cannot_pay_more_than_facture_vente_total(): void
+    {
+        $devise = \App\Models\Devise::create(['code' => 'MAD-REG', 'label' => 'Dirham', 'symbol' => 'DH']);
+        
+        $facture = \App\Models\FactureVente::create([
+            'ref'          => 'FV-TEST-0001',
+            'tier_id'      => $this->client->id,
+            'date_facture' => '2026-06-01',
+            'devise_id'    => $devise->id,
+            'status'       => 'envoyee',
+            'total_ht'     => 1000.00,
+            'total_ttc'    => 1200.00,
+        ]);
+
+        // 1. Try to pay 1300 (which is > 1200)
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'vente',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 1300.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\FactureVente',
+                'origin_id' => $facture->id,
+            ]);
+
+        $response->assertSessionHasErrors(['montant_ttc']);
+
+        // 2. Pay 500 (valid)
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'vente',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 500.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\FactureVente',
+                'origin_id' => $facture->id,
+            ]);
+
+        $response->assertRedirect(route('reglements.index'));
+        $this->assertEquals('payee partiellement', $facture->fresh()->status);
+
+        // 3. Try to pay 800 (remaining is 700)
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'vente',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 800.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\FactureVente',
+                'origin_id' => $facture->id,
+            ]);
+
+        $response->assertSessionHasErrors(['montant_ttc']);
+    }
+
+    public function test_cannot_update_reglement_to_exceed_facture_total(): void
+    {
+        $devise = \App\Models\Devise::create(['code' => 'MAD-REG2', 'label' => 'Dirham', 'symbol' => 'DH']);
+        
+        $facture = \App\Models\FactureVente::create([
+            'ref'          => 'FV-TEST-0002',
+            'tier_id'      => $this->client->id,
+            'date_facture' => '2026-06-01',
+            'devise_id'    => $devise->id,
+            'status'       => 'envoyee',
+            'total_ht'     => 1000.00,
+            'total_ttc'    => 1200.00,
+        ]);
+
+        // Pay 500
+        $reglement = Reglement::create([
+            'ref' => 'REG-U001',
+            'type' => 'vente',
+            'tier_id' => $this->client->id,
+            'date_saisie' => date('Y-m-d'),
+            'date_reglement' => date('Y-m-d'),
+            'montant_ttc' => 500.00,
+            'mode_reglement_id' => $this->mode->id,
+            'statut_reglement_id' => $this->statut->id,
+            'compte_bancaire_id' => $this->compte->id,
+            'sense' => 'd',
+            'origin_type' => 'App\\Models\\FactureVente',
+            'origin_id' => $facture->id,
+        ]);
+
+        // Try to update payment to 1300
+        $response = $this->actingAs($this->user)
+            ->put(route('reglements.update', $reglement->id), [
+                'type' => 'vente',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 1300.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\FactureVente',
+                'origin_id' => $facture->id,
+            ]);
+
+        $response->assertSessionHasErrors(['montant_ttc']);
+    }
+
+    public function test_cannot_pay_more_than_avoir_achat_total(): void
+    {
+        $devise = \App\Models\Devise::create(['code' => 'MAD-AVOIR', 'label' => 'Dirham', 'symbol' => 'DH']);
+        
+        $avoir = \App\Models\AvoirAchat::create([
+            'ref'          => 'AV-TEST-0001',
+            'tier_id'      => $this->client->id,
+            'date_avoir'   => '2026-06-01',
+            'devise_id'    => $devise->id,
+            'status'       => 'valide',
+            'total_ht'     => 1000.00,
+            'total_ttc'    => 1200.00,
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'achat',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 1300.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\AvoirAchat',
+                'origin_id' => $avoir->id,
+            ]);
+
+        $response->assertSessionHasErrors(['montant_ttc']);
+
+        // Pay 1200
+        $response = $this->actingAs($this->user)
+            ->post(route('reglements.store'), [
+                'type' => 'achat',
+                'tier_id' => $this->client->id,
+                'date_saisie' => date('Y-m-d'),
+                'date_reglement' => date('Y-m-d'),
+                'montant_ttc' => 1200.00,
+                'mode_reglement_id' => $this->mode->id,
+                'statut_reglement_id' => $this->statut->id,
+                'compte_bancaire_id' => $this->compte->id,
+                'sense' => 'd',
+                'origin_type' => 'App\\Models\\AvoirAchat',
+                'origin_id' => $avoir->id,
+            ]);
+
+        $response->assertRedirect(route('reglements.index'));
+        $this->assertEquals('paye', $avoir->fresh()->status);
+    }
 }

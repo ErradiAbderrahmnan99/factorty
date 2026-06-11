@@ -86,6 +86,7 @@ class FactureAchatController extends Controller
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'reception_id'           => ['nullable', 'exists:receptions,id'],
             'lines'                  => ['required', 'array', 'min:1'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
@@ -96,6 +97,11 @@ class FactureAchatController extends Controller
             'lines.*.remise'         => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.rm'             => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validationRedirect = $this->validateReceptionQuantities($request);
+        if ($validationRedirect) {
+            return $validationRedirect;
+        }
 
         try {
             DB::transaction(function () use ($request) {
@@ -122,6 +128,7 @@ class FactureAchatController extends Controller
                     'date_livraison'         => $request->input('date_livraison'),
                     'note_public'            => $request->input('note_public'),
                     'note_private'           => $request->input('note_private'),
+                    'reception_id'           => $request->input('reception_id'),
                     'status'                 => 'brouillon',
                     'total_ht'               => $totalHt,
                     'total_tva'              => max(0, $totalTtc - $totalHt),
@@ -134,6 +141,13 @@ class FactureAchatController extends Controller
             });
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
+        }
+
+        if ($request->filled('reception_id')) {
+            $reception = \App\Models\Reception::find($request->input('reception_id'));
+            if ($reception) {
+                $reception->syncFacturationStatus();
+            }
         }
 
         return redirect()->route('factures-achat.index')->with('success', 'Facture fournisseur créée avec succès.');
@@ -161,7 +175,7 @@ class FactureAchatController extends Controller
 
     public function update(Request $request, FactureAchat $facturesAchat): RedirectResponse
     {
-        if (in_array($facturesAchat->status, ['payee', 'payee partiellement', 'annulee'])) {
+        if (in_array($facturesAchat->status, ['validee', 'payee', 'payee partiellement', 'annulee'])) {
             return redirect()->route('factures-achat.index')->with('error', 'Cette facture ne peut plus être modifiée.');
         }
 
@@ -180,6 +194,7 @@ class FactureAchatController extends Controller
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
             'note_private'           => ['nullable', 'string'],
+            'reception_id'           => ['nullable', 'exists:receptions,id'],
             'lines'                  => ['required', 'array', 'min:1'],
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
@@ -190,6 +205,13 @@ class FactureAchatController extends Controller
             'lines.*.remise'         => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.rm'             => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validationRedirect = $this->validateReceptionQuantities($request, $facturesAchat);
+        if ($validationRedirect) {
+            return $validationRedirect;
+        }
+
+        $oldReceptionId = $facturesAchat->reception_id;
 
         try {
             DB::transaction(function () use ($request, $facturesAchat) {
@@ -210,6 +232,7 @@ class FactureAchatController extends Controller
                     'date_livraison'         => $request->input('date_livraison'),
                     'note_public'            => $request->input('note_public'),
                     'note_private'           => $request->input('note_private'),
+                    'reception_id'           => $request->input('reception_id'),
                     'total_ht'               => $totalHt,
                     'total_tva'              => max(0, $totalTtc - $totalHt),
                     'total_ttc'              => $totalTtc,
@@ -224,20 +247,39 @@ class FactureAchatController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
+        if ($oldReceptionId) {
+            $oldRec = \App\Models\Reception::find($oldReceptionId);
+            if ($oldRec) {
+                $oldRec->syncFacturationStatus();
+            }
+        }
+        if ($facturesAchat->reception_id) {
+            $facturesAchat->reception->syncFacturationStatus();
+        }
+
         return redirect()->route('factures-achat.index')->with('success', 'Facture fournisseur mise à jour avec succès.');
     }
 
-    public function destroy(FactureAchat $facturesAchat): RedirectResponse
+	public function destroy(FactureAchat $facturesAchat): RedirectResponse
     {
-        if (in_array($facturesAchat->status, ['payee', 'payee partiellement'])) {
-            return back()->with('error', 'Une facture payée ou partiellement payée ne peut pas être supprimée.');
+        if (in_array($facturesAchat->status, ['validee', 'payee', 'payee partiellement'])) {
+            return back()->with('error', 'Une facture validée, payée ou partiellement payée ne peut pas être supprimée.');
         }
 
+        $receptionId = $facturesAchat->reception_id;
         $facturesAchat->delete();
+
+        if ($receptionId) {
+            $reception = \App\Models\Reception::find($receptionId);
+            if ($reception) {
+                $reception->syncFacturationStatus();
+            }
+        }
+
         return redirect()->route('factures-achat.index')->with('success', 'Facture fournisseur supprimée avec succès.');
     }
 
-    public function updateStatus(Request $request, FactureAchat $facturesAchat): RedirectResponse
+	public function updateStatus(Request $request, FactureAchat $facturesAchat): RedirectResponse
     {
         if (in_array($facturesAchat->status, ['payee', 'payee partiellement'])) {
             return back()->with('error', 'Le statut d\'une facture payée ou partiellement payée ne peut pas être modifié manuellement.');
@@ -248,10 +290,15 @@ class FactureAchatController extends Controller
         }
 
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,annulee'],
+            'status' => ['required', 'string', 'in:brouillon,validee,annulee'],
         ]);
 
         $facturesAchat->update(['status' => $request->input('status')]);
+
+        if ($facturesAchat->reception_id) {
+            $facturesAchat->reception->syncFacturationStatus();
+        }
+
         return back()->with('success', 'Statut de la facture mis à jour.');
     }
 
@@ -259,6 +306,53 @@ class FactureAchatController extends Controller
     {
         $facture->load(['lines.product', 'lines.purchaseUnit']);
         return response()->json($facture);
+    }
+
+    private function validateReceptionQuantities(Request $request, ?FactureAchat $facture = null): ?RedirectResponse
+    {
+        if ($request->filled('reception_id')) {
+            $reception = \App\Models\Reception::with('lines')->find($request->input('reception_id'));
+            if (!$reception) {
+                return null;
+            }
+
+            $query = FactureAchat::where('reception_id', $reception->id)
+                ->where('status', '!=', 'annulee');
+            
+            if ($facture) {
+                $query->where('id', '!=', $facture->id);
+            }
+
+            $factureIds = $query->pluck('id');
+
+            $invoicedQuantities = FactureAchatLine::whereIn('facture_achat_id', $factureIds)
+                ->groupBy('product_id')
+                ->selectRaw('product_id, SUM(qty) as total_qty')
+                ->pluck('total_qty', 'product_id');
+
+            $receptionQuantities = [];
+            foreach ($reception->lines as $line) {
+                $receivedQty = (double)$line->qty;
+                $alreadyInvoicedQty = (double)($invoicedQuantities[$line->product_id] ?? 0);
+                $receptionQuantities[$line->product_id] = max(0, $receivedQty - $alreadyInvoicedQty);
+            }
+
+            foreach ($request->input('lines') as $index => $line) {
+                $productId = $line['product_id'];
+                $qty = (double)$line['qty'];
+
+                if (!isset($receptionQuantities[$productId])) {
+                    return back()->withErrors(["lines.{$index}.product_id" => "Ce produit n'est pas présent dans le bon de réception."]);
+                }
+
+                $remainingQty = $receptionQuantities[$productId];
+                if (round($qty, 4) > round($remainingQty, 4)) {
+                    return back()->withErrors(["lines.{$index}.qty" => "La quantité facturée dépasse la quantité restante du bon de réception (Restant: {$remainingQty})."]);
+                }
+            }
+        }
+
+        return null;
     }
 
     private function calcLines(array $lines): array

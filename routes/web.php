@@ -142,12 +142,14 @@ Route::middleware('auth')->group(function () {
     ]);
 
     // Commande Achat CRUD
+    Route::get('api/commandes-achat/{commandesAchat}', [CommandeAchatController::class, 'getCommandeWithLines'])->name('api.commandes-achat.show');
     Route::post('commandes-achat/{commandesAchat}/toggle-status', [CommandeAchatController::class, 'updateStatus'])->name('commandes-achat.toggle-status');
     Route::resource('commandes-achat', CommandeAchatController::class)->parameters([
         'commandes-achat' => 'commandesAchat'
     ]);
 
     // Bon de Réception (Purchasing Receipt) CRUD & Stock Management
+    Route::get('api/receptions/{reception}', [ReceptionController::class, 'getReceptionWithLines'])->name('api.receptions.show');
     Route::post('receptions/{reception}/toggle-status', [ReceptionController::class, 'updateStatus'])->name('receptions.toggle-status');
     Route::resource('receptions', ReceptionController::class);
 
