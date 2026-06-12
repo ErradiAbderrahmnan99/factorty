@@ -2,6 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -67,6 +69,7 @@ const STATUS_STYLING: Record<string, {badge: string; dot: string; label: string}
 };
 
 export default function Index({ receptions, filters }: { receptions: PaginatedReceptions; filters: { search: string | null; status: string | null } }) {
+    const { decimals } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -150,20 +153,16 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
         }
     };
 
-    const handleCloneLineQtyChange = (index: number, val: string) => {
+    const handleCloneLineQtyChange = (index: number, val: number) => {
         if (!cloneForm) return;
         const line = cloneForm.lines[index];
-        const numQty = Number(val) || 0;
         
-        let qtyToUse = numQty;
-        let finalVal = val;
+        let qtyToUse = val;
         
-        if (numQty > line.max_qty) {
+        if (val > line.max_qty) {
             qtyToUse = line.max_qty;
-            finalVal = line.max_qty.toString();
-        } else if (numQty < 0) {
+        } else if (val < 0) {
             qtyToUse = 0;
-            finalVal = "0";
         }
 
         const updatedLines = [...cloneForm.lines];
@@ -175,7 +174,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
 
         updatedLines[index] = {
             ...line,
-            qty: finalVal,
+            qty: qtyToUse,
             total_ht,
             total_ttc,
         };
@@ -186,10 +185,10 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
         });
     };
 
-    const handleCloneLinePuChange = (index: number, val: string) => {
+    const handleCloneLinePuChange = (index: number, val: number) => {
         if (!cloneForm) return;
         const line = cloneForm.lines[index];
-        const pu_ht = Math.max(0, Number(val) || 0);
+        const pu_ht = Math.max(0, val);
         const pu_ttc = pu_ht * (1 + line.tva / 100);
 
         const updatedLines = [...cloneForm.lines];
@@ -604,15 +603,20 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                                                             <td className="py-3.5 px-2">
                                                                 <input type="number" step="any" min="0" max={line.max_qty}
                                                                     className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
-                                                                    value={line.qty} onChange={e => handleCloneLineQtyChange(idx, e.target.value)} required />
+                                                                    value={line.qty}
+                                                                    onChange={e => handleCloneLineQtyChange(idx, Number(e.target.value) || 0)}
+                                                                />
                                                                 {cloneErrors[`lines.${idx}.qty`] && (
                                                                     <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.qty`]}</div>
                                                                 )}
                                                             </td>
                                                             <td className="py-3.5 px-2">
-                                                                <input type="number" step="any" min="0"
+                                                                <DecimalInput
+                                                                    decimals={decimals}
                                                                     className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
-                                                                    value={line.pu_ht} onChange={e => handleCloneLinePuChange(idx, e.target.value)} required />
+                                                                    value={Number(line.pu_ht || 0)}
+                                                                    onChange={val => handleCloneLinePuChange(idx, val)}
+                                                                />
                                                                 {cloneErrors[`lines.${idx}.pu_ht`] && (
                                                                     <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.pu_ht`]}</div>
                                                                 )}

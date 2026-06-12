@@ -51,6 +51,7 @@ class LivraisonController extends Controller
             'filters'    => $request->only('search', 'status'),
             'entrepots'  => $entrepots,
             'products'   => $products,
+            'branches'   => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 

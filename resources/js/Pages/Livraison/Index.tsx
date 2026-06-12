@@ -2,6 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -62,10 +64,20 @@ interface CloneFormState {
     date_echeance: string;
     devise_id: string;
     livraison_id: string;
+    branche_id: string;
     lines: CloneLine[];
 }
 
-export default function Index({ livraisons, filters }: { livraisons: PaginatedLivraisons; filters: { search: string | null; status: string | null } }) {
+export default function Index({ 
+    livraisons, 
+    filters,
+    branches = []
+}: { 
+    livraisons: PaginatedLivraisons; 
+    filters: { search: string | null; status: string | null };
+    branches?: any[];
+}) {
+    const { decimals, formatMoney } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -141,6 +153,7 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                 date_echeance: '',
                 devise_id: data.devise_id.toString(),
                 livraison_id: data.id.toString(),
+                branche_id: data.branche_id ? data.branche_id.toString() : '',
                 lines: lines
             });
         } catch (error) {
@@ -149,11 +162,10 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
         }
     };
 
-    const handleCloneLineQtyChange = (index: number, val: string) => {
+    const handleCloneLineQtyChange = (index: number, val: number) => {
         if (!cloneForm) return;
         const line = cloneForm.lines[index];
-        const inputQty = Number(val) || 0;
-        const qty = Math.min(line.max_qty, Math.max(0, inputQty));
+        const qty = Math.min(line.max_qty, Math.max(0, val));
 
         const updatedLines = [...cloneForm.lines];
         
@@ -175,10 +187,10 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
         });
     };
 
-    const handleCloneLinePuChange = (index: number, val: string) => {
+    const handleCloneLinePuChange = (index: number, val: number) => {
         if (!cloneForm) return;
         const line = cloneForm.lines[index];
-        const pu_ht = Math.max(0, Number(val) || 0);
+        const pu_ht = Math.max(0, val);
         const pu_ttc = pu_ht * (1 + line.tva / 100);
 
         const updatedLines = [...cloneForm.lines];
@@ -516,12 +528,22 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
 
                         <form onSubmit={submitClone} className="space-y-6">
                             {/* General Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
                                 <div>
                                     <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Client</label>
                                     <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                         {cloneTarget.tier ? cloneTarget.tier.label : '—'}
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                                    <select className="block w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-teal-500 text-slate-855 dark:text-slate-200 font-bold"
+                                        value={cloneForm.branche_id || ''} onChange={e => setCloneForm({ ...cloneForm, branche_id: e.target.value })} required>
+                                        <option value="">Sélectionner...</option>
+                                        {branches.map(b => (
+                                            <option key={b.id} value={b.id}>{b.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date de Facture <span className="text-rose-500">*</span></label>
@@ -575,17 +597,23 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                                             </div>
                                                         </td>
                                                         <td className="py-3.5 px-2">
-                                                            <input type="number" step="any" min="0" max={line.max_qty}
+                                                            <DecimalInput
+                                                                decimals={decimals}
                                                                 className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
-                                                                value={line.qty} onChange={e => handleCloneLineQtyChange(idx, e.target.value)} required />
+                                                                value={Number(line.qty || 0)}
+                                                                onChange={val => handleCloneLineQtyChange(idx, val)}
+                                                            />
                                                             {cloneErrors[`lines.${idx}.qty`] && (
                                                                 <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.qty`]}</div>
                                                             )}
                                                         </td>
                                                         <td className="py-3.5 px-2">
-                                                            <input type="number" step="any" min="0"
+                                                            <DecimalInput
+                                                                decimals={decimals}
                                                                 className="w-full rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 focus:outline-none focus:border-teal-500 font-bold"
-                                                                value={line.pu_ht} onChange={e => handleCloneLinePuChange(idx, e.target.value)} required />
+                                                                value={Number(line.pu_ht || 0)}
+                                                                onChange={val => handleCloneLinePuChange(idx, val)}
+                                                            />
                                                             {cloneErrors[`lines.${idx}.pu_ht`] && (
                                                                 <div className="text-rose-550 text-[9px] font-bold mt-0.5">{cloneErrors[`lines.${idx}.pu_ht`]}</div>
                                                             )}
@@ -594,10 +622,10 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                                             {line.tva}%
                                                         </td>
                                                         <td className="py-3.5 px-2 text-right font-semibold text-slate-700 dark:text-slate-300">
-                                                            {line.total_ht.toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                            {line.total_ht.toFixed(decimals)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
                                                         </td>
                                                         <td className="py-3.5 px-4 text-right font-black text-slate-900 dark:text-white">
-                                                            {line.total_ttc.toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                                            {line.total_ttc.toFixed(decimals)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
                                                         </td>
                                                     </tr>
                                                 );
@@ -613,7 +641,7 @@ export default function Index({ livraisons, filters }: { livraisons: PaginatedLi
                                     <div className="text-right md:text-left bg-slate-50 dark:bg-slate-950/20 py-3 px-5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
                                         <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Total Facture Estimé</div>
                                         <div className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                            {cloneForm.lines.reduce((sum, l) => sum + l.total_ttc, 0).toFixed(2)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
+                                            {cloneForm.lines.reduce((sum, l) => sum + l.total_ttc, 0).toFixed(decimals)} {cloneTarget.devise.symbol || cloneTarget.devise.code}
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-3 w-full md:w-auto">

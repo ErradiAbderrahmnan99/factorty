@@ -3,6 +3,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import LotAllocationModal from '@/Components/LotAllocationModal';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier { id: number; label: string; }
 interface Devise { id: number; code: string; symbol: string | null; }
@@ -115,6 +117,7 @@ export default function Index({
     entrepots?: Entrepot[];
     units?: Unit[];
 }) {
+    const { decimals } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -213,20 +216,19 @@ export default function Index({
         }
     };
 
-    const handleCloneLineQtyChange = (idx: number, val: string) => {
+    const handleCloneLineQtyChange = (idx: number, val: number) => {
         if (!cloneForm) return;
         const updated = [...cloneForm.lines];
         const line = updated[idx];
         
-        const numericQty = Number(val) || 0;
-        const lineHt = numericQty * line.pu_ht;
+        const lineHt = val * line.pu_ht;
         const discount = (lineHt * line.remise / 100) + line.rm;
         const total_ht = Math.max(0, lineHt - discount);
         const total_ttc = total_ht * (1 + line.tva / 100);
 
         updated[idx] = {
             ...line,
-            qty: val as any,
+            qty: val,
             total_ht,
             total_ttc,
             lots: [] // Clear lots to force re-allocation
@@ -235,10 +237,10 @@ export default function Index({
         setCloneForm({ ...cloneForm, lines: updated });
     };
 
-    const handleCloneLinePuHtChange = (idx: number, val: string) => {
+    const handleCloneLinePuHtChange = (idx: number, val: number) => {
         if (!cloneForm) return;
         const updated = [...cloneForm.lines];
-        const pu_ht = Math.max(0, Number(val) || 0);
+        const pu_ht = Math.max(0, val);
         const line = updated[idx];
 
         const lineHt = (Number(line.qty) || 0) * pu_ht;
@@ -456,10 +458,10 @@ export default function Index({
                                             <td className="py-4 px-6 text-xs text-slate-500 dark:text-slate-400 font-medium">{item.date_commande}</td>
                                             <td className="py-4 px-6 text-xs text-slate-500 dark:text-slate-400 font-medium">{item.date_livraison || '—'}</td>
                                             <td className="py-4 px-6 text-xs font-bold text-slate-700 dark:text-slate-350 text-right">
-                                                {item.total_ht.toFixed(2)} {item.devise ? item.devise.symbol || item.devise.code : ''}
+                                                {item.total_ht.toFixed(decimals)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-xs font-extrabold text-slate-900 dark:text-white text-right">
-                                                {item.total_ttc.toFixed(2)} {item.devise ? item.devise.symbol || item.devise.code : ''}
+                                                {item.total_ttc.toFixed(decimals)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <button onClick={() => setStatusTarget(item)}
@@ -709,7 +711,7 @@ export default function Index({
                                                                     <input type="number" step="any" min="0.0001"
                                                                         className="w-20 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs py-1 px-1.5 focus:outline-none focus:border-indigo-500 font-bold font-mono text-slate-800 dark:text-slate-200"
                                                                         value={line.qty}
-                                                                        onChange={e => handleCloneLineQtyChange(idx, e.target.value)}
+                                                                        onChange={e => handleCloneLineQtyChange(idx, Number(e.target.value) || 0)}
                                                                     />
                                                                     <span className="text-[10px] text-slate-455 uppercase">{line.purchase_unit?.code || ''}</span>
                                                                 </div>
@@ -729,10 +731,11 @@ export default function Index({
                                                                 })()}
                                                             </td>
                                                             <td className="py-3 px-2 font-semibold font-mono text-slate-600 dark:text-slate-400">
-                                                                <input type="number" step="any" min="0"
+                                                                <DecimalInput
+                                                                    decimals={decimals}
                                                                     className="w-24 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 text-xs py-1 px-1.5 focus:outline-none focus:border-indigo-500 font-semibold font-mono text-slate-800 dark:text-slate-200"
-                                                                    value={line.pu_ht || ''}
-                                                                    onChange={e => handleCloneLinePuHtChange(idx, e.target.value)}
+                                                                    value={Number(line.pu_ht || 0)}
+                                                                    onChange={val => handleCloneLinePuHtChange(idx, val)}
                                                                 />
                                                             </td>
                                                             <td className="py-3 px-2">
@@ -802,7 +805,7 @@ export default function Index({
                                         <div className="text-right w-full sm:w-auto">
                                             <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Total Lignes Bon de Réception</span>
                                             <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                                                {cloneForm.lines.reduce((sum, line) => sum + line.total_ttc, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[10px] text-slate-400">{cloneTarget.devise.symbol || cloneTarget.devise.code}</span>
+                                                {cloneForm.lines.reduce((sum, line) => sum + line.total_ttc, 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <span className="text-[10px] text-slate-400">{cloneTarget.devise.symbol || cloneTarget.devise.code}</span>
                                             </span>
                                         </div>
                                     </div>

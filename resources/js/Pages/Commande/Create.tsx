@@ -2,6 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import InputError from '@/Components/InputError';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier {
     id: number;
@@ -89,12 +91,13 @@ export default function Create({
     branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney, stepMoney } = useEntitySettings();
 
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
         commercial: '',
         date_commande: today,
-        devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        devise_id: defaultDeviseId || (devises.length > 0 ? devises[0].id.toString() : ''),
         branche_id: '',
         lines: [] as LineItem[],
     });
@@ -153,7 +156,7 @@ export default function Create({
             product_id: '',
             entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
             sale_unit_id: '',
-            tva: 20,
+            tva: defaultTva,
             qty: 1,
             pu_ht: 0,
             pu_ttc: 0,
@@ -182,9 +185,9 @@ export default function Create({
             if (prod) {
                 line.pu_ht = Number(prod.sale_price) || 0;
                 line.sale_unit_id = prod.sale_unit_id ? prod.sale_unit_id.toString() : '';
-                line.tva = 20;
-                line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-                line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+                line.tva = defaultTva;
+                line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+                line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
                 line.lots = []; // reset lots on product change
             }
         } else if (field === 'entrepot_id') {
@@ -192,32 +195,32 @@ export default function Create({
             line.lots = []; // reset lots on warehouse change
         } else if (field === 'remise') {
             line.remise = Number(value) || 0;
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'rm') {
             line.rm = Number(value) || 0;
             const lineHtTotal = line.qty * line.pu_ht;
-            line.remise = lineHtTotal > 0 ? Number(((line.rm / lineHtTotal) * 100).toFixed(4)) : 0;
+            line.remise = lineHtTotal > 0 ? roundMoney((line.rm / lineHtTotal) * 100) : 0;
         } else if (field === 'qty' || field === 'tva') {
             line[field] = Number(value) || 0;
-            line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
             line.lots = []; // reset lots if quantity changes to force reallocation
         } else if (field === 'pu_ht') {
             line.pu_ht = Number(value) || 0;
-            line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'pu_ttc') {
             line.pu_ttc = Number(value) || 0;
-            line.pu_ht = Number((line.pu_ttc / (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ht = roundMoney(line.pu_ttc / (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else {
             (line as any)[field] = value;
         }
 
         const lineHt = line.qty * line.pu_ht;
         const discount = line.rm;
-        line.total_ht = Math.max(0, lineHt - discount);
-        line.total_ttc = line.total_ht * (1 + line.tva / 100);
+        line.total_ht = roundMoney(Math.max(0, lineHt - discount));
+        line.total_ttc = roundMoney(line.total_ht * (1 + line.tva / 100));
 
         updated[index] = line;
         setData('lines', updated);
@@ -432,9 +435,9 @@ export default function Create({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche</label>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
-                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)}>
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required>
                                 <option value="">Sélectionner une branche...</option>
                                 {branches.map(b => (
                                     <option key={b.id} value={b.id}>{b.name}</option>
@@ -504,7 +507,7 @@ export default function Create({
                                         }
                                         return Math.abs(allocated - targetQty) <= 0.0001;
                                     })();
-
+                                    
                                     return (
                                         <tr key={idx} className="group hover:bg-slate-50/20 dark:hover:bg-slate-850/5 transition-all">
                                             <td className="py-3 pr-2">
@@ -512,7 +515,7 @@ export default function Create({
                                                     value={line.product_id} onChange={e => updateLineField(idx, 'product_id', e.target.value)} required>
                                                     <option value="">Choisir...</option>
                                                     {products.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.ref ? `[${p.ref}] ` : ''}{p.label}</option>
+                                                        <option key={p.id} value={p.id}>{p.ref ? `[${p.ref}] ` : ''}{p.label} (P.U: {formatMoney(Number(p.sale_price))})</option>
                                                     ))}
                                                 </select>
                                             </td>
@@ -561,23 +564,20 @@ export default function Create({
                                                 </select>
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ht} onChange={val => updateLineField(idx, 'pu_ht', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ttc} onChange={val => updateLineField(idx, 'pu_ttc', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
                                                     value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
-                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} />
+                                                <DecimalInput value={line.rm} onChange={val => updateLineField(idx, 'rm', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500" />
                                             </td>
                                             <td className="py-3 text-right pr-2 font-mono text-xs font-black text-slate-800 dark:text-slate-100 select-none">
-                                                {line.total_ht.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {formatMoney(line.total_ht)}
                                             </td>
                                             <td className="py-3 px-2 text-center">
                                                 {isLotManaged ? (
@@ -621,7 +621,7 @@ export default function Create({
                                 </p>
                             </div>
                             <div className="flex items-center space-x-3 pt-6 border-t border-slate-100 dark:border-slate-800 mt-6">
-                                <Link href={route('commandes.index')} className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-450 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-250 dark:hover:bg-slate-750 transition-all select-none">
+                                <Link href={route('commandes.index')} className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-455 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-250 dark:hover:bg-slate-750 transition-all select-none">
                                     Annuler
                                 </Link>
                                 <button type="submit" disabled={processing || data.lines.length === 0}
@@ -640,37 +640,37 @@ export default function Create({
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Sous-Total Brut HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {(totalHT + totalRemise).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT + totalRemise)}
                                 </span>
                             </div>
-                            <div className="flex items-center justify-between text-rose-450">
+                            <div className="flex items-center justify-between text-rose-455">
                                 <span>Total Remise</span>
                                 <span className="font-mono text-rose-450 text-sm font-bold">
-                                    - {totalRemise.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    - {formatMoney(totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total Net HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalHT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total TVA</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalTVA.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalTVA)}
                                 </span>
                             </div>
                             <div className="pt-4 border-t border-slate-850 flex items-center justify-between text-base">
                                 <span className="text-indigo-400 font-extrabold">TOTAL TTC</span>
                                 <span className="font-mono font-black text-white text-xl">
-                                    {totalTTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-slate-450">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
+                                    {formatMoney(totalTTC)} <span className="text-xs text-slate-450">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
                                 </span>
                             </div>
                         </div>
 
                         <div className="text-[10px] text-slate-500 font-medium text-center select-none pt-2 border-t border-slate-850">
-                            Calculé en temps réel • Arrondi à 4 décimales par ligne
+                            Calculé en temps réel • Arrondi à {decimals} décimales par ligne
                         </div>
                     </div>
                 </div>

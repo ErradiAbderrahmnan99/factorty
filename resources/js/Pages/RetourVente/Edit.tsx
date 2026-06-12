@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import LotAllocationModal from '@/Components/LotAllocationModal';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface LineLot {
     lot_number: string;
@@ -76,6 +77,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
     commercials: Employee[];
     branches?: { id: number; name: string; }[];
 }) {
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney, stepMoney } = useEntitySettings();
     const isLocked = retour.status !== 'brouillon';
 
     const { data, setData, put, processing, errors } = useForm({
@@ -150,14 +152,14 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
     const totalHt = data.lines.reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
         const discount = (lineHt * line.remise / 100) + line.rm;
-        return sum + Math.max(0, lineHt - discount);
+        return sum + roundMoney(Math.max(0, lineHt - discount));
     }, 0);
 
     const totalTtc = data.lines.reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
         const discount = (lineHt * line.remise / 100) + line.rm;
-        const lineTotalHt = Math.max(0, lineHt - discount);
-        return sum + (lineTotalHt * (1 + line.tva / 100));
+        const lineTotalHt = roundMoney(Math.max(0, lineHt - discount));
+        return sum + roundMoney(lineTotalHt * (1 + line.tva / 100));
     }, 0);
 
     const totalTva = Math.max(0, totalTtc - totalHt);
@@ -240,8 +242,8 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Branche</label>
-                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} disabled={isLocked}
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Branche <span className="text-rose-500">*</span></label>
+                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} disabled={isLocked} required
                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-955 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50">
                                 <option value="">Sélectionner une branche...</option>
                                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -322,10 +324,10 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
                                                 )}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-right font-semibold text-slate-700 dark:text-slate-300">
-                                                {line.pu_ht.toFixed(2)} {symbol}
+                                                {formatMoney(line.pu_ht)} {symbol}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-right font-black text-slate-900 dark:text-white">
-                                                {lineTotalHt.toFixed(2)} {symbol}
+                                                {formatMoney(lineTotalHt)} {symbol}
                                             </td>
                                         </tr>
                                     );
@@ -338,23 +340,23 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
                 {/* Summary & Totals */}
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-6 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col md:flex-row md:justify-between items-end gap-6">
                     <div className="text-xs text-slate-450 leading-relaxed max-w-md">
-                        <span className="font-extrabold uppercase tracking-widest text-[9px] text-indigo-500 block mb-1">Détails d'Inventaire</span>
+                        <span className="font-extrabold uppercase tracking-widest text-[9px] text-indigo-500 block mb-1">Détails d'Inventaire (Arrondi à {decimals} décimales par ligne)</span>
                         Les modifications de quantités sont contrôlées et validées par rapport aux restes retournables calculés en temps réel dans notre base de données.
                     </div>
                     
                     <div className="w-full md:w-80 space-y-2.5">
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
                             <span>Total HT</span>
-                            <span>{totalHt.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                            <span>{formatMoney(totalHt)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800">
                             <span>TVA cumulée</span>
-                            <span>{totalTva.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                            <span>{formatMoney(totalTva)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total TTC</span>
                             <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
-                                {totalTtc.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}
+                                {formatMoney(totalTtc)} {devises.find(d => String(d.id) === data.devise_id)?.code}
                             </span>
                         </div>
                     </div>
