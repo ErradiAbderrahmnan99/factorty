@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\BrancheController;
+use App\Http\Controllers\EntityController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\UnitCategoryController;
 use App\Http\Controllers\UnitController;
@@ -65,6 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('countries', CountryController::class)->except(['create', 'edit', 'show']);
     Route::resource('regions', RegionController::class)->except(['create', 'edit', 'show']);
     Route::resource('cities', CityController::class)->except(['create', 'edit', 'show']);
+    Route::resource('branches', BrancheController::class)->except(['create', 'edit', 'show']);
+    Route::resource('entities', EntityController::class)->except(['create', 'edit', 'show']);
     Route::resource('tier-categories', TierCategoryController::class)->except(['create', 'edit', 'show']);
 
     // DDB: Tiers — Main entity (Prospect / Client / Fournisseur) — type-scoped routes

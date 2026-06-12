@@ -48,6 +48,8 @@ export default function Authenticated({
                 { name: 'Pays', key: 'countries', group: 'Paramètres Tiers', href: route('countries.index') },
                 { name: 'Régions', key: 'regions', group: 'Paramètres Tiers', href: route('regions.index') },
                 { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
+                { name: 'Branches', key: 'branches', group: 'Paramètres Tiers', href: route('branches.index') },
+                { name: 'Entités', key: 'entities', group: 'Paramètres Tiers', href: route('entities.index') },
                 { name: 'Devises', key: 'devises', group: 'Paramètres Tiers', href: route('devises.index') },
                 { name: 'Employés', key: 'employees', group: 'Paramètres Tiers', href: route('employees.index') },
                 { name: 'Origines', key: 'origines', group: 'Paramètres Tiers', href: route('origines.index') },
