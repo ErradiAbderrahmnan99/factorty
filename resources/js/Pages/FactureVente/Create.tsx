@@ -66,6 +66,7 @@ export default function Create({
     comptesBancaires = [],
     typesApprobateur = [],
     approbateurs = [],
+    branches = [],
 }: {
     tiers: Tier[];
     products: Product[];
@@ -78,6 +79,7 @@ export default function Create({
     comptesBancaires?: LookupItem[];
     typesApprobateur?: LookupItem[];
     approbateurs?: (Tier & { type_approbateur?: { label: string } })[];
+    branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
     const [selectedTypeApprobateur, setSelectedTypeApprobateur] = useState('');
@@ -91,6 +93,7 @@ export default function Create({
         date_facture: today,
         date_echeance: '',
         devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
         origine_id: '',
@@ -206,7 +209,7 @@ export default function Create({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Client <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
@@ -250,6 +253,18 @@ export default function Create({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche</label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

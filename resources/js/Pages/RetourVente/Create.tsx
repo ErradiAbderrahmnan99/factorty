@@ -67,7 +67,7 @@ interface Livraison {
     devise?: Devise;
 }
 
-export default function Create({ tiers, products, devises, units, entrepots, commercials, livraisons }: {
+export default function Create({ tiers, products, devises, units, entrepots, commercials, livraisons, branches = [] }: {
     tiers: Tier[];
     products: Product[];
     devises: Devise[];
@@ -75,12 +75,14 @@ export default function Create({ tiers, products, devises, units, entrepots, com
     entrepots: Entrepot[];
     commercials: Employee[];
     livraisons: Livraison[];
+    branches?: { id: number; name: string; }[];
 }) {
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
         commercial: '',
         date_retour: new Date().toISOString().split('T')[0],
         devise_id: '',
+        branche_id: '',
         lines: [] as Array<{
             livraison_line_id: number;
             product_id: number;
@@ -325,7 +327,7 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                     </div>
 
                     {/* Metadata lookups */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5">Client <span className="text-rose-500">*</span></label>
                             <select value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} required
@@ -354,13 +356,23 @@ export default function Create({ tiers, products, devises, units, entrepots, com
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5">Devise <span className="text-rose-500">*</span></label>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Devise <span className="text-rose-500">*</span></label>
                             <select value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required
                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all">
                                 <option value="">Choisir une devise...</option>
                                 {devises.map(d => <option key={d.id} value={d.id}>{d.code} {d.symbol ? `(${d.symbol})` : ''}</option>)}
                             </select>
                             {errors.devise_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.devise_id}</span>}
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Branche</label>
+                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all">
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.branche_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.branche_id}</span>}
                         </div>
                     </div>
                 </div>

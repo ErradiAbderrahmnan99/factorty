@@ -13,7 +13,8 @@ class EmployeeController extends Controller
     public function index(): Response
     {
         return Inertia::render('Employee/Index', [
-            'employees' => Employee::orderBy('last_name')->orderBy('first_name')->get(),
+            'employees' => Employee::with('branches')->orderBy('last_name')->orderBy('first_name')->get(),
+            'branches'  => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -29,11 +30,17 @@ class EmployeeController extends Controller
             'cin'        => ['nullable', 'string', 'max:30'],
             'birth_date' => ['nullable', 'date'],
             'gender'     => ['nullable', 'string', 'in:homme,femme'],
+            'branches'   => ['nullable', 'array'],
+            'branches.*' => ['exists:branches,id'],
         ]);
 
-        Employee::create($request->only([
+        $employee = Employee::create($request->only([
             'first_name', 'last_name', 'type', 'tele', 'email', 'adress', 'cin', 'birth_date', 'gender'
         ]));
+
+        if ($request->has('branches')) {
+            $employee->branches()->sync($request->input('branches'));
+        }
 
         return back()->with('success', 'Employé créé avec succès.');
     }
@@ -50,11 +57,19 @@ class EmployeeController extends Controller
             'cin'        => ['nullable', 'string', 'max:30'],
             'birth_date' => ['nullable', 'date'],
             'gender'     => ['nullable', 'string', 'in:homme,femme'],
+            'branches'   => ['nullable', 'array'],
+            'branches.*' => ['exists:branches,id'],
         ]);
 
         $employee->update($request->only([
             'first_name', 'last_name', 'type', 'tele', 'email', 'adress', 'cin', 'birth_date', 'gender'
         ]));
+
+        if ($request->has('branches')) {
+            $employee->branches()->sync($request->input('branches'));
+        } else {
+            $employee->branches()->sync([]);
+        }
 
         return back()->with('success', 'Employé mis à jour.');
     }

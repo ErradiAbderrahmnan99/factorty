@@ -21,7 +21,7 @@ class FactureVente extends Model
         'mode_reglement_id', 'condition_reglement_id', 'origine_id',
         'compte_bancaire_id', 'approbateur_id',
         'delai_livraison', 'date_livraison', 'note_public', 'note_private',
-        'livraison_id',
+        'livraison_id', 'branche_id',
     ];
 
     protected $casts = [
@@ -33,6 +33,8 @@ class FactureVente extends Model
         'total_ttc' => 'double',
         'delai_livraison' => 'integer',
         'livraison_id' => 'integer',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
     ];
 
     public function tier(): BelongsTo               { return $this->belongsTo(Tier::class, 'tier_id'); }
@@ -44,6 +46,7 @@ class FactureVente extends Model
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(FactureVenteLine::class, 'facture_vente_id'); }
     public function livraison(): BelongsTo           { return $this->belongsTo(Livraison::class, 'livraison_id'); }
+    public function branche(): BelongsTo             { return $this->belongsTo(Branche::class, 'branche_id'); }
     public function reglements(): MorphMany            { return $this->morphMany(Reglement::class, 'origin'); }
 
     public function recalculatePaymentStatus(): void

@@ -76,6 +76,7 @@ class DevisController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Devis/Create', [
             'tiers'        => $tiers,
@@ -83,6 +84,7 @@ class DevisController extends Controller
             'devises'      => $devises,
             'units'        => $units,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -94,6 +96,7 @@ class DevisController extends Controller
             'date_devis'      => ['required', 'date'],
             'duree_validite'  => ['required', 'integer', 'min:1'],
             'devise_id'       => ['required', 'exists:devises,id'],
+            'branche_id'      => ['nullable', 'exists:branches,id'],
             'lines'           => ['required', 'array', 'min:1'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -158,6 +161,7 @@ class DevisController extends Controller
                 'date_devis'     => $request->input('date_devis'),
                 'duree_validite' => $request->input('duree_validite'),
                 'devise_id'      => $request->input('devise_id'),
+                'branche_id'     => $request->input('branche_id'),
                 'status'         => 'brouillon',
                 'total_ht'       => $totalHt,
                 'total_tva'      => $totalTva,
@@ -192,6 +196,7 @@ class DevisController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Devis/Edit', [
             'devis'        => $devis,
@@ -200,6 +205,7 @@ class DevisController extends Controller
             'devises'      => $devises,
             'units'        => $units,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -215,6 +221,7 @@ class DevisController extends Controller
             'date_devis'      => ['required', 'date'],
             'duree_validite'  => ['required', 'integer', 'min:1'],
             'devise_id'       => ['required', 'exists:devises,id'],
+            'branche_id'      => ['nullable', 'exists:branches,id'],
             'lines'           => ['required', 'array', 'min:1'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
             'lines.*.sale_unit_id' => ['nullable', 'exists:units,id'],
@@ -269,6 +276,7 @@ class DevisController extends Controller
                 'date_devis'     => $request->input('date_devis'),
                 'duree_validite' => $request->input('duree_validite'),
                 'devise_id'      => $request->input('devise_id'),
+                'branche_id'     => $request->input('branche_id'),
                 'total_ht'       => $totalHt,
                 'total_tva'      => $totalTva,
                 'total_ttc'      => $totalTtc,

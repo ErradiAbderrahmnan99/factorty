@@ -14,9 +14,15 @@ interface Employee {
     cin: string | null;
     birth_date: string | null;
     gender: string | null;
+    branches?: { id: number; name: string }[];
 }
 
-export default function Index({ employees }: { employees: Employee[] }) {
+interface Branche {
+    id: number;
+    name: string;
+}
+
+export default function Index({ employees, branches = [] }: { employees: Employee[]; branches?: Branche[] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<Employee | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
@@ -31,6 +37,7 @@ export default function Index({ employees }: { employees: Employee[] }) {
         cin: '',
         birth_date: '',
         gender: 'homme',
+        branches: [] as number[],
     });
 
     const openCreate = () => {
@@ -51,6 +58,7 @@ export default function Index({ employees }: { employees: Employee[] }) {
             cin: item.cin || '',
             birth_date: item.birth_date || '',
             gender: item.gender || 'homme',
+            branches: (item.branches || []).map(b => b.id) as number[],
         });
         clearErrors();
         setEditingItem(item);
@@ -100,6 +108,7 @@ export default function Index({ employees }: { employees: Employee[] }) {
                         <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/50">
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Nom complet</th>
+                                <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Branches</th>
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Type / Rôle</th>
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Téléphone</th>
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">E-mail</th>
@@ -114,6 +123,18 @@ export default function Index({ employees }: { employees: Employee[] }) {
                                 <tr key={item.id} className="hover:bg-indigo-50/20 dark:hover:bg-indigo-950/5 group transition-all">
                                     <td className="py-3.5 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200">
                                         {item.last_name} {item.first_name}
+                                    </td>
+                                    <td className="py-3.5 px-6">
+                                        <div className="flex flex-wrap gap-1 max-w-xs">
+                                            {(item.branches || []).map(b => (
+                                                <span key={b.id} className="inline-flex items-center px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/30 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold">
+                                                    {b.name}
+                                                </span>
+                                            ))}
+                                            {(item.branches || []).length === 0 && (
+                                                <span className="text-[10px] text-slate-400 italic">—</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-3.5 px-6">
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
@@ -218,6 +239,36 @@ export default function Index({ employees }: { employees: Employee[] }) {
                                     <textarea rows={2} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all resize-none"
                                         value={data.adress} onChange={e => setData('adress', e.target.value)} />
                                     <InputError message={errors.adress} className="mt-1" />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Affectation aux Branches</label>
+                                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-3 bg-slate-50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl">
+                                        {branches.map((br) => {
+                                            const isChecked = data.branches.includes(br.id);
+                                            return (
+                                                <label key={br.id} className="flex items-center space-x-2.5 cursor-pointer select-none">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded-lg border-slate-250 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500/20 h-4.5 w-4.5 transition-all cursor-pointer"
+                                                        checked={isChecked}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setData('branches', [...data.branches, br.id]);
+                                                            } else {
+                                                                setData('branches', data.branches.filter(id => id !== br.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-[11px] font-bold text-slate-850 dark:text-slate-200">{br.name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                        {branches.length === 0 && (
+                                            <p className="text-[10px] text-slate-450 italic col-span-2">Aucune branche configurée.</p>
+                                        )}
+                                    </div>
+                                    <InputError message={errors.branches as any} className="mt-1" />
                                 </div>
 
                                 <div className="flex items-center justify-end space-x-3 pt-2">

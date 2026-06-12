@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasBranches;
 
 class Employee extends Model
 {
+    use HasBranches;
+
     protected $fillable = [
         'first_name',
         'last_name',

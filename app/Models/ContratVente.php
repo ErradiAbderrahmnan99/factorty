@@ -19,6 +19,7 @@ class ContratVente extends Model
         'mode_reglement_id', 'condition_reglement_id', 'origine_id',
         'compte_bancaire_id', 'approbateur_id',
         'delai_livraison', 'date_livraison', 'note_public', 'note_private',
+        'branche_id',
     ];
 
     protected $casts = [
@@ -29,6 +30,8 @@ class ContratVente extends Model
         'total_tva' => 'double',
         'total_ttc' => 'double',
         'delai_livraison' => 'integer',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
     ];
 
     public function tier(): BelongsTo               { return $this->belongsTo(Tier::class, 'tier_id'); }
@@ -39,4 +42,5 @@ class ContratVente extends Model
     public function compteBancaire(): BelongsTo      { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(ContratVenteLine::class, 'contrat_vente_id'); }
+    public function branche(): BelongsTo             { return $this->belongsTo(Branche::class, 'branche_id'); }
 }

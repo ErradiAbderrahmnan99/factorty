@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
+use App\Traits\HasBranches;
+
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, HasBranches;
 
     protected $fillable = [
         'product_category_id',

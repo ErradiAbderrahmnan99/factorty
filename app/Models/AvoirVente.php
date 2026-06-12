@@ -18,7 +18,7 @@ class AvoirVente extends Model
         'devise_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
         'mode_reglement_id', 'condition_reglement_id', 'origine_id',
         'compte_bancaire_id', 'approbateur_id',
-        'note_public', 'note_private',
+        'note_public', 'note_private', 'branche_id',
     ];
 
     protected $casts = [
@@ -26,6 +26,8 @@ class AvoirVente extends Model
         'total_ht'  => 'double',
         'total_tva' => 'double',
         'total_ttc' => 'double',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
     ];
 
     public function tier(): BelongsTo               { return $this->belongsTo(Tier::class, 'tier_id'); }
@@ -37,6 +39,7 @@ class AvoirVente extends Model
     public function compteBancaire(): BelongsTo      { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
     public function lines(): HasMany                 { return $this->hasMany(AvoirVenteLine::class, 'avoir_vente_id'); }
+    public function branche(): BelongsTo             { return $this->belongsTo(Branche::class, 'branche_id'); }
     public function reglements(): \Illuminate\Database\Eloquent\Relations\MorphMany  { return $this->morphMany(Reglement::class, 'origin'); }
 
     public function recalculatePaymentStatus(): void

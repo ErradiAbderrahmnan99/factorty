@@ -20,6 +20,7 @@ class Livraison extends Model
         'date_livraison',
         'devise_id',
         'commande_id',
+        'branche_id',
         'status',
         'total_ht',
         'total_tva',
@@ -29,6 +30,8 @@ class Livraison extends Model
     protected $casts = [
         'date_livraison' => 'date:Y-m-d',
         'commande_id' => 'integer',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
         'total_ht' => 'double',
         'total_tva' => 'double',
         'total_ttc' => 'double',
@@ -47,6 +50,11 @@ class Livraison extends Model
     public function commande(): BelongsTo
     {
         return $this->belongsTo(Commande::class, 'commande_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function lines(): HasMany

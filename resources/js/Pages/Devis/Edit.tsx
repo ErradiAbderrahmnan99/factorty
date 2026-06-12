@@ -53,6 +53,7 @@ interface Devis {
     date_devis: string;
     duree_validite: number;
     devise_id: number;
+    branche_id: number | null;
     status: string;
     lines: DevisLine[];
 }
@@ -77,6 +78,7 @@ export default function Edit({
     devises,
     units,
     commercials,
+    branches = [],
 }: {
     devis: Devis;
     tiers: Tier[];
@@ -84,6 +86,7 @@ export default function Edit({
     devises: Devise[];
     units: Unit[];
     commercials: { id: number; first_name: string; last_name: string; type: string; }[];
+    branches?: { id: number; name: string; }[];
 }) {
     const { data, setData, patch, processing, errors } = useForm({
         tier_id: devis.tier_id ? devis.tier_id.toString() : '',
@@ -91,6 +94,7 @@ export default function Edit({
         date_devis: devis.date_devis || '',
         duree_validite: devis.duree_validite || 30,
         devise_id: devis.devise_id ? devis.devise_id.toString() : '',
+        branche_id: devis.branche_id ? devis.branche_id.toString() : '',
         lines: (devis.lines || []).map(line => ({
             product_id: line.product_id ? line.product_id.toString() : '',
             sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
@@ -208,7 +212,7 @@ export default function Edit({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Tiers (Client / Prospect) <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all font-semibold"
@@ -259,6 +263,18 @@ export default function Edit({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche</label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

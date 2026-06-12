@@ -70,6 +70,7 @@ class TierController extends Controller
             'legalForms'     => $legalForms,
             'parents'        => Tier::where('type', $type)->orderBy('label')->get(['id', 'label', 'ref']),
             'typesApprobateur'=> TypeApprobateur::orderBy('label')->get(),
+            'branches'       => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -106,10 +107,16 @@ class TierController extends Controller
             'facebook'        => ['nullable', 'string', 'max:255'],
             'instagram'       => ['nullable', 'string', 'max:255'],
             'status'          => ['required', 'in:actif,inactif'],
+            'branches'        => ['nullable', 'array'],
+            'branches.*'      => ['exists:branches,id'],
         ]);
 
         $validated['type'] = $type;
-        Tier::create($validated);
+        $tier = Tier::create($validated);
+
+        if ($request->has('branches')) {
+            $tier->branches()->sync($request->input('branches'));
+        }
 
         return redirect()->route("tiers.{$type}.index")
             ->with('success', "{$this->typeLabels[$type]} créé avec succès.");
@@ -122,7 +129,7 @@ class TierController extends Controller
         $legalForms = ['SARL', 'SA', 'SNC', 'SCS', 'Auto-Entrepreneur', 'Succursale'];
 
         return Inertia::render('Tier/Edit', [
-            'tier'           => $tier,
+            'tier'           => $tier->load('branches'),
             'type'           => $type,
             'typeLabel'      => $this->typeLabels[$type],
             'tierCategories' => TierCategory::orderBy('label')->get(),
@@ -134,6 +141,7 @@ class TierController extends Controller
                                     ->where('id', '!=', $tier->id)
                                     ->orderBy('label')->get(['id', 'label', 'ref']),
             'typesApprobateur'=> TypeApprobateur::orderBy('label')->get(),
+            'branches'       => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -171,9 +179,17 @@ class TierController extends Controller
             'facebook'        => ['nullable', 'string', 'max:255'],
             'instagram'       => ['nullable', 'string', 'max:255'],
             'status'          => ['required', 'in:actif,inactif'],
+            'branches'        => ['nullable', 'array'],
+            'branches.*'      => ['exists:branches,id'],
         ]);
 
         $tier->update($validated);
+
+        if ($request->has('branches')) {
+            $tier->branches()->sync($request->input('branches'));
+        } else {
+            $tier->branches()->sync([]);
+        }
 
         return redirect()->route("tiers.{$type}.index")
             ->with('success', "{$this->typeLabels[$type]} mis à jour avec succès.");

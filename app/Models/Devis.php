@@ -20,6 +20,7 @@ class Devis extends Model
         'date_devis',
         'duree_validite',
         'devise_id',
+        'branche_id',
         'status',
         'total_ht',
         'total_tva',
@@ -29,6 +30,8 @@ class Devis extends Model
     protected $casts = [
         'date_devis' => 'date:Y-m-d',
         'duree_validite' => 'integer',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
         'total_ht' => 'double',
         'total_tva' => 'double',
         'total_ttc' => 'double',
@@ -42,6 +45,11 @@ class Devis extends Model
     public function devise(): BelongsTo
     {
         return $this->belongsTo(Devise::class, 'devise_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function lines(): HasMany

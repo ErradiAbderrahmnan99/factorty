@@ -19,6 +19,7 @@ class RetourVente extends Model
         'commercial',
         'date_retour',
         'devise_id',
+        'branche_id',
         'status',
         'total_ht',
         'total_tva',
@@ -27,6 +28,8 @@ class RetourVente extends Model
 
     protected $casts = [
         'date_retour' => 'date:Y-m-d',
+        'devise_id' => 'integer',
+        'branche_id' => 'integer',
         'total_ht' => 'double',
         'total_tva' => 'double',
         'total_ttc' => 'double',
@@ -40,6 +43,11 @@ class RetourVente extends Model
     public function devise(): BelongsTo
     {
         return $this->belongsTo(Devise::class, 'devise_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function lines(): HasMany

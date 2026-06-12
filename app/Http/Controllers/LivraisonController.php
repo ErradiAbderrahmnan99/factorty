@@ -74,6 +74,7 @@ class LivraisonController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Livraison/Create', [
             'tiers'        => $tiers,
@@ -82,6 +83,7 @@ class LivraisonController extends Controller
             'units'        => $units,
             'entrepots'    => $entrepots,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -93,6 +95,7 @@ class LivraisonController extends Controller
             'date_livraison'       => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
             'commande_id'          => ['nullable', 'exists:commandes,id'],
+            'branche_id'           => ['nullable', 'exists:branches,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.commande_line_id' => ['nullable', 'exists:commande_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
@@ -167,6 +170,7 @@ class LivraisonController extends Controller
                 'date_livraison' => $request->input('date_livraison'),
                 'devise_id'      => $request->input('devise_id'),
                 'commande_id'    => $request->input('commande_id'),
+                'branche_id'     => $request->input('branche_id'),
                 'status'         => 'brouillon',
                 'total_ht'       => $totalHt,
                 'total_tva'      => $totalTva,
@@ -222,6 +226,7 @@ class LivraisonController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Livraison/Edit', [
             'livraison'    => $livraison,
@@ -231,6 +236,7 @@ class LivraisonController extends Controller
             'units'        => $units,
             'entrepots'    => $entrepots,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -245,6 +251,7 @@ class LivraisonController extends Controller
             'commercial'           => ['nullable', 'string', 'max:255'],
             'date_livraison'       => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
+            'branche_id'           => ['nullable', 'exists:branches,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.commande_line_id' => ['nullable', 'exists:commande_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
@@ -308,6 +315,7 @@ class LivraisonController extends Controller
                 'commercial'     => $request->input('commercial'),
                 'date_livraison' => $request->input('date_livraison'),
                 'devise_id'      => $request->input('devise_id'),
+                'branche_id'     => $request->input('branche_id'),
                 'total_ht'       => $totalHt,
                 'total_tva'      => $totalTva,
                 'total_ttc'      => $totalTtc,

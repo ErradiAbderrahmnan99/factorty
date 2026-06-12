@@ -18,16 +18,20 @@ interface TierData {
     email: string | null; telephone: string | null; website: string | null; fax: string | null;
     linkedin: string | null; twitter: string | null; facebook: string | null; instagram: string | null;
     status: string;
+    branches?: { id: number; name: string }[];
 }
+
+interface Branche { id: number; name: string; }
 
 const TAB_LABELS = ['Identification', 'Localisation', 'Légal & Fiscal', 'Contact & Réseaux'];
 
 export default function Edit({
-    tier, type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents, typesApprobateur = [],
+    tier, type, typeLabel, tierCategories, countries, regions, cities, legalForms, parents, typesApprobateur = [], branches = [],
 }: {
     tier: TierData; type: string; typeLabel: string;
     tierCategories: SelectItem[]; countries: SelectItem[]; regions: RegionItem[];
     cities: CityItem[]; legalForms: string[]; parents: ParentItem[]; typesApprobateur?: SelectItem[];
+    branches?: Branche[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
 
@@ -43,6 +47,7 @@ export default function Edit({
         email: tier.email || '', telephone: tier.telephone || '', website: tier.website || '', fax: tier.fax || '',
         linkedin: tier.linkedin || '', twitter: tier.twitter || '', facebook: tier.facebook || '', instagram: tier.instagram || '',
         status: tier.status,
+        branches: (tier.branches || []).map(b => b.id) as number[],
     });
 
     const [filteredRegions, setFilteredRegions] = useState<RegionItem[]>(
@@ -174,6 +179,37 @@ export default function Edit({
                                     <button type="button" onClick={() => setData('status', 'actif')} className={`py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all ${data.status === 'actif' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30' : 'bg-slate-50 text-slate-400 border border-transparent'}`}>Actif</button>
                                     <button type="button" onClick={() => setData('status', 'inactif')} className={`py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all ${data.status === 'inactif' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 border border-slate-200' : 'bg-slate-50 text-slate-400 border border-transparent'}`}>Inactif</button>
                                 </div>
+                            </div>
+
+                            {/* Affectation aux Branches */}
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 space-y-3">
+                                <h4 className="text-xs font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">Affectation aux Branches</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {branches.map((br) => {
+                                        const isChecked = data.branches.includes(br.id);
+                                        return (
+                                            <label key={br.id} className="flex items-center space-x-3 cursor-pointer select-none p-3 bg-slate-50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded-lg border-slate-250 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500/20 h-5 w-5 transition-all cursor-pointer"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setData('branches', [...data.branches, br.id]);
+                                                        } else {
+                                                            setData('branches', data.branches.filter(id => id !== br.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{br.name}</span>
+                                            </label>
+                                        );
+                                    })}
+                                    {branches.length === 0 && (
+                                        <p className="text-xs text-slate-450 italic col-span-full">Aucune branche configurée.</p>
+                                    )}
+                                </div>
+                                <InputError message={errors.branches as any} className="mt-1" />
                             </div>
                         </div>
                     )}

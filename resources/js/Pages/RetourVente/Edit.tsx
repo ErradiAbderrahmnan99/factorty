@@ -58,6 +58,7 @@ interface RetourVente {
     commercial: string | null;
     date_retour: string;
     devise_id: number;
+    branche_id: number | null;
     status: 'brouillon' | 'valide' | 'annule';
     total_ht: number;
     total_tva: number;
@@ -67,12 +68,13 @@ interface RetourVente {
     devise?: Devise;
 }
 
-export default function Edit({ retour, tiers, devises, entrepots, commercials }: {
+export default function Edit({ retour, tiers, devises, entrepots, commercials, branches = [] }: {
     retour: RetourVente;
     tiers: Tier[];
     devises: Devise[];
     entrepots: Entrepot[];
     commercials: Employee[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isLocked = retour.status !== 'brouillon';
 
@@ -81,6 +83,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
         commercial: retour.commercial || '',
         date_retour: retour.date_retour,
         devise_id: String(retour.devise_id),
+        branche_id: retour.branche_id ? String(retour.branche_id) : '',
         lines: retour.lines.map(line => ({
             id: line.id,
             livraison_line_id: line.livraison_line_id,
@@ -220,7 +223,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                     </div>
 
                     {/* Metadata lookups - Locked */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Client</label>
                             <select value={data.tier_id} disabled={true}
@@ -232,8 +235,18 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials }:
                         <div>
                             <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Date du Retour</label>
                             <input type="date" value={data.date_retour} onChange={e => setData('date_retour', e.target.value)} disabled={isLocked}
-                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50" />
+                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-955 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50" />
                             {errors.date_retour && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.date_retour}</span>}
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-black">Branche</label>
+                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} disabled={isLocked}
+                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-955 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50">
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.branche_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.branche_id}</span>}
                         </div>
                     </div>
                 </div>

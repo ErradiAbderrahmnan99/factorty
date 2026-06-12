@@ -74,6 +74,7 @@ class CommandeController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Commande/Create', [
             'tiers'        => $tiers,
@@ -82,6 +83,7 @@ class CommandeController extends Controller
             'units'        => $units,
             'entrepots'    => $entrepots,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -93,6 +95,7 @@ class CommandeController extends Controller
             'date_commande'        => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
             'devis_id'             => ['nullable', 'exists:devis,id'],
+            'branche_id'           => ['nullable', 'exists:branches,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.devis_line_id'=> ['nullable', 'exists:devis_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
@@ -167,6 +170,7 @@ class CommandeController extends Controller
                 'date_commande' => $request->input('date_commande'),
                 'devise_id'     => $request->input('devise_id'),
                 'devis_id'      => $request->input('devis_id'),
+                'branche_id'    => $request->input('branche_id'),
                 'status'        => 'brouillon',
                 'total_ht'      => $totalHt,
                 'total_tva'     => $totalTva,
@@ -222,6 +226,7 @@ class CommandeController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('Commande/Edit', [
             'commande'     => $commande,
@@ -231,6 +236,7 @@ class CommandeController extends Controller
             'units'        => $units,
             'entrepots'    => $entrepots,
             'commercials'  => $commercials,
+            'branches'     => $branches,
         ]);
     }
 
@@ -245,6 +251,7 @@ class CommandeController extends Controller
             'commercial'           => ['nullable', 'string', 'max:255'],
             'date_commande'        => ['required', 'date'],
             'devise_id'            => ['required', 'exists:devises,id'],
+            'branche_id'           => ['nullable', 'exists:branches,id'],
             'lines'                => ['required', 'array', 'min:1'],
             'lines.*.devis_line_id'=> ['nullable', 'exists:devis_lines,id'],
             'lines.*.product_id'   => ['required', 'exists:products,id'],
@@ -308,6 +315,7 @@ class CommandeController extends Controller
                 'commercial'    => $request->input('commercial'),
                 'date_commande' => $request->input('date_commande'),
                 'devise_id'     => $request->input('devise_id'),
+                'branche_id'    => $request->input('branche_id'),
                 'total_ht'      => $totalHt,
                 'total_tva'     => $totalTva,
                 'total_ttc'     => $totalTtc,

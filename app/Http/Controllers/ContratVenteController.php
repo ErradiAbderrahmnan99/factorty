@@ -48,6 +48,8 @@ class ContratVenteController extends Controller
 
     public function create(): Response
     {
+        $branches = \App\Models\Branche::orderBy('name')->get();
+
         return Inertia::render('ContratVente/Create', [
             'tiers'               => Tier::where('type', 'client')->where('status', 'actif')->orderBy('label')->get(),
             'products'            => Product::where('status', 'actif')->with(['saleUnit', 'stockUnit'])->orderBy('label')->get(),
@@ -60,6 +62,7 @@ class ContratVenteController extends Controller
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
             'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
             'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
+            'branches'            => $branches,
         ]);
     }
 
@@ -76,6 +79,7 @@ class ContratVenteController extends Controller
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'approbateur_id'         => ['nullable', 'exists:tiers,id'],
+            'branche_id'             => ['nullable', 'exists:branches,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -115,6 +119,7 @@ class ContratVenteController extends Controller
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),
                 'note_private'           => $request->input('note_private'),
+                'branche_id'             => $request->input('branche_id'),
                 'status'                 => 'brouillon',
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
@@ -132,6 +137,7 @@ class ContratVenteController extends Controller
     public function edit(ContratVente $contratsVente): Response
     {
         $contratsVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('ContratVente/Edit', [
             'contrat'             => $contratsVente,
@@ -146,6 +152,7 @@ class ContratVenteController extends Controller
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
             'typesApprobateur'     => TypeApprobateur::orderBy('label')->get(),
             'approbateurs'         => Tier::whereNotNull('type_approbateur_id')->with('typeApprobateur')->orderBy('label')->get(),
+            'branches'            => $branches,
         ]);
     }
 
@@ -166,6 +173,7 @@ class ContratVenteController extends Controller
             'origine_id'             => ['nullable', 'exists:origines,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
             'approbateur_id'         => ['nullable', 'exists:tiers,id'],
+            'branche_id'             => ['nullable', 'exists:branches,id'],
             'delai_livraison'        => ['nullable', 'integer', 'min:0'],
             'date_livraison'         => ['nullable', 'date'],
             'note_public'            => ['nullable', 'string'],
@@ -199,6 +207,7 @@ class ContratVenteController extends Controller
                 'date_livraison'         => $request->input('date_livraison'),
                 'note_public'            => $request->input('note_public'),
                 'note_private'           => $request->input('note_private'),
+                'branche_id'             => $request->input('branche_id'),
                 'total_ht'               => $totalHt,
                 'total_tva'              => max(0, $totalTtc - $totalHt),
                 'total_ttc'              => $totalTtc,

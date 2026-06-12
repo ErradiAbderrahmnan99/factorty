@@ -63,6 +63,7 @@ interface FactureVente {
     date_facture: string;
     date_echeance: string | null;
     devise_id: number;
+    branche_id: number | null;
     mode_reglement_id: number | null;
     condition_reglement_id: number | null;
     origine_id: number | null;
@@ -109,6 +110,7 @@ export default function Edit({
     comptesBancaires = [],
     typesApprobateur = [],
     approbateurs = [],
+    branches = [],
 }: {
     facture: FactureVente;
     tiers: Tier[];
@@ -122,6 +124,7 @@ export default function Edit({
     comptesBancaires?: LookupItem[];
     typesApprobateur?: LookupItem[];
     approbateurs?: (Tier & { type_approbateur?: { label: string } })[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = facture.status !== 'brouillon';
 
@@ -137,6 +140,7 @@ export default function Edit({
         date_facture: facture.date_facture,
         date_echeance: facture.date_echeance || '',
         devise_id: facture.devise_id.toString(),
+        branche_id: (facture as any).branche_id?.toString() || '',
         mode_reglement_id: facture.mode_reglement_id?.toString() || '',
         condition_reglement_id: facture.condition_reglement_id?.toString() || '',
         origine_id: facture.origine_id?.toString() || '',
@@ -274,7 +278,7 @@ export default function Edit({
                         )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Client <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
@@ -311,13 +315,25 @@ export default function Edit({
  
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Devise <span className="text-rose-500">*</span></label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
                                 value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required disabled={isReadOnly}>
                                 {devises.map(d => (
                                     <option key={d.id} value={d.id}>{d.label} ({d.symbol || d.code})</option>
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche</label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} disabled={isReadOnly}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

@@ -23,14 +23,21 @@ interface Unit {
     code: string | null;
 }
 
+interface Branche {
+    id: number;
+    name: string;
+}
+
 export default function Create({
     productCategories,
     unitCategories,
     units,
+    branches,
 }: {
     productCategories: ProductCategory[];
     unitCategories: UnitCategory[];
     units: Unit[];
+    branches: Branche[];
 }) {
     const { data, setData, post, processing, errors } = useForm({
         product_category_id: '',
@@ -50,6 +57,7 @@ export default function Create({
         status: 'actif',
         manage_by_lot: false,
         stock_negative: false,
+        branches: [] as number[],
     });
 
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -483,6 +491,40 @@ export default function Create({
                                         </div>
                                     </label>
                                 </div>
+                            </div>
+
+                            {/* Card: Affectation aux Branches */}
+                            <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] dark:shadow-none rounded-3xl p-6 backdrop-blur-xl transition-all duration-300 space-y-4">
+                                <h3 className="text-xs font-extrabold text-slate-850 dark:text-white uppercase tracking-widest border-b border-slate-100 dark:border-slate-800/60 pb-3 mb-2">
+                                    Affectation aux Branches
+                                </h3>
+
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    {branches.map((br) => {
+                                        const isChecked = data.branches.includes(br.id);
+                                        return (
+                                            <label key={br.id} className="flex items-center space-x-3 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded-lg border-slate-250 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500/20 h-5 w-5 transition-all cursor-pointer"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setData('branches', [...data.branches, br.id]);
+                                                        } else {
+                                                            setData('branches', data.branches.filter(id => id !== br.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{br.name}</span>
+                                            </label>
+                                        );
+                                    })}
+                                    {branches.length === 0 && (
+                                        <p className="text-xs text-slate-450 italic">Aucune branche configurée.</p>
+                                    )}
+                                </div>
+                                <InputError message={errors.branches as any} className="mt-1" />
                             </div>
 
                             {/* Submit & Reset Area */}

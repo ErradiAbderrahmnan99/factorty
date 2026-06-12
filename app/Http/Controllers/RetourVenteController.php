@@ -93,6 +93,8 @@ class RetourVenteController extends Controller
                 return $bl;
             });
 
+        $branches = \App\Models\Branche::orderBy('name')->get();
+
         return Inertia::render('RetourVente/Create', [
             'tiers'        => $tiers,
             'products'     => $products,
@@ -101,6 +103,7 @@ class RetourVenteController extends Controller
             'entrepots'    => $entrepots,
             'commercials'  => $commercials,
             'livraisons'   => $livraisons,
+            'branches'     => $branches,
         ]);
     }
 
@@ -111,6 +114,7 @@ class RetourVenteController extends Controller
             'commercial'          => ['nullable', 'string', 'max:255'],
             'date_retour'         => ['required', 'date'],
             'devise_id'           => ['required', 'exists:devises,id'],
+            'branche_id'          => ['nullable', 'exists:branches,id'],
             'lines'               => ['required', 'array', 'min:1'],
             'lines.*.livraison_line_id' => ['required', 'exists:livraison_lines,id'],
             'lines.*.product_id'  => ['required', 'exists:products,id'],
@@ -236,6 +240,7 @@ class RetourVenteController extends Controller
                     'commercial'   => $request->input('commercial'),
                     'date_retour'  => $request->input('date_retour'),
                     'devise_id'    => $request->input('devise_id'),
+                    'branche_id'   => $request->input('branche_id'),
                     'status'       => 'brouillon',
                     'total_ht'     => $totalHt,
                     'total_tva'    => $totalTva,
@@ -341,6 +346,7 @@ class RetourVenteController extends Controller
 
         $retourData = $retourVente->toArray();
         $retourData['lines'] = $retourLines->toArray();
+        $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('RetourVente/Edit', [
             'retour'      => $retourData,
@@ -348,6 +354,7 @@ class RetourVenteController extends Controller
             'devises'     => $devises,
             'entrepots'   => $entrepots,
             'commercials' => $commercials,
+            'branches'    => $branches,
         ]);
     }
 
@@ -362,6 +369,7 @@ class RetourVenteController extends Controller
             'commercial'          => ['nullable', 'string', 'max:255'],
             'date_retour'         => ['required', 'date'],
             'devise_id'           => ['required', 'exists:devises,id'],
+            'branche_id'          => ['nullable', 'exists:branches,id'],
             'lines'               => ['required', 'array', 'min:1'],
             'lines.*.id'          => ['required', 'exists:retour_vente_lines,id'],
             'lines.*.qty'         => ['required', 'numeric', 'min:0.0001'],
@@ -420,6 +428,7 @@ class RetourVenteController extends Controller
                     'commercial'   => $request->input('commercial'),
                     'date_retour'  => $request->input('date_retour'),
                     'devise_id'    => $request->input('devise_id'),
+                    'branche_id'   => $request->input('branche_id'),
                     'total_ht'     => $totalHt,
                     'total_tva'    => $totalTva,
                     'total_ttc'    => $totalTtc,

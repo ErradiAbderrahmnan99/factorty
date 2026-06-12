@@ -57,6 +57,7 @@ class ProductController extends Controller
             'productCategories' => ProductCategory::orderBy('name')->get(),
             'unitCategories' => UnitCategory::orderBy('label')->get(),
             'units' => Unit::orderBy('label')->get(),
+            'branches' => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -80,6 +81,8 @@ class ProductController extends Controller
             'status' => ['required', 'in:actif,inactif'],
             'manage_by_lot' => ['nullable', 'boolean'],
             'stock_negative' => ['nullable', 'boolean'],
+            'branches' => ['nullable', 'array'],
+            'branches.*' => ['exists:branches,id'],
         ]);
 
         $validated['manage_by_lot'] = $request->boolean('manage_by_lot');
@@ -90,7 +93,11 @@ class ProductController extends Controller
             $validated['image_path'] = $path;
         }
 
-        Product::create($validated);
+        $product = Product::create($validated);
+
+        if ($request->has('branches')) {
+            $product->branches()->sync($request->input('branches'));
+        }
 
         return redirect()->route('products.index')
             ->with('success', 'Produit créé avec succès.');
@@ -99,10 +106,11 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         return Inertia::render('Product/Edit', [
-            'product' => $product,
+            'product' => $product->load('branches'),
             'productCategories' => ProductCategory::orderBy('name')->get(),
             'unitCategories' => UnitCategory::orderBy('label')->get(),
             'units' => Unit::orderBy('label')->get(),
+            'branches' => \App\Models\Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -127,6 +135,8 @@ class ProductController extends Controller
             'status' => ['required', 'in:actif,inactif'],
             'manage_by_lot' => ['nullable', 'boolean'],
             'stock_negative' => ['nullable', 'boolean'],
+            'branches' => ['nullable', 'array'],
+            'branches.*' => ['exists:branches,id'],
         ]);
 
         $validated['manage_by_lot'] = $request->boolean('manage_by_lot');
@@ -142,6 +152,12 @@ class ProductController extends Controller
         }
 
         $product->update($validated);
+
+        if ($request->has('branches')) {
+            $product->branches()->sync($request->input('branches'));
+        } else {
+            $product->branches()->sync([]);
+        }
 
         return redirect()->route('products.index')
             ->with('success', 'Produit mis à jour avec succès.');

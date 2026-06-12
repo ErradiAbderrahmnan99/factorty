@@ -7,8 +7,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use App\Traits\HasBranches;
+
 class Tier extends Model
 {
+    use HasBranches;
+
     protected $fillable = [
         'type',
         'ref',
