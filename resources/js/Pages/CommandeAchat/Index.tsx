@@ -170,37 +170,42 @@ export default function Index({
                 commande_achat_id: data.id.toString(),
                 note_public: data.note_public || '',
                 note_private: data.note_private || '',
-                lines: data.lines.map((line: any) => {
-                    const qty = Math.max(0, Number(line.qty) - (Number(line.qty_receptionnee) || 0));
-                    const pu_ht = Number(line.pu_ht);
-                    const tva = Number(line.tva) || 20.00;
-                    const remise = Number(line.remise) || 0;
-                    const rm = Number(line.rm) || 0;
-                    const lineHt = qty * pu_ht;
-                    const discount = (lineHt * remise / 100) + rm;
-                    const total_ht = Math.max(0, lineHt - discount);
-                    const total_ttc = total_ht * (1 + tva / 100);
+                lines: data.lines
+                    .filter((line: any) => {
+                        const remaining = Number(line.qty) - (Number(line.qty_receptionnee) || 0);
+                        return remaining > 0;
+                    })
+                    .map((line: any) => {
+                        const qty = Number(line.qty) - (Number(line.qty_receptionnee) || 0);
+                        const pu_ht = Number(line.pu_ht);
+                        const tva = Number(line.tva) || 20.00;
+                        const remise = Number(line.remise) || 0;
+                        const rm = Number(line.rm) || 0;
+                        const lineHt = qty * pu_ht;
+                        const discount = (lineHt * remise / 100) + rm;
+                        const total_ht = Math.max(0, lineHt - discount);
+                        const total_ttc = total_ht * (1 + tva / 100);
 
-                    return {
-                        commande_achat_line_id: line.id,
-                        product_id: line.product_id.toString(),
-                        qty: qty,
-                        original_qty: Number(line.qty),
-                        qty_receptionnee: Number(line.qty_receptionnee) || 0,
-                        purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
-                        tva: tva,
-                        pu_ht: pu_ht,
-                        pu_ttc: Number(line.pu_ttc),
-                        remise: remise,
-                        rm: rm,
-                        total_ht: total_ht,
-                        total_ttc: total_ttc,
-                        entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
-                        lots: [],
-                        product: line.product,
-                        purchase_unit: line.purchase_unit
-                    };
-                })
+                        return {
+                            commande_achat_line_id: line.id,
+                            product_id: line.product_id.toString(),
+                            qty: qty,
+                            original_qty: Number(line.qty),
+                            qty_receptionnee: Number(line.qty_receptionnee) || 0,
+                            purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
+                            tva: tva,
+                            pu_ht: pu_ht,
+                            pu_ttc: Number(line.pu_ttc),
+                            remise: remise,
+                            rm: rm,
+                            total_ht: total_ht,
+                            total_ttc: total_ttc,
+                            entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
+                            lots: [],
+                            product: line.product,
+                            purchase_unit: line.purchase_unit
+                        };
+                    })
             });
         } catch (error) {
             console.error("Error fetching purchase order details for conversion", error);

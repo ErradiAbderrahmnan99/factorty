@@ -19,7 +19,8 @@ return new class extends Migration
         Schema::create('conditions_reglement', function (Blueprint $table) {
             $table->id();
             $table->string('label', 100)->unique();
-            $table->integer('nb_jours')->default(0);
+            $table->string('code', 50)->unique();
+            $table->text('label_long')->nullable();
             $table->timestamps();
         });
 

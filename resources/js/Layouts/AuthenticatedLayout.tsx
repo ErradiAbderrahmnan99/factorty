@@ -50,7 +50,6 @@ export default function Authenticated({
                 { name: 'Villes', key: 'cities', group: 'Paramètres Tiers', href: route('cities.index') },
                 { name: 'Devises', key: 'devises', group: 'Paramètres Tiers', href: route('devises.index') },
                 { name: 'Employés', key: 'employees', group: 'Paramètres Tiers', href: route('employees.index') },
-                { name: 'Conditions de Règlement', key: 'conditions_reglement', group: 'Paramètres Tiers', href: route('conditions-reglement.index') },
                 { name: 'Origines', key: 'origines', group: 'Paramètres Tiers', href: route('origines.index') },
                 { name: 'Types d\'Approbateur', key: 'types_approbateur', group: 'Paramètres Tiers', href: route('types-approbateur.index') },
             ],
@@ -104,6 +103,7 @@ export default function Authenticated({
             items: [
                 { name: 'Règlements', key: 'reglements', href: route('reglements.index') },
                 { name: 'Modes de Règlement', key: 'modes_reglement', href: route('modes-reglement.index') },
+                { name: 'Conditions de Règlement', key: 'conditions_reglement', href: route('conditions-reglement.index') },
                 { name: 'Statuts de Règlement', key: 'statuts_reglement', href: route('statuts-reglement.index') },
                 { name: 'Comptes Bancaires', key: 'comptes_bancaires', href: route('comptes-bancaires.index') },
             ],

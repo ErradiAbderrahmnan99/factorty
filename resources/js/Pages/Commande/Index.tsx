@@ -193,42 +193,47 @@ export default function Index({
                 date_livraison: new Date().toISOString().split('T')[0],
                 devise_id: data.devise_id.toString(),
                 commande_id: data.id.toString(),
-                lines: data.lines.map((line: any) => {
-                    const qty = Math.max(0, Number(line.qty) - (Number(line.qty_livre) || 0));
-                    const pu_ht = Number(line.pu_ht);
-                    const tva = Number(line.tva) || 20.00;
-                    const remise = Number(line.remise) || 0;
-                    const rm = Number(line.rm) || 0;
-                    const lineHt = qty * pu_ht;
-                    const discount = (lineHt * remise / 100) + rm;
-                    const total_ht = Math.max(0, lineHt - discount);
-                    const total_ttc = total_ht * (1 + tva / 100);
+                lines: data.lines
+                    .filter((line: any) => {
+                        const remaining = Number(line.qty) - (Number(line.qty_livre) || 0);
+                        return remaining > 0;
+                    })
+                    .map((line: any) => {
+                        const qty = Number(line.qty) - (Number(line.qty_livre) || 0);
+                        const pu_ht = Number(line.pu_ht);
+                        const tva = Number(line.tva) || 20.00;
+                        const remise = Number(line.remise) || 0;
+                        const rm = Number(line.rm) || 0;
+                        const lineHt = qty * pu_ht;
+                        const discount = (lineHt * remise / 100) + rm;
+                        const total_ht = Math.max(0, lineHt - discount);
+                        const total_ttc = total_ht * (1 + tva / 100);
 
-                    return {
-                        commande_line_id: line.id,
-                        product_id: line.product_id.toString(),
-                        qty: qty,
-                        original_qty: Number(line.qty),
-                        qty_livre: Number(line.qty_livre) || 0,
-                        sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
-                        tva: tva,
-                        pu_ht: pu_ht,
-                        pu_ttc: Number(line.pu_ttc),
-                        remise: remise,
-                        rm: rm,
-                        total_ht: total_ht,
-                        total_ttc: total_ttc,
-                        entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
-                        lots: line.lots ? line.lots.map((l: any) => ({
-                            lot_number: l.lot_number,
-                            quantity: Number(l.quantity),
-                            fabrication_date: l.fabrication_date,
-                            expiration_date: l.expiration_date
-                        })) : [],
-                        product: line.product,
-                        sale_unit: line.sale_unit
-                    };
-                })
+                        return {
+                            commande_line_id: line.id,
+                            product_id: line.product_id.toString(),
+                            qty: qty,
+                            original_qty: Number(line.qty),
+                            qty_livre: Number(line.qty_livre) || 0,
+                            sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
+                            tva: tva,
+                            pu_ht: pu_ht,
+                            pu_ttc: Number(line.pu_ttc),
+                            remise: remise,
+                            rm: rm,
+                            total_ht: total_ht,
+                            total_ttc: total_ttc,
+                            entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
+                            lots: line.lots ? line.lots.map((l: any) => ({
+                                lot_number: l.lot_number,
+                                quantity: Number(l.quantity),
+                                fabrication_date: l.fabrication_date,
+                                expiration_date: l.expiration_date
+                            })) : [],
+                            product: line.product,
+                            sale_unit: line.sale_unit
+                        };
+                    })
             });
         } catch (error) {
             console.error("Error fetching order details for conversion", error);

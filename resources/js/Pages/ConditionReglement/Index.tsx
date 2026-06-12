@@ -6,7 +6,8 @@ import InputError from '@/Components/InputError';
 interface Item {
     id: number;
     label: string;
-    nb_jours: number;
+    code: string;
+    label_long: string | null;
 }
 
 export default function Index({ items }: { items: Item[] }) {
@@ -16,7 +17,8 @@ export default function Index({ items }: { items: Item[] }) {
 
     const { data, setData, post, patch, processing, errors, reset, clearErrors } = useForm({
         label: '',
-        nb_jours: 0,
+        code: '',
+        label_long: '',
     });
 
     const openCreate = () => {
@@ -26,7 +28,7 @@ export default function Index({ items }: { items: Item[] }) {
     };
 
     const openEdit = (item: Item) => {
-        setData({ label: item.label, nb_jours: item.nb_jours });
+        setData({ label: item.label, code: item.code, label_long: item.label_long || '' });
         clearErrors();
         setEditingItem(item);
         setIsModalOpen(true);
@@ -50,7 +52,7 @@ export default function Index({ items }: { items: Item[] }) {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 max-w-5xl mx-auto">
                 <div>
                     <div className="flex items-center space-x-2 text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                        <span>DDB</span><span>/</span>
+                        <span>RÈGLEMENTS</span><span>/</span>
                         <span className="text-indigo-600 dark:text-indigo-400">Conditions de Règlement</span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
@@ -71,17 +73,19 @@ export default function Index({ items }: { items: Item[] }) {
                         <thead>
                             <tr className="bg-slate-50/70 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/50">
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Libellé</th>
-                                <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest w-40">Nombre de Jours</th>
+                                <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest w-40">Code</th>
+                                <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Libellé Long</th>
                                 <th className="py-4 px-6 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-right w-28">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800/70">
                             {items.length === 0 ? (
-                                <tr><td colSpan={3} className="py-16 text-center text-xs text-slate-400">Aucune condition de règlement. Cliquez sur "Ajouter".</td></tr>
+                                <tr><td colSpan={4} className="py-16 text-center text-xs text-slate-400">Aucune condition de règlement. Cliquez sur "Ajouter".</td></tr>
                             ) : items.map(item => (
                                 <tr key={item.id} className="hover:bg-indigo-50/20 dark:hover:bg-indigo-950/5 group transition-all">
                                     <td className="py-3.5 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200">{item.label}</td>
-                                    <td className="py-3.5 px-6 text-sm font-bold text-indigo-650 dark:text-indigo-400">{item.nb_jours} jours</td>
+                                    <td className="py-3.5 px-6 text-sm font-bold text-indigo-650 dark:text-indigo-400">{item.code}</td>
+                                    <td className="py-3.5 px-6 text-sm text-slate-650 dark:text-slate-350">{item.label_long || '-'}</td>
                                     <td className="py-3.5 px-6 text-right">
                                         <div className="flex items-center justify-end space-x-1 opacity-60 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => openEdit(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-xl transition-all">
@@ -114,10 +118,16 @@ export default function Index({ items }: { items: Item[] }) {
                                 <InputError message={errors.label} className="mt-1" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nombre de Jours</label>
-                                <input type="number" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                                    value={data.nb_jours} onChange={e => setData('nb_jours', parseInt(e.target.value) || 0)} placeholder="ex: 30" required />
-                                <InputError message={errors.nb_jours} className="mt-1" />
+                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Code</label>
+                                <input className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                                    value={data.code} onChange={e => setData('code', e.target.value)} placeholder="ex: EOM30" required />
+                                <InputError message={errors.code} className="mt-1" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Libellé Long</label>
+                                <textarea className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all resize-none h-20"
+                                    value={data.label_long} onChange={e => setData('label_long', e.target.value)} placeholder="ex: Paiement à 30 jours fin de mois" />
+                                <InputError message={errors.label_long} className="mt-1" />
                             </div>
                             <div className="flex items-center justify-end space-x-3 pt-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-xs font-bold text-slate-650 dark:text-slate-350 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">Annuler</button>
