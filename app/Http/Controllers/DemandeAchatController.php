@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\ModeReglement;
 use App\Models\ConditionReglement;
 use App\Models\CompteBancaire;
+use App\Models\Branche;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,7 @@ class DemandeAchatController extends Controller
             'modesReglement'      => ModeReglement::orderBy('label')->get(),
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -66,10 +68,11 @@ class DemandeAchatController extends Controller
     {
         $request->validate([
             'employee_id'            => ['nullable', 'exists:employees,id'],
-            'tier_id'                => ['nullable', 'exists:tiers,id'],
+            'tier_id'                => ['required', 'exists:tiers,id'],
             'date_demande'           => ['required', 'date'],
             'urgence'                => ['required', 'string', 'in:normal,important,urgent'],
             'devise_id'              => ['required', 'exists:devises,id'],
+            'branche_id'             => ['required', 'exists:branches,id'],
             'mode_reglement_id'      => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
@@ -101,6 +104,7 @@ class DemandeAchatController extends Controller
                 'date_demande'           => $request->input('date_demande'),
                 'urgence'                => $request->input('urgence'),
                 'devise_id'              => $request->input('devise_id'),
+                'branche_id'             => $request->input('branche_id'),
                 'mode_reglement_id'      => $request->input('mode_reglement_id'),
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
@@ -134,6 +138,7 @@ class DemandeAchatController extends Controller
             'modesReglement'      => ModeReglement::orderBy('label')->get(),
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -141,10 +146,11 @@ class DemandeAchatController extends Controller
     {
         $request->validate([
             'employee_id'            => ['nullable', 'exists:employees,id'],
-            'tier_id'                => ['nullable', 'exists:tiers,id'],
+            'tier_id'                => ['required', 'exists:tiers,id'],
             'date_demande'           => ['required', 'date'],
             'urgence'                => ['required', 'string', 'in:normal,important,urgent'],
             'devise_id'              => ['required', 'exists:devises,id'],
+            'branche_id'             => ['required', 'exists:branches,id'],
             'mode_reglement_id'      => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
@@ -170,6 +176,7 @@ class DemandeAchatController extends Controller
                 'date_demande'           => $request->input('date_demande'),
                 'urgence'                => $request->input('urgence'),
                 'devise_id'              => $request->input('devise_id'),
+                'branche_id'             => $request->input('branche_id'),
                 'mode_reglement_id'      => $request->input('mode_reglement_id'),
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),

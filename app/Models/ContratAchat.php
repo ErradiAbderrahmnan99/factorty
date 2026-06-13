@@ -15,7 +15,7 @@ class ContratAchat extends Model
 
     protected $fillable = [
         'ref', 'tier_id', 'date_contrat', 'date_echeance',
-        'devise_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
+        'devise_id', 'branche_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
         'mode_reglement_id', 'condition_reglement_id',
         'compte_bancaire_id', 'note_public', 'note_private',
     ];

@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 import { useState, useRef } from 'react';
 import LotAllocationModal, { LineLot } from '@/Components/LotAllocationModal';
 
@@ -66,6 +68,7 @@ export default function Create({
     conditionsReglement = [],
     comptesBancaires = [],
     entrepots = [],
+    branches = [],
 }: {
     tiers: Tier[];
     products: Product[];
@@ -75,14 +78,17 @@ export default function Create({
     conditionsReglement?: LookupItem[];
     comptesBancaires?: LookupItem[];
     entrepots?: LookupItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney } = useEntitySettings();
 
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
         date_commande: today,
         date_livraison: '',
-        devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        devise_id: defaultDeviseId || (devises.length > 0 ? devises[0].id.toString() : ''),
+        branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
         compte_bancaire_id: '',
@@ -115,7 +121,7 @@ export default function Create({
             product_id: '',
             entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
             purchase_unit_id: '',
-            tva: 20,
+            tva: defaultTva,
             qty: 1,
             pu_ht: 0,
             pu_ttc: 0,
@@ -144,9 +150,9 @@ export default function Create({
             if (prod) {
                 line.pu_ht = Number(prod.purchase_price) || 0;
                 line.purchase_unit_id = prod.purchase_unit_id ? prod.purchase_unit_id.toString() : '';
-                line.tva = 20;
-                line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-                line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+                line.tva = defaultTva;
+                line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+                line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
                 line.lots = [];
             }
         } else if (field === 'entrepot_id') {
@@ -154,32 +160,32 @@ export default function Create({
             line.lots = [];
         } else if (field === 'remise') {
             line.remise = Number(value) || 0;
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'rm') {
             line.rm = Number(value) || 0;
             const lineHtTotal = line.qty * line.pu_ht;
-            line.remise = lineHtTotal > 0 ? Number(((line.rm / lineHtTotal) * 100).toFixed(4)) : 0;
+            line.remise = lineHtTotal > 0 ? roundMoney((line.rm / lineHtTotal) * 100) : 0;
         } else if (field === 'qty' || field === 'tva') {
             line[field] = Number(value) || 0;
-            line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
             line.lots = [];
         } else if (field === 'pu_ht') {
             line.pu_ht = Number(value) || 0;
-            line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'pu_ttc') {
             line.pu_ttc = Number(value) || 0;
-            line.pu_ht = Number((line.pu_ttc / (1 + line.tva / 100)).toFixed(4));
-            line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
+            line.pu_ht = roundMoney(line.pu_ttc / (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else {
             (line as any)[field] = value;
         }
 
         const lineHt = line.qty * line.pu_ht;
         const discount = line.rm;
-        line.total_ht = Math.max(0, lineHt - discount);
-        line.total_ttc = line.total_ht * (1 + line.tva / 100);
+        line.total_ht = roundMoney(Math.max(0, lineHt - discount));
+        line.total_ttc = roundMoney(line.total_ht * (1 + line.tva / 100));
 
         updated[index] = line;
         setData('lines', updated);
@@ -247,7 +253,7 @@ export default function Create({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Fournisseur <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
@@ -276,13 +282,25 @@ export default function Create({
 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Devise <span className="text-rose-500">*</span></label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200"
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
                                 value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required>
                                 {devises.map(d => (
                                     <option key={d.id} value={d.id}>{d.label} ({d.symbol || d.code})</option>
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>
@@ -445,23 +463,20 @@ export default function Create({
                                                 </select>
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ht} onChange={val => updateLineField(idx, 'pu_ht', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ttc} onChange={val => updateLineField(idx, 'pu_ttc', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
                                                     value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
-                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} />
+                                                <DecimalInput value={line.rm} onChange={val => updateLineField(idx, 'rm', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500" />
                                             </td>
                                             <td className="py-3 text-right pr-2 font-mono text-xs font-black text-slate-800 dark:text-slate-100 select-none">
-                                                {line.total_ht.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {formatMoney(line.total_ht)}
                                             </td>
                                             <td className="py-3 px-2 text-center">
                                                 {isLotManaged ? (
@@ -542,31 +557,31 @@ export default function Create({
                             <div className="flex items-center justify-between text-slate-400">
                                   <span>Sous-Total Brut HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {(totalHT + totalRemise).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT + totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-rose-455">
                                 <span>Total Remise</span>
                                 <span className="font-mono text-rose-455 text-sm font-bold">
-                                    - {totalRemise.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    - {formatMoney(totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total Net HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalHT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total TVA</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalTVA.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalTVA)}
                                 </span>
                             </div>
                             <div className="pt-4 border-t border-slate-855 flex items-center justify-between text-base">
                                 <span className="text-indigo-400 font-extrabold">TOTAL TTC</span>
                                 <span className="font-mono font-black text-white text-xl">
-                                    {totalTTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
+                                    {formatMoney(totalTTC)} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
                                 </span>
                             </div>
                         </div>

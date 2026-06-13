@@ -59,6 +59,7 @@ interface DemandeAchat {
     date_demande: string;
     urgence: 'normal' | 'important' | 'urgent';
     devise_id: number;
+    branche_id: number | null;
     mode_reglement_id: number | null;
     condition_reglement_id: number | null;
     compte_bancaire_id: number | null;
@@ -98,6 +99,7 @@ export default function Edit({
     modesReglement = [],
     conditionsReglement = [],
     comptesBancaires = [],
+    branches = [],
 }: {
     demande: DemandeAchat;
     employees: Employee[];
@@ -108,6 +110,7 @@ export default function Edit({
     modesReglement?: LookupItem[];
     conditionsReglement?: LookupItem[];
     comptesBancaires?: LookupItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = demande.status !== 'brouillon';
 
@@ -117,6 +120,7 @@ export default function Edit({
         date_demande: demande.date_demande,
         urgence: demande.urgence,
         devise_id: demande.devise_id.toString(),
+        branche_id: demande.branche_id ? demande.branche_id.toString() : '',
         mode_reglement_id: demande.mode_reglement_id ? demande.mode_reglement_id.toString() : '',
         condition_reglement_id: demande.condition_reglement_id ? demande.condition_reglement_id.toString() : '',
         compte_bancaire_id: demande.compte_bancaire_id ? demande.compte_bancaire_id.toString() : '',
@@ -250,7 +254,7 @@ export default function Edit({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales & Urgence</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Urgence <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-850 dark:text-slate-200 font-extrabold"
@@ -275,10 +279,10 @@ export default function Edit({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Fournisseur suggéré</label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
-                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} disabled={isReadOnly}>
-                                <option value="">Optionnel...</option>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Fournisseur suggéré <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} disabled={isReadOnly} required>
+                                <option value="">Sélectionner un fournisseur...</option>
                                 {tiers.map(t => (
                                     <option key={t.id} value={t.id}>{t.label}</option>
                                 ))}
@@ -302,6 +306,18 @@ export default function Edit({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required disabled={isReadOnly}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

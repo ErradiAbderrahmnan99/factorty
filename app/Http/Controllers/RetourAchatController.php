@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Devise;
 use App\Models\Unit;
 use App\Models\Entrepot;
+use App\Models\Branche;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -97,6 +98,7 @@ class RetourAchatController extends Controller
             'modesReglement'      => $modesReglement,
             'conditionsReglement' => $conditionsReglement,
             'comptesBancaires'    => $comptesBancaires,
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -106,6 +108,7 @@ class RetourAchatController extends Controller
             'tier_id'                    => ['required', 'exists:tiers,id'],
             'date_retour'                => ['required', 'date'],
             'devise_id'                  => ['required', 'exists:devises,id'],
+            'branche_id'                 => ['required', 'exists:branches,id'],
             'mode_reglement_id'          => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id'     => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'         => ['nullable', 'exists:comptes_bancaires,id'],
@@ -233,6 +236,7 @@ class RetourAchatController extends Controller
                     'tier_id'                => $request->input('tier_id'),
                     'date_retour'            => $request->input('date_retour'),
                     'devise_id'              => $request->input('devise_id'),
+                    'branche_id'             => $request->input('branche_id'),
                     'mode_reglement_id'      => $request->input('mode_reglement_id'),
                     'condition_reglement_id' => $request->input('condition_reglement_id'),
                     'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
@@ -348,6 +352,7 @@ class RetourAchatController extends Controller
             'modesReglement'      => $modesReglement,
             'conditionsReglement' => $conditionsReglement,
             'comptesBancaires'    => $comptesBancaires,
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -361,6 +366,7 @@ class RetourAchatController extends Controller
             'tier_id'                    => ['required', 'exists:tiers,id'],
             'date_retour'                => ['required', 'date'],
             'devise_id'                  => ['required', 'exists:devises,id'],
+            'branche_id'                 => ['required', 'exists:branches,id'],
             'mode_reglement_id'          => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id'     => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'         => ['nullable', 'exists:comptes_bancaires,id'],
@@ -422,6 +428,7 @@ class RetourAchatController extends Controller
                     'tier_id'                => $request->input('tier_id'),
                     'date_retour'            => $request->input('date_retour'),
                     'devise_id'              => $request->input('devise_id'),
+                    'branche_id'             => $request->input('branche_id'),
                     'mode_reglement_id'      => $request->input('mode_reglement_id'),
                     'condition_reglement_id' => $request->input('condition_reglement_id'),
                     'compte_bancaire_id'     => $request->input('compte_bancaire_id'),

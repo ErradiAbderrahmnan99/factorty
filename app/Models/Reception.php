@@ -18,6 +18,7 @@ class Reception extends Model
         'tier_id',
         'date_reception',
         'devise_id',
+        'branche_id',
         'mode_reglement_id',
         'condition_reglement_id',
         'compte_bancaire_id',
@@ -70,6 +71,11 @@ class Reception extends Model
     public function commandeAchat(): BelongsTo
     {
         return $this->belongsTo(CommandeAchat::class, 'commande_achat_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function factures(): HasMany

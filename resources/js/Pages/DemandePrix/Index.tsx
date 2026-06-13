@@ -84,6 +84,7 @@ interface CloneFormState {
     tier_id: string;
     date_commande: string;
     devise_id: string;
+    branche_id: string;
     demande_prix_id: string;
     lines: CloneLineItem[];
 }
@@ -289,6 +290,7 @@ export default function Index({
                     tier_id: data.tier_id.toString(),
                     date_commande: today,
                     devise_id: data.devise_id.toString(),
+                    branche_id: data.branche_id ? data.branche_id.toString() : '',
                     demande_prix_id: data.id.toString(),
                     lines: initialLines
                 });
@@ -337,6 +339,7 @@ export default function Index({
             tier_id: cloneForm.tier_id,
             date_commande: cloneForm.date_commande,
             devise_id: cloneForm.devise_id,
+            branche_id: cloneForm.branche_id || null,
             status: 'brouillon',
             lines: cloneForm.lines.map(line => ({
                 demande_prix_line_id: line.demande_prix_line_id || null,

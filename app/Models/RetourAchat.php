@@ -18,6 +18,7 @@ class RetourAchat extends Model
         'tier_id',
         'date_retour',
         'devise_id',
+        'branche_id',
         'mode_reglement_id',
         'condition_reglement_id',
         'compte_bancaire_id',
@@ -64,5 +65,10 @@ class RetourAchat extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(RetourAchatLine::class, 'retour_achat_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 }

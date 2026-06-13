@@ -63,6 +63,7 @@ interface Reception {
     tier_id: number;
     date_reception: string;
     devise_id: number;
+    branche_id: number | null;
     mode_reglement_id: number | null;
     condition_reglement_id: number | null;
     compte_bancaire_id: number | null;
@@ -104,6 +105,7 @@ export default function Edit({
     conditionsReglement = [],
     comptesBancaires = [],
     entrepots = [],
+    branches = [],
 }: {
     reception: Reception;
     tiers: Tier[];
@@ -114,6 +116,7 @@ export default function Edit({
     conditionsReglement?: LookupItem[];
     comptesBancaires?: LookupItem[];
     entrepots?: LookupItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = reception.status !== 'brouillon';
 
@@ -121,6 +124,7 @@ export default function Edit({
         tier_id: reception.tier_id.toString(),
         date_reception: reception.date_reception,
         devise_id: reception.devise_id.toString(),
+        branche_id: reception.branche_id ? reception.branche_id.toString() : '',
         mode_reglement_id: reception.mode_reglement_id ? reception.mode_reglement_id.toString() : '',
         condition_reglement_id: reception.condition_reglement_id ? reception.condition_reglement_id.toString() : '',
         compte_bancaire_id: reception.compte_bancaire_id ? reception.compte_bancaire_id.toString() : '',
@@ -346,6 +350,18 @@ export default function Edit({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold disabled:opacity-70"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required disabled={isReadOnly}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

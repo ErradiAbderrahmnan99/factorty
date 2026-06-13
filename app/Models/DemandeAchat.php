@@ -15,7 +15,7 @@ class DemandeAchat extends Model
 
     protected $fillable = [
         'ref', 'date_demande', 'urgence', 'employee_id', 'tier_id',
-        'devise_id', 'mode_reglement_id', 'condition_reglement_id', 'compte_bancaire_id',
+        'devise_id', 'branche_id', 'mode_reglement_id', 'condition_reglement_id', 'compte_bancaire_id',
         'status', 'total_ht', 'total_tva', 'total_ttc',
         'note_public', 'note_private',
     ];

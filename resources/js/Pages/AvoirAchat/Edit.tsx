@@ -79,6 +79,7 @@ interface AvoirAchat {
     commercial: string | null;
     date_avoir: string;
     devise_id: number;
+    branche_id: number | null;
     mode_reglement_id: number | null;
     condition_reglement_id: number | null;
     origine_id: number | null;
@@ -116,6 +117,7 @@ export default function Edit({
     comptesBancaires = [],
     typesApprobateur = [],
     approbateurs = [],
+    branches = [],
 }: {
     avoir: AvoirAchat;
     factures?: FactureAchat[];
@@ -130,6 +132,7 @@ export default function Edit({
     comptesBancaires?: LookupItem[];
     typesApprobateur?: LookupItem[];
     approbateurs?: (Tier & { type_approbateur?: { label: string } })[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = avoir.status !== 'brouillon';
     const initialType = approbateurs.find(item => item.id.toString() === (avoir.approbateur_id || '').toString())?.type_approbateur_id?.toString() || '';
@@ -144,6 +147,7 @@ export default function Edit({
         commercial: avoir.commercial || '',
         date_avoir: avoir.date_avoir,
         devise_id: avoir.devise_id.toString(),
+        branche_id: avoir.branche_id?.toString() || '',
         mode_reglement_id: avoir.mode_reglement_id?.toString() || '',
         condition_reglement_id: avoir.condition_reglement_id?.toString() || '',
         origine_id: avoir.origine_id?.toString() || '',
@@ -262,6 +266,7 @@ export default function Edit({
                 tier_id: facture.tier_id ? facture.tier_id.toString() : curr.tier_id,
                 commercial: facture.commercial || curr.commercial,
                 devise_id: facture.devise_id ? facture.devise_id.toString() : curr.devise_id,
+                branche_id: facture.branche_id ? facture.branche_id.toString() : curr.branche_id,
                 mode_reglement_id: facture.mode_reglement_id ? facture.mode_reglement_id.toString() : curr.mode_reglement_id,
                 condition_reglement_id: facture.condition_reglement_id ? facture.condition_reglement_id.toString() : curr.condition_reglement_id,
                 origine_id: facture.origine_id ? facture.origine_id.toString() : curr.origine_id,
@@ -357,7 +362,7 @@ export default function Edit({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-850 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Fournisseur <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
@@ -394,13 +399,25 @@ export default function Edit({
 
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Devise <span className="text-rose-500">*</span></label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-850 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-850 dark:text-slate-200"
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-850 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-855 dark:text-slate-200"
                                 value={data.devise_id} onChange={e => setData('devise_id', e.target.value)} required disabled={isReadOnly}>
                                 {devises.map(d => (
                                     <option key={d.id} value={d.id}>{d.label} ({d.symbol || d.code})</option>
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required disabled={isReadOnly}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

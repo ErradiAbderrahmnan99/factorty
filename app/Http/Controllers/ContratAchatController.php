@@ -11,6 +11,7 @@ use App\Models\Unit;
 use App\Models\ModeReglement;
 use App\Models\ConditionReglement;
 use App\Models\CompteBancaire;
+use App\Models\Branche;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ class ContratAchatController extends Controller
             'modesReglement'      => ModeReglement::orderBy('label')->get(),
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -62,6 +64,7 @@ class ContratAchatController extends Controller
             'date_contrat'           => ['required', 'date'],
             'date_echeance'          => ['nullable', 'date'],
             'devise_id'              => ['required', 'exists:devises,id'],
+            'branche_id'             => ['required', 'exists:branches,id'],
             'mode_reglement_id'      => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
@@ -92,6 +95,7 @@ class ContratAchatController extends Controller
                 'date_contrat'           => $request->input('date_contrat'),
                 'date_echeance'          => $request->input('date_echeance'),
                 'devise_id'              => $request->input('devise_id'),
+                'branche_id'             => $request->input('branche_id'),
                 'mode_reglement_id'      => $request->input('mode_reglement_id'),
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),
@@ -124,6 +128,7 @@ class ContratAchatController extends Controller
             'modesReglement'      => ModeReglement::orderBy('label')->get(),
             'conditionsReglement' => ConditionReglement::orderBy('label')->get(),
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
+            'branches'            => Branche::orderBy('name')->get(),
         ]);
     }
 
@@ -134,6 +139,7 @@ class ContratAchatController extends Controller
             'date_contrat'           => ['required', 'date'],
             'date_echeance'          => ['nullable', 'date'],
             'devise_id'              => ['required', 'exists:devises,id'],
+            'branche_id'             => ['required', 'exists:branches,id'],
             'mode_reglement_id'      => ['nullable', 'exists:modes_reglement,id'],
             'condition_reglement_id' => ['nullable', 'exists:conditions_reglement,id'],
             'compte_bancaire_id'     => ['nullable', 'exists:comptes_bancaires,id'],
@@ -158,6 +164,7 @@ class ContratAchatController extends Controller
                 'date_contrat'           => $request->input('date_contrat'),
                 'date_echeance'          => $request->input('date_echeance'),
                 'devise_id'              => $request->input('devise_id'),
+                'branche_id'             => $request->input('branche_id'),
                 'mode_reglement_id'      => $request->input('mode_reglement_id'),
                 'condition_reglement_id' => $request->input('condition_reglement_id'),
                 'compte_bancaire_id'     => $request->input('compte_bancaire_id'),

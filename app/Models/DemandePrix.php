@@ -15,7 +15,7 @@ class DemandePrix extends Model
 
     protected $fillable = [
         'ref', 'date_demande', 'date_validite', 'employee_id', 'tier_id',
-        'devise_id', 'mode_reglement_id', 'condition_reglement_id', 'compte_bancaire_id',
+        'devise_id', 'branche_id', 'mode_reglement_id', 'condition_reglement_id', 'compte_bancaire_id',
         'status', 'total_ht', 'total_tva', 'total_ttc',
         'note_public', 'note_private',
     ];
@@ -31,6 +31,7 @@ class DemandePrix extends Model
     public function employee(): BelongsTo    { return $this->belongsTo(Employee::class, 'employee_id'); }
     public function tier(): BelongsTo        { return $this->belongsTo(Tier::class, 'tier_id'); }
     public function devise(): BelongsTo      { return $this->belongsTo(Devise::class, 'devise_id'); }
+    public function branche(): BelongsTo     { return $this->belongsTo(Branche::class, 'branche_id'); }
     public function modeReglement(): BelongsTo      { return $this->belongsTo(ModeReglement::class, 'mode_reglement_id'); }
     public function conditionReglement(): BelongsTo { return $this->belongsTo(ConditionReglement::class, 'condition_reglement_id'); }
     public function compteBancaire(): BelongsTo     { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }

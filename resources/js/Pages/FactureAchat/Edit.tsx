@@ -95,6 +95,7 @@ interface FactureAchat {
     date_facture: string;
     date_echeance: string | null;
     devise_id: number;
+    branche_id: number | null;
     status: string;
     mode_reglement_id: number | null;
     condition_reglement_id: number | null;
@@ -133,6 +134,7 @@ export default function Edit({
     comptesBancaires = [],
     typesApprobateur = [],
     approbateurs = [],
+    branches = [],
 }: {
     facture: FactureAchat;
     tiers: Tier[];
@@ -146,6 +148,7 @@ export default function Edit({
     comptesBancaires?: CompteBancaire[];
     typesApprobateur?: TypeApprobateur[];
     approbateurs?: Tier[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = facture.status !== 'brouillon';
 
@@ -161,6 +164,7 @@ export default function Edit({
         date_facture: facture.date_facture,
         date_echeance: facture.date_echeance || '',
         devise_id: facture.devise_id.toString(),
+        branche_id: facture.branche_id?.toString() || '',
         mode_reglement_id: facture.mode_reglement_id?.toString() || '',
         condition_reglement_id: facture.condition_reglement_id?.toString() || '',
         origine_id: facture.origine_id?.toString() || '',
@@ -298,8 +302,7 @@ export default function Edit({
                             </span>
                         )}
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Fournisseur <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
@@ -350,6 +353,18 @@ export default function Edit({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required disabled={isReadOnly}>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

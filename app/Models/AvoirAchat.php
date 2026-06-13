@@ -15,7 +15,7 @@ class AvoirAchat extends Model
 
     protected $fillable = [
         'ref', 'tier_id', 'facture_achat_id', 'commercial', 'date_avoir',
-        'devise_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
+        'devise_id', 'branche_id', 'status', 'total_ht', 'total_tva', 'total_ttc',
         'mode_reglement_id', 'condition_reglement_id', 'origine_id',
         'compte_bancaire_id', 'approbateur_id',
         'note_public', 'note_private',
@@ -36,6 +36,7 @@ class AvoirAchat extends Model
     public function origine(): BelongsTo             { return $this->belongsTo(Origine::class, 'origine_id'); }
     public function compteBancaire(): BelongsTo      { return $this->belongsTo(CompteBancaire::class, 'compte_bancaire_id'); }
     public function approbateur(): BelongsTo         { return $this->belongsTo(Tier::class, 'approbateur_id'); }
+    public function branche(): BelongsTo             { return $this->belongsTo(Branche::class, 'branche_id'); }
     public function lines(): HasMany                 { return $this->hasMany(AvoirAchatLine::class, 'avoir_achat_id'); }
     public function reglements(): \Illuminate\Database\Eloquent\Relations\MorphMany  { return $this->morphMany(Reglement::class, 'origin'); }
 

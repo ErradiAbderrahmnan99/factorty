@@ -22,6 +22,7 @@ class FactureAchat extends Model
         'date_facture',
         'date_echeance',
         'devise_id',
+        'branche_id',
         'status',
         'total_ht',
         'total_tva',
@@ -82,6 +83,11 @@ class FactureAchat extends Model
     public function approbateur(): BelongsTo
     {
         return $this->belongsTo(Tier::class, 'approbateur_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function lines(): HasMany

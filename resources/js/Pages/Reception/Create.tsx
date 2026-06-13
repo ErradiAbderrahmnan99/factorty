@@ -66,6 +66,7 @@ export default function Create({
     conditionsReglement = [],
     comptesBancaires = [],
     entrepots = [],
+    branches = [],
 }: {
     tiers: Tier[];
     products: Product[];
@@ -75,6 +76,7 @@ export default function Create({
     conditionsReglement?: LookupItem[];
     comptesBancaires?: LookupItem[];
     entrepots?: LookupItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
 
@@ -82,6 +84,7 @@ export default function Create({
         tier_id: '',
         date_reception: today,
         devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
         compte_bancaire_id: '',
@@ -275,6 +278,18 @@ export default function Create({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>

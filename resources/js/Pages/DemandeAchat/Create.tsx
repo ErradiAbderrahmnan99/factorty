@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Employee {
     id: number;
@@ -66,6 +68,7 @@ export default function Create({
     modesReglement = [],
     conditionsReglement = [],
     comptesBancaires = [],
+    branches = [],
 }: {
     employees: Employee[];
     tiers: Tier[];
@@ -75,15 +78,18 @@ export default function Create({
     modesReglement?: LookupItem[];
     conditionsReglement?: LookupItem[];
     comptesBancaires?: LookupItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney } = useEntitySettings();
 
     const { data, setData, post, processing, errors } = useForm({
         employee_id: '',
         tier_id: '',
         date_demande: today,
         urgence: 'normal' as 'normal' | 'important' | 'urgent',
-        devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        devise_id: defaultDeviseId || (devises.length > 0 ? devises[0].id.toString() : ''),
+        branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
         compte_bancaire_id: '',
@@ -195,7 +201,7 @@ export default function Create({
                 <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] rounded-3xl p-6 backdrop-blur-xl space-y-6 animate-fade-in">
                     <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-855 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">1. Informations Générales & Urgence</h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Urgence <span className="text-rose-500">*</span></label>
                             <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-850 dark:text-slate-200 font-extrabold"
@@ -220,10 +226,10 @@ export default function Create({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Fournisseur suggéré</label>
-                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
-                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)}>
-                                <option value="">Optionnel...</option>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Fournisseur suggéré <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} required>
+                                <option value="">Sélectionner un fournisseur...</option>
                                 {tiers.map(t => (
                                     <option key={t.id} value={t.id}>{t.label}</option>
                                 ))}
@@ -247,6 +253,18 @@ export default function Create({
                                 ))}
                             </select>
                             <InputError message={errors.devise_id} className="mt-1" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-655 dark:text-slate-400 mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-200 font-semibold"
+                                value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required>
+                                <option value="">Sélectionner une branche...</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.branche_id} className="mt-1" />
                         </div>
                     </div>
                 </div>
@@ -379,12 +397,10 @@ export default function Create({
                                                 </select>
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ht} onChange={val => updateLineField(idx, 'pu_ht', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required />
+                                                <DecimalInput value={line.pu_ttc} onChange={val => updateLineField(idx, 'pu_ttc', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold" required />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"

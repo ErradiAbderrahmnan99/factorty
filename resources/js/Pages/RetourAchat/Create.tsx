@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import LotAllocationModal from '@/Components/LotAllocationModal';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface LineLot {
     lot_number: string;
@@ -80,7 +81,8 @@ export default function Create({
     receptions,
     modesReglement = [],
     conditionsReglement = [],
-    comptesBancaires = []
+    comptesBancaires = [],
+    branches = []
 }: {
     tiers: Tier[];
     products: Product[];
@@ -91,11 +93,15 @@ export default function Create({
     modesReglement?: OptionItem[];
     conditionsReglement?: OptionItem[];
     comptesBancaires?: OptionItem[];
+    branches?: { id: number; name: string; }[];
 }) {
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney } = useEntitySettings();
+
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
         date_retour: new Date().toISOString().split('T')[0],
         devise_id: '',
+        branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
         compte_bancaire_id: '',
@@ -243,18 +249,18 @@ export default function Create({
 
     const totalHt = getCheckedLines().reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
-        const discount = (lineHt * line.remise / 100) + line.rm;
-        return sum + Math.max(0, lineHt - discount);
+        const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+        return sum + roundMoney(Math.max(0, lineHt - discount));
     }, 0);
 
     const totalTtc = getCheckedLines().reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
-        const discount = (lineHt * line.remise / 100) + line.rm;
-        const lineTotalHt = Math.max(0, lineHt - discount);
-        return sum + (lineTotalHt * (1 + line.tva / 100));
+        const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+        const lineTotalHt = roundMoney(Math.max(0, lineHt - discount));
+        return sum + roundMoney(lineTotalHt * (1 + line.tva / 100));
     }, 0);
 
-    const totalTva = Math.max(0, totalTtc - totalHt);
+    const totalTva = roundMoney(Math.max(0, totalTtc - totalHt));
 
     const openLotModal = (index: number) => {
         const line = data.lines[index];
@@ -341,7 +347,7 @@ export default function Create({
                     </div>
 
                     {/* Metadata lookups */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5">Fournisseur <span className="text-rose-500">*</span></label>
                             <select value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} required
@@ -357,6 +363,16 @@ export default function Create({
                             <input type="date" value={data.date_retour} onChange={e => setData('date_retour', e.target.value)} required
                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all" />
                             {errors.date_retour && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.date_retour}</span>}
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-450 uppercase tracking-widest mb-1.5">Branche <span className="text-rose-500">*</span></label>
+                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} required
+                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all">
+                                <option value="">Choisir une branche...</option>
+                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.branche_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.branche_id}</span>}
                         </div>
                     </div>
                 </div>
@@ -391,7 +407,7 @@ export default function Create({
                                             <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total BR</span>
                                                 <span className="text-xs font-extrabold text-slate-850 dark:text-white">
-                                                    {Number(bl.total_ttc).toFixed(2)} {bl.devise ? bl.devise.symbol || bl.devise.code : ''}
+                                                    {formatMoney(bl.total_ttc)} {bl.devise ? bl.devise.symbol || bl.devise.code : ''}
                                                 </span>
                                             </div>
                                         </div>
@@ -428,8 +444,8 @@ export default function Create({
                                     {data.lines.map((line, idx) => {
                                         const isChecked = !!checkedLineIds[line.reception_line_id];
                                         const lineHt = line.qty * line.pu_ht;
-                                        const discount = (lineHt * line.remise / 100) + line.rm;
-                                        const lineTotalHt = Math.max(0, lineHt - discount);
+                                        const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+                                        const lineTotalHt = roundMoney(Math.max(0, lineHt - discount));
                                         const currentDevise = devises.find(d => String(d.id) === data.devise_id);
                                         const symbol = currentDevise ? currentDevise.symbol || currentDevise.code : '';
                                         const allocatedQty = line.lots?.reduce((sum, l) => sum + Number(l.quantity), 0) || 0;
@@ -478,10 +494,10 @@ export default function Create({
                                                     )}
                                                 </td>
                                                 <td className="py-4 px-6 text-xs text-right font-semibold text-slate-700 dark:text-slate-300">
-                                                    {line.pu_ht.toFixed(2)} {symbol}
+                                                    {formatMoney(line.pu_ht)} {symbol}
                                                 </td>
                                                 <td className="py-4 px-6 text-xs text-right font-black text-slate-900 dark:text-white">
-                                                    {lineTotalHt.toFixed(2)} {symbol}
+                                                    {formatMoney(lineTotalHt)} {symbol}
                                                 </td>
                                             </tr>
                                         );
@@ -500,16 +516,16 @@ export default function Create({
                             <div className="w-full md:w-80 space-y-2.5">
                                 <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
                                     <span>Total HT</span>
-                                    <span>{totalHt.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                                    <span>{formatMoney(totalHt)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800">
                                     <span>TVA cumulée</span>
-                                    <span>{totalTva.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                                    <span>{formatMoney(totalTva)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total TTC</span>
                                     <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
-                                        {totalTtc.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}
+                                        {formatMoney(totalTtc)} {devises.find(d => String(d.id) === data.devise_id)?.code}
                                     </span>
                                 </div>
                             </div>

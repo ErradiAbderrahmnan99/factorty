@@ -19,6 +19,7 @@ class CommandeAchat extends Model
         'date_commande',
         'date_livraison',
         'devise_id',
+        'branche_id',
         'mode_reglement_id',
         'condition_reglement_id',
         'compte_bancaire_id',
@@ -72,6 +73,11 @@ class CommandeAchat extends Model
     public function demandePrix(): BelongsTo
     {
         return $this->belongsTo(DemandePrix::class, 'demande_prix_id');
+    }
+
+    public function branche(): BelongsTo
+    {
+        return $this->belongsTo(Branche::class, 'branche_id');
     }
 
     public function receptions(): HasMany

@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import LotAllocationModal from '@/Components/LotAllocationModal';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface LineLot {
     lot_number: string;
@@ -56,6 +57,7 @@ interface RetourAchat {
     tier_id: number;
     date_retour: string;
     devise_id: number;
+    branche_id?: number | null;
     mode_reglement_id: number | string | null;
     condition_reglement_id: number | string | null;
     compte_bancaire_id: number | string | null;
@@ -83,7 +85,8 @@ export default function Edit({
     entrepots,
     modesReglement = [],
     conditionsReglement = [],
-    comptesBancaires = []
+    comptesBancaires = [],
+    branches = []
 }: {
     retour: RetourAchat;
     tiers: Tier[];
@@ -92,13 +95,16 @@ export default function Edit({
     modesReglement?: OptionItem[];
     conditionsReglement?: OptionItem[];
     comptesBancaires?: OptionItem[];
+    branches?: { id: number; name: string; }[];
 }) {
     const isLocked = retour.status !== 'brouillon';
+    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney } = useEntitySettings();
 
     const { data, setData, put, processing, errors } = useForm({
         tier_id: String(retour.tier_id),
         date_retour: retour.date_retour,
         devise_id: String(retour.devise_id),
+        branche_id: retour.branche_id ? String(retour.branche_id) : '',
         mode_reglement_id: retour.mode_reglement_id ? String(retour.mode_reglement_id) : '',
         condition_reglement_id: retour.condition_reglement_id ? String(retour.condition_reglement_id) : '',
         compte_bancaire_id: retour.compte_bancaire_id ? String(retour.compte_bancaire_id) : '',
@@ -169,18 +175,18 @@ export default function Edit({
 
     const totalHt = data.lines.reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
-        const discount = (lineHt * line.remise / 100) + line.rm;
-        return sum + Math.max(0, lineHt - discount);
+        const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+        return sum + roundMoney(Math.max(0, lineHt - discount));
     }, 0);
 
     const totalTtc = data.lines.reduce((sum, line) => {
         const lineHt = line.qty * line.pu_ht;
-        const discount = (lineHt * line.remise / 100) + line.rm;
-        const lineTotalHt = Math.max(0, lineHt - discount);
-        return sum + (lineTotalHt * (1 + line.tva / 100));
+        const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+        const lineTotalHt = roundMoney(Math.max(0, lineHt - discount));
+        return sum + roundMoney(lineTotalHt * (1 + line.tva / 100));
     }, 0);
 
-    const totalTva = Math.max(0, totalTtc - totalHt);
+    const totalTva = roundMoney(Math.max(0, totalTtc - totalHt));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -243,7 +249,7 @@ export default function Edit({
                     </div>
 
                     {/* Metadata lookups */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-bold">Fournisseur</label>
                             <select value={data.tier_id} disabled={true}
@@ -257,6 +263,16 @@ export default function Edit({
                             <input type="date" value={data.date_retour} onChange={e => setData('date_retour', e.target.value)} disabled={isLocked}
                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50" />
                             {errors.date_retour && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.date_retour}</span>}
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5 font-bold">Branche <span className="text-rose-500">*</span></label>
+                            <select value={data.branche_id} onChange={e => setData('branche_id', e.target.value)} disabled={isLocked} required
+                                className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50">
+                                <option value="">Choisir une branche...</option>
+                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {errors.branche_id && <span className="text-[10px] text-rose-500 font-bold mt-1 block">{errors.branche_id}</span>}
                         </div>
                     </div>
                 </div>
@@ -285,8 +301,8 @@ export default function Edit({
                             <tbody className="divide-y divide-slate-100/50 dark:divide-slate-800/30">
                                 {data.lines.map((line, idx) => {
                                     const lineHt = line.qty * line.pu_ht;
-                                    const discount = (lineHt * line.remise / 100) + line.rm;
-                                    const lineTotalHt = Math.max(0, lineHt - discount);
+                                    const discount = roundMoney((lineHt * line.remise / 100) + line.rm);
+                                    const lineTotalHt = roundMoney(Math.max(0, lineHt - discount));
                                     const currentDevise = devises.find(d => String(d.id) === data.devise_id);
                                     const symbol = currentDevise ? currentDevise.symbol || currentDevise.code : '';
                                     const allocatedQty = line.lots?.reduce((sum, l) => sum + Number(l.quantity), 0) || 0;
@@ -332,10 +348,10 @@ export default function Edit({
                                                 )}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-right font-semibold text-slate-700 dark:text-slate-300">
-                                                {line.pu_ht.toFixed(2)} {symbol}
+                                                {formatMoney(line.pu_ht)} {symbol}
                                             </td>
                                             <td className="py-4 px-6 text-xs text-right font-black text-slate-900 dark:text-white">
-                                                {lineTotalHt.toFixed(2)} {symbol}
+                                                {formatMoney(lineTotalHt)} {symbol}
                                             </td>
                                         </tr>
                                     );
@@ -355,16 +371,16 @@ export default function Edit({
                     <div className="w-full md:w-80 space-y-2.5">
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
                             <span>Total HT</span>
-                            <span>{totalHt.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                            <span>{formatMoney(totalHt)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800">
                             <span>TVA cumulée</span>
-                            <span>{totalTva.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
+                            <span>{formatMoney(totalTva)} {devises.find(d => String(d.id) === data.devise_id)?.code}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total TTC</span>
                             <span className="text-lg font-black text-indigo-650 dark:text-indigo-400">
-                                {totalTtc.toFixed(2)} {devises.find(d => String(d.id) === data.devise_id)?.code}
+                                {formatMoney(totalTtc)} {devises.find(d => String(d.id) === data.devise_id)?.code}
                             </span>
                         </div>
                     </div>
