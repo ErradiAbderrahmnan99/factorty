@@ -587,7 +587,7 @@ export default function Create({
                         </div>
 
                         <div className="text-[10px] text-slate-500 font-medium text-center select-none pt-2 border-t border-slate-850">
-                            Calculé en temps réel • Arrondi à 4 décimales par ligne
+                            Calculé en temps réel • Arrondi à {decimals} décimales par ligne
                         </div>
                     </div>
                 </div>

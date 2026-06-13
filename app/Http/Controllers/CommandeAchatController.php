@@ -315,7 +315,7 @@ class CommandeAchatController extends Controller
 
     public function getCommandeWithLines(CommandeAchat $commandesAchat)
     {
-        $commandesAchat->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise']);
+        $commandesAchat->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
         return response()->json($commandesAchat);
     }
 

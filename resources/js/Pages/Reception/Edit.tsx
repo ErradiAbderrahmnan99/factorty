@@ -3,6 +3,8 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import { useState, useRef } from 'react';
 import LotAllocationModal, { LineLot } from '@/Components/LotAllocationModal';
+import { useEntitySettings } from '@/Utils/entitySettings';
+import DecimalInput from '@/Components/DecimalInput';
 
 interface Tier {
     id: number;
@@ -119,6 +121,7 @@ export default function Edit({
     branches?: { id: number; name: string; }[];
 }) {
     const isReadOnly = reception.status !== 'brouillon';
+    const { defaultTva, decimals, formatMoney } = useEntitySettings();
 
     const { data, setData, put, processing, errors } = useForm({
         tier_id: reception.tier_id.toString(),
@@ -176,7 +179,7 @@ export default function Edit({
             product_id: '',
             entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
             purchase_unit_id: '',
-            tva: 20,
+            tva: Number(defaultTva),
             qty: 1,
             pu_ht: 0,
             pu_ttc: 0,
@@ -207,7 +210,7 @@ export default function Edit({
             if (prod) {
                 line.pu_ht = Number(prod.purchase_price) || 0;
                 line.purchase_unit_id = prod.purchase_unit_id ? prod.purchase_unit_id.toString() : '';
-                line.tva = 20;
+                line.tva = Number(defaultTva);
                 line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
                 line.rm = Number(((line.qty * line.pu_ht) * (line.remise / 100)).toFixed(4));
                 line.lots = [];
@@ -526,23 +529,20 @@ export default function Edit({
                                                 </select>
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70"
-                                                    value={line.pu_ht} onChange={e => updateLineField(idx, 'pu_ht', e.target.value)} required disabled={isReadOnly} />
+                                                <DecimalInput value={line.pu_ht} onChange={val => updateLineField(idx, 'pu_ht', val)} decimals={decimals} disabled={isReadOnly} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70" required />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70"
-                                                    value={line.pu_ttc} onChange={e => updateLineField(idx, 'pu_ttc', e.target.value)} required disabled={isReadOnly} />
+                                                <DecimalInput value={line.pu_ttc} onChange={val => updateLineField(idx, 'pu_ttc', val)} decimals={decimals} disabled={isReadOnly} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70" required />
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 disabled:opacity-70"
                                                     value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} disabled={isReadOnly} />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 disabled:opacity-70"
-                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} disabled={isReadOnly} />
+                                                <DecimalInput value={line.rm} onChange={val => updateLineField(idx, 'rm', val)} decimals={decimals} disabled={isReadOnly} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 disabled:opacity-70" />
                                             </td>
                                             <td className="py-3 text-right pr-2 font-mono text-xs font-black text-slate-800 dark:text-slate-100 select-none">
-                                                {line.total_ht.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {formatMoney(line.total_ht)}
                                             </td>
                                             <td className="py-3 px-2 text-center">
                                                 {isLotManaged ? (
@@ -630,37 +630,37 @@ export default function Edit({
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Sous-Total Brut HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {(totalHT + totalRemise).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT + totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-rose-455">
                                 <span>Total Remise</span>
                                 <span className="font-mono text-rose-455 text-sm font-bold">
-                                    - {totalRemise.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    - {formatMoney(totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total Net HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalHT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total TVA</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalTVA.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalTVA)}
                                 </span>
                             </div>
                             <div className="pt-4 border-t border-slate-855 flex items-center justify-between text-base">
                                 <span className="text-indigo-400 font-extrabold">TOTAL TTC</span>
                                 <span className="font-mono font-black text-white text-xl">
-                                    {totalTTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
+                                    {formatMoney(totalTTC)} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
                                 </span>
                             </div>
                         </div>
 
                         <div className="text-[10px] text-slate-500 font-medium text-center select-none pt-2 border-t border-slate-850">
-                            Calculé en temps réel • Arrondi à 4 décimales par ligne
+                            Calculé en temps réel • Arrondi à {decimals} décimales par ligne
                         </div>
                     </div>
                 </div>

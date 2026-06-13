@@ -21,6 +21,7 @@ interface DemandePrix {
     status: 'brouillon' | 'valide' | 'annulee' | 'commande' | 'commande partiellement';
     devise: Devise;
     commandes_achat?: any[];
+    branche?: { id: number; name: string };
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -294,6 +295,7 @@ export default function Index({
                     demande_prix_id: data.id.toString(),
                     lines: initialLines
                 });
+                setCloneTarget(data);
                 setIsFetchingCloneDetails(false);
             })
             .catch(() => {
@@ -601,7 +603,7 @@ export default function Index({
 
                         <form onSubmit={submitClone} className="space-y-6">
                             {/* General Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
                                 <div>
                                     <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5 font-bold">Fournisseur</label>
                                     <div className="text-xs font-black text-slate-800 dark:text-slate-205 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
@@ -617,6 +619,12 @@ export default function Index({
                                     <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5 font-bold">Devise</label>
                                     <div className="text-xs font-black text-slate-800 dark:text-slate-205 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                         {cloneTarget.devise.code} ({cloneTarget.devise.symbol || ''})
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5 font-bold">Branche</label>
+                                    <div className="text-xs font-black text-slate-800 dark:text-slate-205 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                        {cloneTarget.branche ? cloneTarget.branche.name : '—'}
                                     </div>
                                 </div>
                             </div>

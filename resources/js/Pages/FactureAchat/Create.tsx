@@ -504,11 +504,10 @@ export default function Create({
                                                     value={line.remise} onChange={e => updateLineField(idx, 'remise', e.target.value)} />
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500"
-                                                    value={line.rm} onChange={e => updateLineField(idx, 'rm', e.target.value)} />
+                                                <DecimalInput value={line.rm} onChange={val => updateLineField(idx, 'rm', val)} decimals={decimals} className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500" />
                                             </td>
                                             <td className="py-3 text-right pr-2 font-mono text-xs font-black text-slate-800 dark:text-slate-100 select-none">
-                                                {line.total_ht.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {formatMoney(line.total_ht)}
                                             </td>
                                             <td className="py-3 text-center">
                                                 <button type="button" onClick={() => removeLine(idx)}
@@ -574,37 +573,37 @@ export default function Create({
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Sous-Total Brut HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {(totalHT + totalRemise).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT + totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-rose-450">
                                 <span>Total Remise</span>
                                 <span className="font-mono text-rose-455 text-sm font-bold">
-                                    - {totalRemise.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    - {formatMoney(totalRemise)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total Net HT</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalHT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalHT)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>Total TVA</span>
                                 <span className="font-mono text-white text-sm font-bold">
-                                    {totalTVA.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(totalTVA)}
                                 </span>
                             </div>
                             <div className="pt-4 border-t border-slate-850 flex items-center justify-between text-base">
                                 <span className="text-indigo-400 font-extrabold">TOTAL TTC</span>
                                 <span className="font-mono font-black text-white text-xl">
-                                    {totalTTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
+                                    {formatMoney(totalTTC)} <span className="text-xs text-slate-455">{devises.find(d => d.id.toString() === data.devise_id)?.symbol || devises.find(d => d.id.toString() === data.devise_id)?.code || ''}</span>
                                 </span>
                             </div>
                         </div>
 
                         <div className="text-[10px] text-slate-500 font-medium text-center select-none pt-2 border-t border-slate-850">
-                            Calculé en temps réel • Arrondi à 4 décimales par ligne
+                            Calculé en temps réel • Arrondi à {decimals} décimales par ligne
                         </div>
                     </div>
                 </div>

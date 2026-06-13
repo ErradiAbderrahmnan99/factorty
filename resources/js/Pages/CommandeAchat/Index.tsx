@@ -66,6 +66,7 @@ interface CloneForm {
     tier_id: string;
     date_reception: string;
     devise_id: string;
+    branche_id: string;
     commande_achat_id: string;
     note_public: string;
     note_private: string;
@@ -83,6 +84,7 @@ interface CommandeAchat {
     status: 'brouillon' | 'commandee' | 'recue' | 'recue partiellement' | 'annulee';
     devise: Devise;
     receptions?: { id: number; ref: string }[];
+    branche?: { id: number; name: string };
 }
 
 interface PaginationLink { url: string | null; label: string; active: boolean; }
@@ -165,11 +167,12 @@ export default function Index({
         try {
             const response = await axios.get(route('api.commandes-achat.show', commande.id));
             const data = response.data;
-            setCloneTarget(commande);
+            setCloneTarget(data);
             setCloneForm({
                 tier_id: data.tier_id.toString(),
                 date_reception: new Date().toISOString().split('T')[0],
                 devise_id: data.devise_id.toString(),
+                branche_id: data.branche_id ? data.branche_id.toString() : '',
                 commande_achat_id: data.id.toString(),
                 note_public: data.note_public || '',
                 note_private: data.note_private || '',
@@ -655,6 +658,12 @@ export default function Index({
                                         <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Devise</label>
                                         <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                             {cloneTarget.devise.code} ({cloneTarget.devise.symbol || ''})
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5 font-bold">Branche</label>
+                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                            {cloneTarget.branche ? cloneTarget.branche.name : '—'}
                                         </div>
                                     </div>
                                 </div>

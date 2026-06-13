@@ -214,7 +214,7 @@ class DemandePrixController extends Controller
 
     public function getDemandePrixWithLines(DemandePrix $demandesPrix)
     {
-        $demandesPrix->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise']);
+        $demandesPrix->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
         return response()->json($demandesPrix);
     }
 
