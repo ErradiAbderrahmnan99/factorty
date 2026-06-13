@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import { useState, useRef } from 'react';
 import LotAllocationModal, { LineLot } from '@/Components/LotAllocationModal';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier {
     id: number;
@@ -79,11 +80,12 @@ export default function Create({
     branches?: { id: number; name: string; }[];
 }) {
     const today = new Date().toISOString().split('T')[0];
+    const { defaultDeviseId } = useEntitySettings();
 
     const { data, setData, post, processing, errors } = useForm({
         tier_id: '',
         date_reception: today,
-        devise_id: devises.length > 0 ? devises[0].id.toString() : '',
+        devise_id: defaultDeviseId || (devises.length > 0 ? devises[0].id.toString() : ''),
         branche_id: '',
         mode_reglement_id: '',
         condition_reglement_id: '',
