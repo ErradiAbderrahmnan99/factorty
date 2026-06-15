@@ -19,6 +19,8 @@ interface Reception {
     total_ttc: number;
     status: 'brouillon' | 'valide' | 'annulee' | 'facturé' | 'facturé partiellement';
     devise: Devise;
+    branche_id?: number | null;
+    branche?: { id: number; name: string } | null;
     commande_achat?: { id: number; ref: string } | null;
     factures?: Facture[] | null;
 }
@@ -46,6 +48,8 @@ interface CloneFormState {
     date_echeance: string;
     devise_id: string;
     reception_id: string;
+    branche_id: string;
+    branche_name: string;
     lines: CloneLine[];
 }
 
@@ -145,6 +149,8 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                 date_echeance: '',
                 devise_id: data.devise_id.toString(),
                 reception_id: data.id.toString(),
+                branche_id: data.branche_id ? data.branche_id.toString() : '',
+                branche_name: data.branche ? data.branche.name : '—',
                 lines: lines
             });
         } catch (error) {
@@ -542,12 +548,19 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
 
                             <form onSubmit={submitClone} className="space-y-6">
                                 {/* General Details */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-55 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-55 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
                                     <div>
                                         <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Fournisseur</label>
                                         <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-905 rounded-xl border border-slate-202/50 dark:border-slate-802/50">
                                             {cloneTarget.tier ? cloneTarget.tier.label : '—'}
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Branche</label>
+                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 py-2.5 px-3 bg-white dark:bg-slate-905 rounded-xl border border-slate-202/50 dark:border-slate-802/50">
+                                            {cloneForm.branche_name}
+                                        </div>
+                                        {cloneErrors.branche_id && <div className="text-rose-550 text-[10px] font-bold mt-1">{cloneErrors.branche_id}</div>}
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5">Date de Facture <span className="text-rose-500">*</span></label>

@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
+import DecimalInput from '@/Components/DecimalInput';
+import { useEntitySettings } from '@/Utils/entitySettings';
 
 interface Tier { id: number; label: string; }
 interface ModeReglement { id: number; label: string; }
@@ -56,6 +58,7 @@ export default function Index({
     comptes?: CompteBancaire[];
     statuts?: StatutReglement[];
 }) {
+    const { decimals } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -447,22 +450,19 @@ export default function Index({
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Montant TTC <span className="text-rose-500">*</span></label>
                                         <div className="relative">
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min="0.0001"
-                                                max={paymentInvoice ? (paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0)).toFixed(4) : undefined}
-                                                value={paymentForm.data.montant_ttc}
-                                                onChange={(e) => {
-                                                    let val = e.target.value;
-                                                    if (paymentInvoice && val !== '') {
+                                            <DecimalInput
+                                                value={Number(paymentForm.data.montant_ttc) || 0}
+                                                decimals={decimals}
+                                                onChange={(val) => {
+                                                    let stringVal = String(val);
+                                                    if (paymentInvoice && stringVal !== '') {
                                                         const remaining = paymentInvoice.total_ttc - (paymentInvoice.reglements_sum_montant_ttc || 0);
-                                                        const floatVal = parseFloat(val);
+                                                        const floatVal = parseFloat(stringVal);
                                                         if (!isNaN(floatVal) && floatVal > remaining) {
-                                                            val = remaining.toFixed(4);
+                                                            stringVal = remaining.toFixed(decimals);
                                                         }
                                                     }
-                                                    paymentForm.setData('montant_ttc', val);
+                                                    paymentForm.setData('montant_ttc', stringVal);
                                                 }}
                                                 required
                                                 className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-black text-slate-850 dark:text-slate-200 py-3 pl-4 pr-12 focus:outline-none focus:border-indigo-500 transition-all"

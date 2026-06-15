@@ -119,10 +119,16 @@ export default function Authenticated({
                 </svg>
             ),
             items: [
-                { name: 'Pièces Comptables', key: 'piece' },
-                { name: 'Plan Comptable', key: 'plan' },
-                { name: 'Comptes Comptables', key: 'compt' },
-                { name: 'Paramétrage', key: 'param' },
+                { name: 'Exercices Comptables', key: 'exercices', group: 'Paramétrage' },
+                { name: 'Périodes Comptables', key: 'periodes', group: 'Paramétrage' },
+                { name: 'Journaux Comptables', key: 'journaux', group: 'Paramétrage' },
+                { name: 'Classes Comptables', key: 'classes', group: 'Paramétrage' },
+                { name: 'Plan Comptable Général', key: 'plan_comptable', group: 'Paramétrage' },
+                
+                { name: "Saisie d'Écritures", key: 'saisie_ecritures', group: 'Écritures Comptables' },
+                { name: "Modèles d'Écritures", key: 'modeles_ecritures', group: 'Écritures Comptables' },
+                { name: 'Écritures Récurrentes', key: 'ecritures_recurrentes', group: 'Écritures Comptables' },
+                { name: "Validation d'Écritures", key: 'validation_ecritures', group: 'Écritures Comptables' },
             ],
         },
         {

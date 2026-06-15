@@ -367,7 +367,7 @@ class ReceptionController extends Controller
 
     public function getReceptionWithLines(Reception $reception)
     {
-        $reception->load(['lines.product', 'lines.purchaseUnit']);
+        $reception->load(['lines.product', 'lines.purchaseUnit', 'branche']);
         
         $factureIds = \App\Models\FactureAchat::where('reception_id', $reception->id)
             ->where('status', '!=', 'annulee')
