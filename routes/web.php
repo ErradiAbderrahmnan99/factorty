@@ -210,6 +210,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('comptes-bancaires', CompteBancaireController::class)->except(['create', 'edit', 'show']);
     Route::resource('types-approbateur', TypeApprobateurController::class)->except(['create', 'edit', 'show']);
     Route::resource('reglements', ReglementController::class);
+    // Comptabilité: Paramétrage
+    Route::resource('exercices-comptables', \App\Http\Controllers\ExerciceComptableController::class)->parameters([
+        'exercices-comptables' => 'exercices_comptable'
+    ]);
+    Route::post('periodes-comptables/generate', [\App\Http\Controllers\PeriodeComptableController::class, 'generate'])->name('periodes-comptables.generate');
+    Route::resource('periodes-comptables', \App\Http\Controllers\PeriodeComptableController::class)->parameters([
+        'periodes-comptables' => 'periodes_comptable'
+    ]);
 });
 
 require __DIR__.'/auth.php';

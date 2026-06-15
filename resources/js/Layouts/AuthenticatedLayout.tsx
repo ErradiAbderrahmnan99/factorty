@@ -119,8 +119,8 @@ export default function Authenticated({
                 </svg>
             ),
             items: [
-                { name: 'Exercices Comptables', key: 'exercices', group: 'Paramétrage' },
-                { name: 'Périodes Comptables', key: 'periodes', group: 'Paramétrage' },
+                { name: 'Exercices Comptables', key: 'exercices', group: 'Paramétrage', href: route('exercices-comptables.index') },
+                { name: 'Périodes Comptables', key: 'periodes', group: 'Paramétrage', href: route('periodes-comptables.index') },
                 { name: 'Journaux Comptables', key: 'journaux', group: 'Paramétrage' },
                 { name: 'Classes Comptables', key: 'classes', group: 'Paramétrage' },
                 { name: 'Plan Comptable Général', key: 'plan_comptable', group: 'Paramétrage' },
