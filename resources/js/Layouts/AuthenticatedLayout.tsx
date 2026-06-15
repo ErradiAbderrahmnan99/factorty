@@ -122,8 +122,8 @@ export default function Authenticated({
                 { name: 'Exercices Comptables', key: 'exercices', group: 'Paramétrage', href: route('exercices-comptables.index') },
                 { name: 'Périodes Comptables', key: 'periodes', group: 'Paramétrage', href: route('periodes-comptables.index') },
                 { name: 'Journaux Comptables', key: 'journaux', group: 'Paramétrage' },
-                { name: 'Classes Comptables', key: 'classes', group: 'Paramétrage' },
-                { name: 'Plan Comptable Général', key: 'plan_comptable', group: 'Paramétrage' },
+                { name: 'Classes Comptables', key: 'classes', group: 'Paramétrage', href: route('classes-comptables.index') },
+                { name: 'Plan Comptable', key: 'plan_comptable', group: 'Paramétrage', href: route('plan-comptable.index') },
                 
                 { name: "Saisie d'Écritures", key: 'saisie_ecritures', group: 'Écritures Comptables' },
                 { name: "Modèles d'Écritures", key: 'modeles_ecritures', group: 'Écritures Comptables' },

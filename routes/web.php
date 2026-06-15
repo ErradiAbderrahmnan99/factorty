@@ -214,6 +214,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('exercices-comptables', \App\Http\Controllers\ExerciceComptableController::class)->parameters([
         'exercices-comptables' => 'exercices_comptable'
     ]);
+    Route::resource('classes-comptables', \App\Http\Controllers\ClasseComptableController::class)->parameters([
+        'classes-comptables' => 'classes_comptable'
+    ]);
+    Route::resource('plan-comptable', \App\Http\Controllers\PlanComptableController::class)->parameters([
+        'plan-comptable' => 'plan_comptable'
+    ]);
     Route::post('periodes-comptables/generate', [\App\Http\Controllers\PeriodeComptableController::class, 'generate'])->name('periodes-comptables.generate');
     Route::resource('periodes-comptables', \App\Http\Controllers\PeriodeComptableController::class)->parameters([
         'periodes-comptables' => 'periodes_comptable'
