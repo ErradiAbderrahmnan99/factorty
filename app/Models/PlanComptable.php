@@ -18,13 +18,11 @@ class PlanComptable extends Model
         'sens',
         'collectif',
         'tier_id',
-        'lettrable',
         'actif',
     ];
 
     protected $casts = [
         'collectif' => 'boolean',
-        'lettrable' => 'boolean',
         'actif' => 'boolean',
     ];
 

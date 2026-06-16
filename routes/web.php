@@ -214,6 +214,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('exercices-comptables', \App\Http\Controllers\ExerciceComptableController::class)->parameters([
         'exercices-comptables' => 'exercices_comptable'
     ]);
+    Route::resource('taux-tva', \App\Http\Controllers\TauxTvaController::class)->parameters([
+        'taux-tva' => 'taux_tva'
+    ]);
+    Route::resource('journaux-comptables', \App\Http\Controllers\JournalComptableController::class)->parameters([
+        'journaux-comptables' => 'journaux_comptable'
+    ]);
     Route::resource('classes-comptables', \App\Http\Controllers\ClasseComptableController::class)->parameters([
         'classes-comptables' => 'classes_comptable'
     ]);

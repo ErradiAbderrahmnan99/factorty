@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 
 interface Tier { id: number; label: string; }
 interface ClasseComptable { id: number; numero: string; }
-interface PlanComptable { id: number; numero: string; libelle: string; classe_id: number; parent_id: number | null; sens: 'debit' | 'credit' | 'mixte'; collectif: boolean; tier_id: number | null; lettrable: boolean; actif: boolean; }
+interface PlanComptable { id: number; numero: string; libelle: string; classe_id: number; parent_id: number | null; sens: 'debit' | 'credit' | 'mixte'; collectif: boolean; tier_id: number | null; actif: boolean; }
 
 export default function Edit({ compte, classes, parents, tiers }: { compte: PlanComptable, classes: ClasseComptable[], parents: PlanComptable[], tiers: Tier[] }) {
     const { data, setData, put, processing, errors } = useForm({
@@ -14,7 +14,6 @@ export default function Edit({ compte, classes, parents, tiers }: { compte: Plan
         sens: compte.sens,
         collectif: compte.collectif,
         tier_id: compte.tier_id ? String(compte.tier_id) : '',
-        lettrable: compte.lettrable,
         actif: compte.actif,
     });
 
@@ -105,7 +104,7 @@ export default function Edit({ compte, classes, parents, tiers }: { compte: Plan
 
                             {/* Tiers (if collectif) */}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Tiers associé</label>
+                                <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Tiers associé {data.collectif && <span className="text-rose-500">*</span>}</label>
                                 <select value={data.tier_id} onChange={e => setData('tier_id', e.target.value)} disabled={!data.collectif}
                                     className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-bold text-slate-850 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-50">
                                     <option value="">Sélectionnez un tiers...</option>
@@ -119,10 +118,6 @@ export default function Edit({ compte, classes, parents, tiers }: { compte: Plan
                                 <label className="flex items-center space-x-3 cursor-pointer">
                                     <input type="checkbox" checked={data.collectif} onChange={e => setData('collectif', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Compte Collectif</span>
-                                </label>
-                                <label className="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" checked={data.lettrable} onChange={e => setData('lettrable', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Lettrable</span>
                                 </label>
                                 <label className="flex items-center space-x-3 cursor-pointer">
                                     <input type="checkbox" checked={data.actif} onChange={e => setData('actif', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />

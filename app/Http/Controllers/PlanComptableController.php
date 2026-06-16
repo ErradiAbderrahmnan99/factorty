@@ -51,7 +51,6 @@ class PlanComptableController extends Controller
             'sens' => 'required|in:debit,credit,mixte',
             'collectif' => 'boolean',
             'tier_id' => 'nullable|required_if:collectif,true|exists:tiers,id',
-            'lettrable' => 'boolean',
             'actif' => 'boolean',
         ]);
 
@@ -84,7 +83,6 @@ class PlanComptableController extends Controller
             'sens' => 'required|in:debit,credit,mixte',
             'collectif' => 'boolean',
             'tier_id' => 'nullable|required_if:collectif,true|exists:tiers,id',
-            'lettrable' => 'boolean',
             'actif' => 'boolean',
         ]);
 

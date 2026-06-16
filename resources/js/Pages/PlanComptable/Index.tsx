@@ -11,7 +11,6 @@ interface PlanComptable {
     libelle: string;
     sens: 'debit' | 'credit' | 'mixte';
     collectif: boolean;
-    lettrable: boolean;
     actif: boolean;
     classe?: ClasseComptable;
     parent?: PlanComptable;
@@ -125,8 +124,7 @@ export default function Index({ comptes, filters }: { comptes: PaginatedComptes;
                                         <td className="py-4 px-6 text-center">
                                             <div className="flex flex-col items-center gap-1">
                                                 {item.collectif && <span className="px-2 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-700 rounded-md">Collectif</span>}
-                                                {item.lettrable && <span className="px-2 py-0.5 text-[9px] font-bold bg-blue-100 text-blue-700 rounded-md">Lettrable</span>}
-                                                {!item.collectif && !item.lettrable && <span className="text-[10px] text-slate-400">—</span>}
+                                                {!item.collectif && <span className="text-[10px] text-slate-400">—</span>}
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-center">
