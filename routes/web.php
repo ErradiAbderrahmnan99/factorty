@@ -214,6 +214,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('exercices-comptables', \App\Http\Controllers\ExerciceComptableController::class)->parameters([
         'exercices-comptables' => 'exercices_comptable'
     ]);
+    Route::post('nature-compte/{nature_compte}/fourchettes', [\App\Http\Controllers\NatureCompteController::class, 'storeFourchette'])->name('nature-compte.fourchettes.store');
+    Route::delete('fourchettes/{fourchette}', [\App\Http\Controllers\NatureCompteController::class, 'destroyFourchette'])->name('nature-compte.fourchettes.destroy');
+    Route::resource('nature-compte', \App\Http\Controllers\NatureCompteController::class)->only(['index', 'store', 'destroy'])->parameters([
+        'nature-compte' => 'nature_compte'
+    ]);
     Route::resource('taux-tva', \App\Http\Controllers\TauxTvaController::class)->parameters([
         'taux-tva' => 'taux_tva'
     ]);

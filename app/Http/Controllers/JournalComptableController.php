@@ -12,7 +12,7 @@ class JournalComptableController extends Controller
 {
     public function index(Request $request)
     {
-        $query = JournalComptable::with('compteContrepartie');
+        $query = JournalComptable::with(['compteContrepartie', 'natureCompte']);
 
         if ($request->has('search') && $request->search != '') {
             $query->where('code', 'like', '%' . $request->search . '%')
@@ -29,10 +29,9 @@ class JournalComptableController extends Controller
 
     public function create()
     {
-        $comptes = PlanComptable::orderBy('numero')->get();
-
         return Inertia::render('JournauxComptables/Create', [
-            'comptes' => $comptes,
+            'comptes' => PlanComptable::where('actif', true)->orderBy('numero')->get(),
+            'natures_comptes' => \App\Models\NatureCompte::all(),
         ]);
     }
 
@@ -41,7 +40,7 @@ class JournalComptableController extends Controller
         $request->validate([
             'code' => 'required|string|unique:journal_comptables,code',
             'libelle' => 'required|string',
-            'type' => 'required|in:achat,vente,banque,caisse,od,an',
+            'nature_compte_id' => 'required|exists:nature_comptes,id',
             'compte_contrepartie_id' => 'nullable|exists:plan_comptables,id',
         ]);
 
@@ -52,11 +51,10 @@ class JournalComptableController extends Controller
 
     public function edit(JournalComptable $journaux_comptable)
     {
-        $comptes = PlanComptable::orderBy('numero')->get();
-
         return Inertia::render('JournauxComptables/Edit', [
             'journal' => $journaux_comptable,
-            'comptes' => $comptes,
+            'comptes' => PlanComptable::where('actif', true)->orderBy('numero')->get(),
+            'natures_comptes' => \App\Models\NatureCompte::all(),
         ]);
     }
 
@@ -65,7 +63,7 @@ class JournalComptableController extends Controller
         $request->validate([
             'code' => 'required|string|unique:journal_comptables,code,' . $journaux_comptable->id,
             'libelle' => 'required|string',
-            'type' => 'required|in:achat,vente,banque,caisse,od,an',
+            'nature_compte_id' => 'required|exists:nature_comptes,id',
             'compte_contrepartie_id' => 'nullable|exists:plan_comptables,id',
         ]);
 

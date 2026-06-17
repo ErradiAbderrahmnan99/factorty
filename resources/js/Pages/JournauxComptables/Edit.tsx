@@ -2,13 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 interface PlanComptable { id: number; numero: string; libelle: string; }
-interface JournalComptable { id: number; code: string; libelle: string; type: 'achat' | 'vente' | 'banque' | 'caisse' | 'od' | 'an'; compte_contrepartie_id: number | null; }
+interface NatureCompte { id: number; label: string; }
+interface JournalComptable { id: number; code: string; libelle: string; nature_compte_id: number; compte_contrepartie_id: number | null; }
 
-export default function Edit({ journal, comptes }: { journal: JournalComptable, comptes: PlanComptable[] }) {
+export default function Edit({ journal, comptes, natures_comptes }: { journal: JournalComptable, comptes: PlanComptable[], natures_comptes: NatureCompte[] }) {
     const { data, setData, put, processing, errors } = useForm({
         code: journal.code,
         libelle: journal.libelle,
-        type: journal.type,
+        nature_compte_id: String(journal.nature_compte_id),
         compte_contrepartie_id: journal.compte_contrepartie_id ? String(journal.compte_contrepartie_id) : '',
     });
 
@@ -63,19 +64,15 @@ export default function Edit({ journal, comptes }: { journal: JournalComptable, 
                                 {errors.libelle && <div className="text-rose-500 text-[10px] font-bold mt-1.5">{errors.libelle}</div>}
                             </div>
 
-                            {/* Type */}
+                            {/* Nature */}
                             <div>
-                                <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Type de Journal <span className="text-rose-500">*</span></label>
-                                <select value={data.type} onChange={e => setData('type', e.target.value as any)}
+                                <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">Nature de Journal <span className="text-rose-500">*</span></label>
+                                <select value={data.nature_compte_id} onChange={e => setData('nature_compte_id', e.target.value)}
                                     className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-bold text-slate-850 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all">
-                                    <option value="achat">Achats</option>
-                                    <option value="vente">Ventes</option>
-                                    <option value="banque">Banque</option>
-                                    <option value="caisse">Caisse</option>
-                                    <option value="od">Opérations Diverses (OD)</option>
-                                    <option value="an">À Nouveau (AN)</option>
+                                    <option value="">Sélectionnez une nature...</option>
+                                    {natures_comptes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
                                 </select>
-                                {errors.type && <div className="text-rose-500 text-[10px] font-bold mt-1.5">{errors.type}</div>}
+                                {errors.nature_compte_id && <div className="text-rose-500 text-[10px] font-bold mt-1.5">{errors.nature_compte_id}</div>}
                             </div>
 
                             {/* Compte Contrepartie */}

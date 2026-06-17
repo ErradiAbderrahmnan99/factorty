@@ -4,11 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 
 interface PlanComptable { id: number; numero: string; libelle: string; }
 
+interface NatureCompte { id: number; label: string; }
+
 interface JournalComptable {
     id: number;
     code: string;
     libelle: string;
-    type: 'achat' | 'vente' | 'banque' | 'caisse' | 'od' | 'an';
+    nature_compte_id: number;
+    nature_compte?: NatureCompte;
     compte_contrepartie_id: number | null;
     compte_contrepartie?: PlanComptable;
 }
@@ -24,14 +27,7 @@ interface PaginatedJournaux {
     links: PaginationLink[];
 }
 
-const TYPE_LABELS: Record<string, string> = {
-    achat: 'Achats',
-    vente: 'Ventes',
-    banque: 'Banque',
-    caisse: 'Caisse',
-    od: 'Opérations Diverses',
-    an: 'À Nouveau',
-};
+
 
 export default function Index({ journaux, filters }: { journaux: PaginatedJournaux; filters: { search: string | null } }) {
     const { flash } = usePage().props as any;
@@ -103,7 +99,7 @@ export default function Index({ journaux, filters }: { journaux: PaginatedJourna
                                 <tr className="border-b border-slate-100/80 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 w-24">Code</th>
                                     <th className="py-4 px-6">Libellé</th>
-                                    <th className="py-4 px-6">Type</th>
+                                    <th className="py-4 px-6">Nature</th>
                                     <th className="py-4 px-6">Compte de Contrepartie</th>
                                     <th className="py-4 px-6 text-center w-32">Actions</th>
                                 </tr>
@@ -119,7 +115,9 @@ export default function Index({ journaux, filters }: { journaux: PaginatedJourna
                                     <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
                                         <td className="py-4 px-6 text-xs font-black text-indigo-600 dark:text-indigo-400">{item.code}</td>
                                         <td className="py-4 px-6 text-xs font-bold text-slate-800 dark:text-slate-200">{item.libelle}</td>
-                                        <td className="py-4 px-6 text-xs font-semibold text-slate-600 dark:text-slate-400">{TYPE_LABELS[item.type] || item.type}</td>
+                                        <td className="py-4 px-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                            {item.nature_compte?.label || '—'}
+                                        </td>
                                         <td className="py-4 px-6 text-xs font-medium text-slate-600 dark:text-slate-400">
                                             {item.compte_contrepartie ? `${item.compte_contrepartie.numero} - ${item.compte_contrepartie.libelle}` : '—'}
                                         </td>

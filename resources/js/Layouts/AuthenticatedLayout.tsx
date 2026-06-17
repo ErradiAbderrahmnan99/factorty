@@ -123,6 +123,7 @@ export default function Authenticated({
                 { name: 'Périodes Comptables', key: 'periodes', group: 'Paramétrage', href: route('periodes-comptables.index') },
                 { name: 'Classes Comptables', key: 'classes', group: 'Paramétrage', href: route('classes-comptables.index') },
                 { name: 'Plan Comptable', key: 'plan_comptable', group: 'Paramétrage', href: route('plan-comptable.index') },
+                { name: 'Nature de Compte', key: 'nature_compte', group: 'Paramétrage', href: route('nature-compte.index') },
                 { name: 'Journaux Comptables', key: 'journaux', group: 'Paramétrage', href: route('journaux-comptables.index') },
                 { name: 'Taux de TVA', key: 'taux_tva', group: 'Paramétrage', href: route('taux-tva.index') },
 
