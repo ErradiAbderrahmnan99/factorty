@@ -17,21 +17,7 @@ class NatureCompteController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'label' => 'required|string|unique:nature_comptes,label'
-        ]);
-
-        NatureCompte::create($request->only('label'));
-        return back()->with('success', 'Nature de compte ajoutée.');
-    }
-
-    public function destroy(NatureCompte $nature_compte)
-    {
-        $nature_compte->delete();
-        return back()->with('success', 'Nature de compte supprimée.');
-    }
+    // No create/delete for NatureCompte, only for Fourchettes
 
     public function storeFourchette(Request $request, NatureCompte $nature_compte)
     {

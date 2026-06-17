@@ -10,6 +10,7 @@ interface Fourchette {
 
 interface NatureCompte {
     id: number;
+    code: string;
     label: string;
     fourchettes: Fourchette[];
 }
@@ -19,9 +20,6 @@ export default function Index({ natures }: { natures: NatureCompte[] }) {
     const [selectedNatureId, setSelectedNatureId] = useState<number | null>(natures.length > 0 ? natures[0].id : null);
     const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    // Form for new nature
-    const formNature = useForm({ label: '' });
-    
     // Form for new fourchette
     const formFourchette = useForm({ debut: '', fin: '' });
 
@@ -38,23 +36,6 @@ export default function Index({ natures }: { natures: NatureCompte[] }) {
             return () => clearTimeout(t);
         }
     }, [flash]);
-
-    const handleAddNature = (e: React.FormEvent) => {
-        e.preventDefault();
-        formNature.post(route('nature-compte.store'), {
-            onSuccess: () => formNature.reset(),
-        });
-    };
-
-    const handleDeleteNature = (id: number) => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette nature et toutes ses fourchettes ?')) {
-            router.delete(route('nature-compte.destroy', id), {
-                onSuccess: () => {
-                    if (selectedNatureId === id) setSelectedNatureId(null);
-                }
-            });
-        }
-    };
 
     const handleAddFourchette = (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,26 +69,14 @@ export default function Index({ natures }: { natures: NatureCompte[] }) {
                     {/* Left Panel: Nature List */}
                     <div className="w-full md:w-1/3 border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col bg-slate-50/30 dark:bg-slate-950/20">
                         <div className="p-4 border-b border-slate-200/50 dark:border-slate-800/50">
-                            <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Natures de Compte</h3>
-                            <form onSubmit={handleAddNature} className="flex gap-2">
-                                <input type="text" placeholder="Nouvelle nature..." value={formNature.data.label} onChange={e => formNature.setData('label', e.target.value)}
-                                    className="flex-1 rounded-xl border border-slate-200/85 dark:border-slate-800/85 bg-white dark:bg-slate-900 text-xs font-bold text-slate-850 dark:text-slate-200 py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all" />
-                                <button type="submit" disabled={formNature.processing || !formNature.data.label}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50">
-                                    <svg className="h-4 w-4 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                </button>
-                            </form>
-                            {formNature.errors.label && <div className="text-rose-500 text-[10px] font-bold mt-1.5">{formNature.errors.label}</div>}
+                            <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">Natures de Journaux</h3>
                         </div>
                         
                         <div className="flex-1 overflow-y-auto">
                             {natures.map(nature => (
                                 <div key={nature.id} onClick={() => setSelectedNatureId(nature.id)}
                                     className={`flex items-center justify-between px-4 py-3 cursor-pointer border-b border-slate-100/50 dark:border-slate-800/30 transition-colors ${selectedNatureId === nature.id ? 'bg-indigo-50/80 dark:bg-indigo-500/10 border-l-4 border-l-indigo-600' : 'hover:bg-slate-100/50 dark:hover:bg-slate-800/30 border-l-4 border-l-transparent'}`}>
-                                    <span className={`text-xs font-bold ${selectedNatureId === nature.id ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{nature.label}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteNature(nature.id); }} className="text-slate-400 hover:text-rose-500 transition-colors p-1">
-                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
+                                    <span className={`text-xs font-bold ${selectedNatureId === nature.id ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{nature.code} - {nature.label}</span>
                                 </div>
                             ))}
                             {natures.length === 0 && (
@@ -121,7 +90,7 @@ export default function Index({ natures }: { natures: NatureCompte[] }) {
                         {selectedNature ? (
                             <>
                                 <div className="p-5 border-b border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-950/10">
-                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 mb-1">Fourchettes pour : <span className="text-indigo-600 dark:text-indigo-400">{selectedNature.label}</span></h3>
+                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 mb-1">Fourchettes pour : <span className="text-indigo-600 dark:text-indigo-400">{selectedNature.code} - {selectedNature.label}</span></h3>
                                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Définissez les plages de comptes acceptées</p>
                                 </div>
 

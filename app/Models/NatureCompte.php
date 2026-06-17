@@ -10,7 +10,7 @@ class NatureCompte extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['label'];
+    protected $fillable = ['code', 'label'];
 
     public function fourchettes()
     {

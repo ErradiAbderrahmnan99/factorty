@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 interface PlanComptable { id: number; numero: string; libelle: string; }
-interface NatureCompte { id: number; label: string; }
+interface NatureCompte { id: number; code: string; label: string; }
 interface JournalComptable { id: number; code: string; libelle: string; nature_compte_id: number; compte_contrepartie_id: number | null; }
 
 export default function Edit({ journal, comptes, natures_comptes }: { journal: JournalComptable, comptes: PlanComptable[], natures_comptes: NatureCompte[] }) {
@@ -70,7 +70,7 @@ export default function Edit({ journal, comptes, natures_comptes }: { journal: J
                                 <select value={data.nature_compte_id} onChange={e => setData('nature_compte_id', e.target.value)}
                                     className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50/40 dark:bg-slate-950/40 text-xs font-bold text-slate-850 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 transition-all">
                                     <option value="">Sélectionnez une nature...</option>
-                                    {natures_comptes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                                    {natures_comptes.map(n => <option key={n.id} value={n.id}>{n.code} - {n.label}</option>)}
                                 </select>
                                 {errors.nature_compte_id && <div className="text-rose-500 text-[10px] font-bold mt-1.5">{errors.nature_compte_id}</div>}
                             </div>

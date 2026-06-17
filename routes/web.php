@@ -216,7 +216,7 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::post('nature-compte/{nature_compte}/fourchettes', [\App\Http\Controllers\NatureCompteController::class, 'storeFourchette'])->name('nature-compte.fourchettes.store');
     Route::delete('fourchettes/{fourchette}', [\App\Http\Controllers\NatureCompteController::class, 'destroyFourchette'])->name('nature-compte.fourchettes.destroy');
-    Route::resource('nature-compte', \App\Http\Controllers\NatureCompteController::class)->only(['index', 'store', 'destroy'])->parameters([
+    Route::resource('nature-compte', \App\Http\Controllers\NatureCompteController::class)->only(['index'])->parameters([
         'nature-compte' => 'nature_compte'
     ]);
     Route::resource('taux-tva', \App\Http\Controllers\TauxTvaController::class)->parameters([
@@ -235,6 +235,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('periodes-comptables', \App\Http\Controllers\PeriodeComptableController::class)->parameters([
         'periodes-comptables' => 'periodes_comptable'
     ]);
+
+    Route::get('saisie-ecritures', [\App\Http\Controllers\EcritureComptableController::class, 'index'])->name('saisie-ecritures.index');
+    Route::post('saisie-ecritures', [\App\Http\Controllers\EcritureComptableController::class, 'store'])->name('saisie-ecritures.store');
+    Route::delete('saisie-ecritures/{ecriture}', [\App\Http\Controllers\EcritureComptableController::class, 'destroy'])->name('saisie-ecritures.destroy');
 });
 
 require __DIR__.'/auth.php';

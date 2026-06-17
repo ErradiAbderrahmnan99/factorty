@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 
 interface PlanComptable { id: number; numero: string; libelle: string; }
 
-interface NatureCompte { id: number; label: string; }
+interface NatureCompte { id: number; code: string; label: string; }
 
 interface JournalComptable {
     id: number;
@@ -116,7 +116,7 @@ export default function Index({ journaux, filters }: { journaux: PaginatedJourna
                                         <td className="py-4 px-6 text-xs font-black text-indigo-600 dark:text-indigo-400">{item.code}</td>
                                         <td className="py-4 px-6 text-xs font-bold text-slate-800 dark:text-slate-200">{item.libelle}</td>
                                         <td className="py-4 px-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                            {item.nature_compte?.label || '—'}
+                                            {item.nature_compte ? `${item.nature_compte.code} - ${item.nature_compte.label}` : '—'}
                                         </td>
                                         <td className="py-4 px-6 text-xs font-medium text-slate-600 dark:text-slate-400">
                                             {item.compte_contrepartie ? `${item.compte_contrepartie.numero} - ${item.compte_contrepartie.libelle}` : '—'}

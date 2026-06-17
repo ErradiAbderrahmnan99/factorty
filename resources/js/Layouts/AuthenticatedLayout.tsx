@@ -127,7 +127,7 @@ export default function Authenticated({
                 { name: 'Journaux Comptables', key: 'journaux', group: 'Paramétrage', href: route('journaux-comptables.index') },
                 { name: 'Taux de TVA', key: 'taux_tva', group: 'Paramétrage', href: route('taux-tva.index') },
 
-                { name: "Saisie d'Écritures", key: 'saisie_ecritures', group: 'Écritures Comptables' },
+                { name: "Saisie d'Écritures", key: 'saisie_ecritures', group: 'Écritures Comptables', href: route('saisie-ecritures.index') },
                 { name: "Validation d'Écritures", key: 'validation_ecritures', group: 'Écritures Comptables' },
             ],
         },
