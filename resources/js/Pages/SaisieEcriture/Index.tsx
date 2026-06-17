@@ -189,7 +189,9 @@ export default function Index({
             numero_piece: pieceForm.numero_piece,
             numero_facture: pieceForm.numero_facture,
             lignes: pieceForm.lignes
-        })).post(route('saisie-ecritures.store'), {
+        }));
+        
+        pieceFormInertia.post(route('saisie-ecritures.store'), {
             preserveScroll: true,
             onSuccess: () => {
                 setIsModalOpen(false);
