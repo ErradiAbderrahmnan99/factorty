@@ -17,8 +17,8 @@ return new class extends Migration
             $table->foreignId('exercice_comptable_id')->constrained('exercice_comptables')->cascadeOnDelete();
             $table->foreignId('periode_comptable_id')->constrained('periode_comptables')->cascadeOnDelete();
             $table->integer('jour');
-            $table->string('numero_piece');
-            $table->string('numero_facture')->nullable();
+            $table->string('numero_piece')->unique();
+            $table->string('numero_facture')->nullable()->unique();
             $table->timestamps();
         });
 

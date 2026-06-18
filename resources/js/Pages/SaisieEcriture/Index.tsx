@@ -37,7 +37,7 @@ interface EcritureComptable {
     plan_comptable_id: number;
     plan_comptable: PlanComptable;
     compte_tier_id: number | null;
-    compteTier: PlanComptable | null;
+    compte_tier: PlanComptable | null;
     libelle: string;
     date_echeance: string | null;
     debit: number;
@@ -143,6 +143,7 @@ export default function Index({
         libelle: '',
         date_echeance: '',
         sens: 'standard',
+        contrepartie_id: '',
     });
 
     useEffect(() => {
@@ -175,15 +176,19 @@ export default function Index({
             sens: 'debit'
         });
         
+        const defaultNumero = activeJournal?.nature_compte?.code === 'VTE' ? '3421' : '4411';
+        const defaultAcc = comptes_generaux.find(c => c.numero === defaultNumero);
+        
         setVteAchForm({
-            plan_comptable_id: '',
+            plan_comptable_id: defaultAcc ? String(defaultAcc.id) : '',
             compte_tier_id: '',
             taux_tva_id: taux_tva[0] ? String(taux_tva[0].id) : '',
             montant_type: 'ttc',
             montant: '',
             libelle: '',
             date_echeance: '',
-            sens: 'standard'
+            sens: 'standard',
+            contrepartie_id: '',
         });
         
         setUserHasEditedLibelle(false);
@@ -218,9 +223,24 @@ export default function Index({
     const handleVteAchTierChange = (val: string) => {
         const selected = comptes_tiers.find(t => String(t.id) === val);
         setVteAchForm(prev => {
-            const updated = { ...prev, compte_tier_id: val };
+            let nextPlanComptable = prev.plan_comptable_id;
+            if (selected && selected.parent_id) {
+                nextPlanComptable = String(selected.parent_id);
+            } else if (!val) {
+                const codeNature = activeJournal?.nature_compte?.code;
+                const defaultNumero = codeNature === 'VTE' ? '3421' : '4411';
+                const defaultAcc = comptes_generaux.find(c => c.numero === defaultNumero);
+                if (defaultAcc) {
+                    nextPlanComptable = String(defaultAcc.id);
+                }
+            }
+            const updated = { 
+                ...prev, 
+                compte_tier_id: val,
+                plan_comptable_id: nextPlanComptable
+            };
             if (!userHasEditedLibelle) {
-                const generalAcc = comptes_generaux.find(c => String(c.id) === prev.plan_comptable_id);
+                const generalAcc = comptes_generaux.find(c => String(c.id) === updated.plan_comptable_id);
                 updated.libelle = LabelGeneratorService.generate(activeJournal?.nature_compte?.code, selected?.libelle || generalAcc?.libelle || '');
             }
             return updated;
@@ -230,8 +250,12 @@ export default function Index({
     const handleVteAchGeneralChange = (val: string) => {
         setVteAchForm(prev => {
             const updated = { ...prev, plan_comptable_id: val };
+            const selectedTier = prev.compte_tier_id ? comptes_tiers.find(t => String(t.id) === prev.compte_tier_id) : null;
+            if (selectedTier && String(selectedTier.parent_id) !== String(val)) {
+                updated.compte_tier_id = '';
+            }
             if (!userHasEditedLibelle) {
-                const tier = comptes_tiers.find(t => String(t.id) === prev.compte_tier_id);
+                const tier = updated.compte_tier_id ? comptes_tiers.find(t => String(t.id) === updated.compte_tier_id) : null;
                 const generalAcc = comptes_generaux.find(c => String(c.id) === val);
                 updated.libelle = LabelGeneratorService.generate(activeJournal?.nature_compte?.code, tier?.libelle || generalAcc?.libelle || '');
             }
@@ -278,11 +302,12 @@ export default function Index({
     };
 
     const getVteAchPreview = () => {
-        if (!vteAchForm.plan_comptable_id || !vteAchForm.compte_tier_id || !vteAchForm.montant) return [];
+        if (!vteAchForm.plan_comptable_id || !vteAchForm.montant) return [];
         
         const generalAccount = comptes_generaux.find(c => String(c.id) === String(vteAchForm.plan_comptable_id));
-        const tier = comptes_tiers.find(t => String(t.id) === String(vteAchForm.compte_tier_id));
+        const tier = vteAchForm.compte_tier_id ? comptes_tiers.find(t => String(t.id) === String(vteAchForm.compte_tier_id)) : null;
         const selectedTva = taux_tva.find(t => String(t.id) === String(vteAchForm.taux_tva_id));
+        const counterpartAccount = comptes_generaux.find(c => String(c.id) === String(vteAchForm.contrepartie_id));
         
         const montantNum = Number(vteAchForm.montant) || 0;
         const rate = selectedTva ? Number(selectedTva.taux) / 100 : 0;
@@ -311,7 +336,7 @@ export default function Index({
             if (activeJournal?.nature_compte?.code === 'VTE') {
                 tvaAccountId = selectedTva.compte_tva_collectee_id ? String(selectedTva.compte_tva_collectee_id) : null;
             } else if (activeJournal?.nature_compte?.code === 'ACH') {
-                const isImmo = generalAccount?.numero?.startsWith('2');
+                const isImmo = counterpartAccount?.numero?.startsWith('2');
                 tvaAccountId = isImmo 
                     ? (selectedTva.compte_tva_deductible_immo_id ? String(selectedTva.compte_tva_deductible_immo_id) : null)
                     : (selectedTva.compte_tva_deductible_bs_id ? String(selectedTva.compte_tva_deductible_bs_id) : null);
@@ -333,28 +358,28 @@ export default function Index({
         
         const lines = [];
         
-        // Line 1: Tier (TTC)
+        // Line 1: Tier (TTC) using Compte Général
         lines.push({
-            plan_comptable_id: tier?.parent_id ? String(tier.parent_id) : '',
-            compte_tier_id: vteAchForm.compte_tier_id,
+            plan_comptable_id: vteAchForm.plan_comptable_id,
+            compte_tier_id: vteAchForm.compte_tier_id || null,
             libelle: libelle,
             date_echeance: vteAchForm.date_echeance || null,
             debit: isTtcDebit ? ttc : 0,
             credit: isTtcDebit ? 0 : ttc,
-            account_numero: comptes_generaux.find(c => String(c.id) === String(tier?.parent_id))?.numero || '',
+            account_numero: generalAccount?.numero || '',
             tier_numero: tier?.numero || '',
             label_role: 'Tiers (TTC)'
         });
         
-        // Line 2: General (HT)
+        // Line 2: General (HT) using Contrepartie
         lines.push({
-            plan_comptable_id: vteAchForm.plan_comptable_id,
+            plan_comptable_id: vteAchForm.contrepartie_id,
             compte_tier_id: null,
             libelle: libelle,
             date_echeance: null,
             debit: isTtcDebit ? 0 : ht,
             credit: isTtcDebit ? ht : 0,
-            account_numero: generalAccount?.numero || '',
+            account_numero: counterpartAccount?.numero || '',
             tier_numero: '',
             label_role: 'Produit/Charge (HT)'
         });
@@ -407,8 +432,8 @@ export default function Index({
                 alert('Veuillez sélectionner le compte général.');
                 return;
             }
-            if (!vteAchForm.compte_tier_id) {
-                alert('Veuillez sélectionner le compte tiers.');
+            if (!vteAchForm.contrepartie_id) {
+                alert('Veuillez sélectionner la contrepartie.');
                 return;
             }
             if (!vteAchForm.montant || Number(vteAchForm.montant) <= 0) {
@@ -504,6 +529,11 @@ export default function Index({
     const totalPieceDebit = useMemo(() => pieceForm.lignes.reduce((sum, l) => sum + Number(l.debit), 0), [pieceForm.lignes]);
     const totalPieceCredit = useMemo(() => pieceForm.lignes.reduce((sum, l) => sum + Number(l.credit), 0), [pieceForm.lignes]);
     const isPieceBalanced = totalPieceDebit > 0 && totalPieceCredit > 0 && Math.abs(totalPieceDebit - totalPieceCredit) < 0.01;
+
+    const filteredTiers = useMemo(() => {
+        if (!vteAchForm.plan_comptable_id) return comptes_tiers;
+        return comptes_tiers.filter(t => String(t.parent_id) === String(vteAchForm.plan_comptable_id));
+    }, [comptes_tiers, vteAchForm.plan_comptable_id]);
 
     const pieceFormInertia = useForm({
         journal_comptable_id: '',
@@ -643,8 +673,8 @@ export default function Index({
                                             <td className="py-3 px-5 text-xs font-black text-indigo-600 dark:text-indigo-400" title={item.plan_comptable?.libelle}>
                                                 {item.plan_comptable?.numero}
                                             </td>
-                                            <td className="py-3 px-5 text-xs font-black text-emerald-600 dark:text-emerald-400" title={item.compteTier?.libelle}>
-                                                {item.compteTier?.numero || '—'}
+                                            <td className="py-3 px-5 text-xs font-black text-emerald-600 dark:text-emerald-400" title={item.compte_tier?.libelle}>
+                                                {item.compte_tier?.numero || '—'}
                                             </td>
                                             <td className="py-3 px-5 text-xs font-bold text-slate-800 dark:text-slate-200">{item.libelle}</td>
                                             <td className="py-3 px-5 text-xs font-medium text-slate-600 dark:text-slate-400">{item.date_echeance ? new Date(item.date_echeance).toLocaleDateString('fr-FR') : '—'}</td>
@@ -723,11 +753,17 @@ export default function Index({
                                 <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">N° Pièce <span className="text-rose-500">*</span></label>
                                 <input type="text" value={pieceForm.numero_piece} onChange={e => setPieceForm({...pieceForm, numero_piece: e.target.value})}
                                     className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-700/85 bg-white dark:bg-slate-900 text-xs font-bold text-slate-850 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
+                                {pieceFormInertia.errors.numero_piece && (
+                                    <div className="text-rose-500 text-[10px] font-bold mt-1">{pieceFormInertia.errors.numero_piece}</div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-455 uppercase tracking-widest mb-1.5">N° Facture</label>
                                 <input type="text" value={pieceForm.numero_facture} onChange={e => setPieceForm({...pieceForm, numero_facture: e.target.value})}
                                     className="w-full rounded-2xl border border-slate-200/85 dark:border-slate-700/85 bg-white dark:bg-slate-900 text-xs font-bold text-slate-850 dark:text-slate-200 py-3 px-4 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all" />
+                                {pieceFormInertia.errors.numero_facture && (
+                                    <div className="text-rose-500 text-[10px] font-bold mt-1">{pieceFormInertia.errors.numero_facture}</div>
+                                )}
                             </div>
                         </div>
 
@@ -758,21 +794,13 @@ export default function Index({
                                 {activeJournal?.nature_compte?.code === 'TRS' ? (
                                     /* TRS Form */
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">Compte général <span className="text-rose-500">*</span></label>
                                                 <select value={trsForm.plan_comptable_id} onChange={e => handleTrsGeneralChange(e.target.value)}
                                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                                                     <option value="">-- Sélectionner --</option>
                                                     {comptes_generaux.map(c => <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Compte tiers (Optionnel)</label>
-                                                <select value={trsForm.compte_tier_id} onChange={e => handleTrsTierChange(e.target.value)}
-                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                                                    <option value=""></option>
-                                                    {comptes_tiers.map(t => <option key={t.id} value={t.id}>{t.numero} - {t.libelle}</option>)}
                                                 </select>
                                             </div>
                                             <div>
@@ -827,20 +855,10 @@ export default function Index({
                                 ) : (
                                     /* VTE / ACH Form */
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">
-                                                    {activeJournal?.nature_compte?.code === 'VTE' ? 'Client (Tiers)' : 'Fournisseur (Tiers)'} <span className="text-rose-500">*</span>
-                                                </label>
-                                                <select value={vteAchForm.compte_tier_id} onChange={e => handleVteAchTierChange(e.target.value)}
-                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                                                    <option value="">-- Sélectionner --</option>
-                                                    {comptes_tiers.map(t => <option key={t.id} value={t.id}>{t.numero} - {t.libelle}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">
-                                                    {activeJournal?.nature_compte?.code === 'VTE' ? 'Compte de Produit (Vente)' : 'Compte de Charge (Achat)'} <span className="text-rose-500">*</span>
+                                                    Compte général <span className="text-rose-500">*</span>
                                                 </label>
                                                 <select value={vteAchForm.plan_comptable_id} onChange={e => handleVteAchGeneralChange(e.target.value)}
                                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
@@ -849,11 +867,29 @@ export default function Index({
                                                 </select>
                                             </div>
                                             <div>
+                                                <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">
+                                                    {activeJournal?.nature_compte?.code === 'VTE' ? 'Client (Tiers)' : 'Fournisseur (Tiers)'}
+                                                </label>
+                                                <select value={vteAchForm.compte_tier_id} onChange={e => handleVteAchTierChange(e.target.value)}
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                                                    <option value="">-- Sélectionner --</option>
+                                                    {filteredTiers.map(t => <option key={t.id} value={t.id}>{t.numero} - {t.libelle}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
                                                 <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">Code / Taux TVA <span className="text-rose-500">*</span></label>
                                                 <select value={vteAchForm.taux_tva_id} onChange={e => setVteAchForm({...vteAchForm, taux_tva_id: e.target.value})}
                                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                                                     <option value="">-- Sélectionner --</option>
                                                     {taux_tva.map(t => <option key={t.id} value={t.id}>{t.code} ({t.taux}%)</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest mb-1.5">Contrepartie <span className="text-rose-500">*</span></label>
+                                                <select value={vteAchForm.contrepartie_id} onChange={e => setVteAchForm({...vteAchForm, contrepartie_id: e.target.value})}
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                                                    <option value="">-- Sélectionner --</option>
+                                                    {comptes_generaux.map(c => <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>)}
                                                 </select>
                                             </div>
                                         </div>
@@ -915,40 +951,6 @@ export default function Index({
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
                                                 </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Live Preview Box */}
-                                {previewLines.length > 0 && (
-                                    <div className="mt-4 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 animate-fade-in shadow-inner">
-                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                            <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                            Aperçu en temps réel des {previewLines.length} écritures à générer :
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-xs whitespace-nowrap">
-                                                <thead>
-                                                    <tr className="border-b border-slate-100 dark:border-slate-800 text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">
-                                                        <th className="pb-2">Rôle</th>
-                                                        <th className="pb-2">N° Compte</th>
-                                                        <th className="pb-2 w-full">Libellé</th>
-                                                        <th className="pb-2 text-right">Débit</th>
-                                                        <th className="pb-2 text-right">Crédit</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-50 dark:divide-slate-900">
-                                                    {previewLines.map((l, index) => (
-                                                        <tr key={index} className="text-[11px]">
-                                                            <td className="py-2 text-slate-400 font-semibold">{l.label_role}</td>
-                                                            <td className="py-2 font-bold text-indigo-650 dark:text-indigo-400">{l.account_numero || '—'} {l.tier_numero ? `(${l.tier_numero})` : ''}</td>
-                                                            <td className="py-2 text-slate-700 dark:text-slate-355">{l.libelle}</td>
-                                                            <td className="py-2 text-right font-bold text-slate-800 dark:text-slate-205">{l.debit > 0 ? l.debit.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '—'}</td>
-                                                            <td className="py-2 text-right font-bold text-slate-800 dark:text-slate-205">{l.credit > 0 ? l.credit.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '—'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
                                         </div>
                                     </div>
                                 )}
