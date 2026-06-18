@@ -14,20 +14,32 @@ class EcritureComptableController extends Controller
 
         $ecritures = [];
         if ($journal_id && $exercice_id && $periode_id) {
-            $ecritures = \App\Models\EcritureComptable::with(['planComptable', 'compteTier'])
-                ->where('journal_comptable_id', $journal_id)
-                ->where('exercice_comptable_id', $exercice_id)
-                ->where('periode_comptable_id', $periode_id)
-                ->orderBy('jour')
-                ->orderBy('id')
+            $rawEcritures = \App\Models\EcritureComptable::select('ecriture_comptables.*')
+                ->join('pieces_comptables', 'pieces_comptables.id', '=', 'ecriture_comptables.piece_comptable_id')
+                ->with(['planComptable', 'compteTier', 'piece'])
+                ->where('pieces_comptables.journal_comptable_id', $journal_id)
+                ->where('pieces_comptables.exercice_comptable_id', $exercice_id)
+                ->where('pieces_comptables.periode_comptable_id', $periode_id)
+                ->orderBy('pieces_comptables.jour')
+                ->orderBy('pieces_comptables.id')
+                ->orderBy('ecriture_comptables.id')
                 ->get();
+
+            // Map the header attributes onto the lines so the frontend gets the same structure
+            $ecritures = $rawEcritures->map(function ($item) {
+                $item->jour = $item->piece->jour;
+                $item->numero_piece = $item->piece->numero_piece;
+                $item->numero_facture = $item->piece->numero_facture;
+                return $item;
+            });
         }
 
         return \Inertia\Inertia::render('SaisieEcriture/Index', [
-            'journaux' => \App\Models\JournalComptable::orderBy('code')->get(),
+            'journaux' => \App\Models\JournalComptable::with(['natureCompte', 'compteContrepartie'])->orderBy('code')->get(),
             'exercices' => \App\Models\ExerciceComptable::with('periodes')->orderBy('date_debut', 'desc')->get(),
             'comptes_generaux' => \App\Models\PlanComptable::where('actif', true)->where('collectif', false)->orderBy('numero')->get(),
             'comptes_tiers' => \App\Models\PlanComptable::where('actif', true)->where('collectif', true)->orderBy('numero')->get(),
+            'taux_tva' => \App\Models\TauxTva::where('actif', true)->get(),
             'ecritures' => $ecritures,
             'filters' => [
                 'journal_id' => $journal_id,
@@ -63,14 +75,20 @@ class EcritureComptableController extends Controller
         }
 
         \DB::transaction(function () use ($validated) {
+            // Create the PieceComptable header
+            $piece = \App\Models\PieceComptable::create([
+                'journal_comptable_id' => $validated['journal_comptable_id'],
+                'exercice_comptable_id' => $validated['exercice_comptable_id'],
+                'periode_comptable_id' => $validated['periode_comptable_id'],
+                'jour' => $validated['jour'],
+                'numero_piece' => $validated['numero_piece'],
+                'numero_facture' => $validated['numero_facture'],
+            ]);
+
+            // Create the child lines
             foreach ($validated['lignes'] as $ligne) {
                 \App\Models\EcritureComptable::create([
-                    'journal_comptable_id' => $validated['journal_comptable_id'],
-                    'exercice_comptable_id' => $validated['exercice_comptable_id'],
-                    'periode_comptable_id' => $validated['periode_comptable_id'],
-                    'jour' => $validated['jour'],
-                    'numero_piece' => $validated['numero_piece'],
-                    'numero_facture' => $validated['numero_facture'],
+                    'piece_comptable_id' => $piece->id,
                     'plan_comptable_id' => $ligne['plan_comptable_id'],
                     'compte_tier_id' => $ligne['compte_tier_id'] ?? null,
                     'libelle' => $ligne['libelle'],
@@ -86,7 +104,14 @@ class EcritureComptableController extends Controller
 
     public function destroy(\App\Models\EcritureComptable $ecriture)
     {
+        $piece = $ecriture->piece;
         $ecriture->delete();
+
+        // If the piece has no lines left, delete it as well
+        if ($piece && $piece->lignes()->count() === 0) {
+            $piece->delete();
+        }
+
         return redirect()->back()->with('success', 'Ligne supprimée avec succès.');
     }
 }

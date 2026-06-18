@@ -6,13 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class EcritureComptable extends Model
 {
+    protected $table = 'ecriture_comptables';
+
     protected $fillable = [
-        'journal_comptable_id',
-        'exercice_comptable_id',
-        'periode_comptable_id',
-        'jour',
-        'numero_piece',
-        'numero_facture',
+        'piece_comptable_id',
         'plan_comptable_id',
         'compte_tier_id',
         'libelle',
@@ -27,19 +24,9 @@ class EcritureComptable extends Model
         'credit' => 'decimal:2',
     ];
 
-    public function journal()
+    public function piece()
     {
-        return $this->belongsTo(JournalComptable::class, 'journal_comptable_id');
-    }
-
-    public function exercice()
-    {
-        return $this->belongsTo(ExerciceComptable::class, 'exercice_comptable_id');
-    }
-
-    public function periode()
-    {
-        return $this->belongsTo(PeriodeComptable::class, 'periode_comptable_id');
+        return $this->belongsTo(PieceComptable::class, 'piece_comptable_id');
     }
 
     public function planComptable()
