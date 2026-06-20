@@ -215,7 +215,7 @@ export default function Index({
             });
         } catch (error) {
             console.error("Error fetching purchase order details for conversion", error);
-            alert("Erreur lors de la récupération des détails de la commande.");
+            setLocalFlash({ type: 'error', message: "Erreur lors de la récupération des détails de la commande." });
         }
     };
 
@@ -319,7 +319,7 @@ export default function Index({
 
         const missingWarehouse = cloneForm.lines.some(l => !l.entrepot_id);
         if (missingWarehouse) {
-            alert("Veuillez sélectionner un entrepôt pour toutes les lignes.");
+            setLocalFlash({ type: 'error', message: "Veuillez sélectionner un entrepôt pour toutes les lignes." });
             return;
         }
 
@@ -327,7 +327,7 @@ export default function Index({
             const line = cloneForm.lines[i];
             const qty = Number(line.qty) || 0;
             if (qty <= 0) {
-                alert(`Veuillez saisir une quantité supérieure à 0 pour la ligne n° ${i + 1}.`);
+                setLocalFlash({ type: 'error', message: `Veuillez saisir une quantité supérieure à 0 pour la ligne n° ${i + 1}.` });
                 return;
             }
             if (line.product?.manage_by_lot) {
@@ -343,9 +343,9 @@ export default function Index({
                     }
                 }
 
-                const allocated = line.lots.reduce((sum, l) => sum + l.quantity, 0);
+                 const allocated = line.lots.reduce((sum, l) => sum + l.quantity, 0);
                 if (Math.abs(allocated - requestedQty) > 0.0001) {
-                    alert(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.product.label}) avant d'enregistrer.`);
+                    setLocalFlash({ type: 'error', message: `Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.product.label}) avant d'enregistrer.` });
                     return;
                 }
             }

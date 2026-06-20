@@ -53,6 +53,13 @@ export default function Index({
     const { flash } = usePage().props as any;
     const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+    const showError = (message: string) => {
+        setLocalFlash({ type: 'error', message });
+        setTimeout(() => {
+            setLocalFlash(curr => (curr && curr.message === message) ? null : curr);
+        }, 5000);
+    };
+
     useEffect(() => {
         if (flash?.success) {
             setLocalFlash({ type: 'success', message: flash.success });
@@ -416,28 +423,28 @@ export default function Index({
         
         if (activeJournal?.nature_compte?.code === 'TRS') {
             if (!trsForm.plan_comptable_id) {
-                alert('Veuillez sélectionner le compte général.');
+                showError('Veuillez sélectionner le compte général.');
                 return;
             }
             if (!trsForm.contrepartie_id) {
-                alert('Veuillez sélectionner la contrepartie.');
+                showError('Veuillez sélectionner la contrepartie.');
                 return;
             }
             if (!trsForm.montant || Number(trsForm.montant) <= 0) {
-                alert('Veuillez renseigner un montant valide supérieur à 0.');
+                showError('Veuillez renseigner un montant valide supérieur à 0.');
                 return;
             }
         } else {
             if (!vteAchForm.plan_comptable_id) {
-                alert('Veuillez sélectionner le compte général.');
+                showError('Veuillez sélectionner le compte général.');
                 return;
             }
             if (!vteAchForm.contrepartie_id) {
-                alert('Veuillez sélectionner la contrepartie.');
+                showError('Veuillez sélectionner la contrepartie.');
                 return;
             }
             if (!vteAchForm.montant || Number(vteAchForm.montant) <= 0) {
-                alert('Veuillez renseigner un montant valide supérieur à 0.');
+                showError('Veuillez renseigner un montant valide supérieur à 0.');
                 return;
             }
             
@@ -445,7 +452,7 @@ export default function Index({
             if (selectedTva && Number(selectedTva.taux) > 0) {
                 const hasTvaAccount = previewLines.some(l => l.label_role === 'TVA' && l.plan_comptable_id);
                 if (!hasTvaAccount) {
-                    alert("Erreur : Le compte de TVA correspondant n'est pas configuré pour ce taux de TVA.");
+                    showError("Erreur : Le compte de TVA correspondant n'est pas configuré pour ce taux de TVA.");
                     return;
                 }
             }
@@ -461,6 +468,23 @@ export default function Index({
             id: Date.now() + index
         }));
         
+        // Check for duplicates
+        const allNewAndExisting = [...pieceForm.lignes, ...linesToAdd];
+        const seen = new Set();
+        let hasDuplicate = false;
+        for (const l of allNewAndExisting) {
+            const key = `${l.plan_comptable_id}-${l.compte_tier_id || 'null'}`;
+            if (seen.has(key)) {
+                hasDuplicate = true;
+                break;
+            }
+            seen.add(key);
+        }
+        if (hasDuplicate) {
+            showError("Certaines des écritures à générer ont une combinaison de Compte général et Compte tiers déjà existante dans cette pièce.");
+            return;
+        }
+
         setPieceForm(prev => ({
             ...prev,
             lignes: [...prev.lignes, ...linesToAdd]
@@ -487,6 +511,17 @@ export default function Index({
         }
     };
 
+    const handleManualGeneralChange = (val: string) => {
+        setTempLine(prev => {
+            const updated = { ...prev, plan_comptable_id: val };
+            const selectedTier = prev.compte_tier_id ? comptes_tiers.find(t => String(t.id) === prev.compte_tier_id) : null;
+            if (selectedTier && String(selectedTier.parent_id) !== String(val)) {
+                updated.compte_tier_id = '';
+            }
+            return updated;
+        });
+    };
+
     const handleCompteTiersChange = (val: string) => {
         const selectedCompteTiers = comptes_tiers.find(c => String(c.id) === val);
         if (selectedCompteTiers && selectedCompteTiers.parent_id) {
@@ -498,13 +533,22 @@ export default function Index({
 
     const addTempLine = () => {
         if (!tempLine.plan_comptable_id || !tempLine.libelle) {
-            alert('Veuillez remplir le compte et le libellé de la ligne.');
+            showError('Veuillez remplir le compte et le libellé de la ligne.');
             return;
         }
         if (Number(tempLine.debit) === 0 && Number(tempLine.credit) === 0) {
-            alert('Veuillez spécifier un montant (Débit ou Crédit).');
+            showError('Veuillez spécifier un montant (Débit ou Crédit).');
             return;
         }
+        const hasDuplicate = pieceForm.lignes.some(l => 
+            String(l.plan_comptable_id) === String(tempLine.plan_comptable_id) && 
+            String(l.compte_tier_id || '') === String(tempLine.compte_tier_id || '')
+        );
+        if (hasDuplicate) {
+            showError('Cette combinaison de Compte général et Compte tiers existe déjà dans cette pièce.');
+            return;
+        }
+
         setPieceForm(prev => ({
             ...prev,
             lignes: [...prev.lignes, { ...tempLine, id: Date.now() }]
@@ -526,6 +570,19 @@ export default function Index({
         }));
     };
 
+    const editLine = (l: any) => {
+        setEntryMode('manual');
+        setTempLine({
+            plan_comptable_id: l.plan_comptable_id ? String(l.plan_comptable_id) : '',
+            compte_tier_id: l.compte_tier_id ? String(l.compte_tier_id) : '',
+            libelle: l.libelle || '',
+            date_echeance: l.date_echeance || '',
+            debit: String(l.debit || 0),
+            credit: String(l.credit || 0)
+        });
+        removeLine(l.id);
+    };
+
     const totalPieceDebit = useMemo(() => pieceForm.lignes.reduce((sum, l) => sum + Number(l.debit), 0), [pieceForm.lignes]);
     const totalPieceCredit = useMemo(() => pieceForm.lignes.reduce((sum, l) => sum + Number(l.credit), 0), [pieceForm.lignes]);
     const isPieceBalanced = totalPieceDebit > 0 && totalPieceCredit > 0 && Math.abs(totalPieceDebit - totalPieceCredit) < 0.01;
@@ -534,6 +591,11 @@ export default function Index({
         if (!vteAchForm.plan_comptable_id) return comptes_tiers;
         return comptes_tiers.filter(t => String(t.parent_id) === String(vteAchForm.plan_comptable_id));
     }, [comptes_tiers, vteAchForm.plan_comptable_id]);
+
+    const filteredManualTiers = useMemo(() => {
+        if (!tempLine.plan_comptable_id) return comptes_tiers;
+        return comptes_tiers.filter(t => String(t.parent_id) === String(tempLine.plan_comptable_id));
+    }, [comptes_tiers, tempLine.plan_comptable_id]);
 
     const pieceFormInertia = useForm({
         journal_comptable_id: '',
@@ -547,15 +609,36 @@ export default function Index({
 
     const handleSavePiece = () => {
         if (!pieceForm.jour || !pieceForm.numero_piece) {
-            alert('Veuillez renseigner le Jour et le N° de pièce.');
+            showError('Veuillez renseigner le Jour et le N° de pièce.');
             return;
         }
+
+        // Client-side unique check for N° Pièce within loaded ecritures
+        const isDuplicatePiece = ecritures.some(
+            (e) => e.numero_piece.toLowerCase() === pieceForm.numero_piece.trim().toLowerCase()
+        );
+        if (isDuplicatePiece) {
+            showError(`Le N° de pièce "${pieceForm.numero_piece}" existe déjà dans cette période.`);
+            return;
+        }
+
+        // Client-side unique check for N° Facture within loaded ecritures
+        if (pieceForm.numero_facture && pieceForm.numero_facture.trim() !== '') {
+            const isDuplicateFacture = ecritures.some(
+                (e) => e.numero_facture && e.numero_facture.toLowerCase() === pieceForm.numero_facture.trim().toLowerCase()
+            );
+            if (isDuplicateFacture) {
+                showError(`Le N° de facture "${pieceForm.numero_facture}" existe déjà dans cette période.`);
+                return;
+            }
+        }
+
         if (pieceForm.lignes.length < 2) {
-            alert('Une pièce doit contenir au moins 2 lignes.');
+            showError('Une pièce doit contenir au moins 2 lignes.');
             return;
         }
         if (!isPieceBalanced) {
-            alert('La pièce n\'est pas équilibrée.');
+            showError('La pièce n\'est pas équilibrée.');
             return;
         }
 
@@ -571,6 +654,17 @@ export default function Index({
         
         pieceFormInertia.post(route('saisie-ecritures.store'), {
             preserveScroll: true,
+            onError: (errors) => {
+                if (errors.numero_piece) {
+                    showError(errors.numero_piece);
+                } else if (errors.numero_facture) {
+                    showError(errors.numero_facture);
+                } else if (errors.lignes) {
+                    showError(errors.lignes);
+                } else {
+                    showError("Une erreur est survenue lors de l'enregistrement.");
+                }
+            },
             onSuccess: () => {
                 setIsModalOpen(false);
             }
@@ -774,7 +868,7 @@ export default function Index({
                                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400 pl-2">Mode d'insertion :</span>
                                     <button type="button" onClick={() => setEntryMode('smart')}
                                         className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${entryMode === 'smart' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-850'}`}>
-                                        Assistant Intelligent (Sage-like)
+                                        Assistant Intelligent
                                     </button>
                                     <button type="button" onClick={() => setEntryMode('manual')}
                                         className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${entryMode === 'manual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-850'}`}>
@@ -960,7 +1054,7 @@ export default function Index({
                             <div className="mb-6 flex flex-wrap gap-3 items-end p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
                                 <div className="flex-1 min-w-[200px]">
                                     <label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Compte général</label>
-                                    <select value={tempLine.plan_comptable_id} onChange={e => setTempLine({...tempLine, plan_comptable_id: e.target.value})}
+                                    <select value={tempLine.plan_comptable_id} onChange={e => handleManualGeneralChange(e.target.value)}
                                         className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                                         <option value=""></option>
                                         {comptes_generaux.map(c => <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>)}
@@ -971,7 +1065,7 @@ export default function Index({
                                     <select value={tempLine.compte_tier_id} onChange={e => handleCompteTiersChange(e.target.value)}
                                         className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold py-2.5 px-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                                         <option value=""></option>
-                                        {comptes_tiers.map(t => <option key={t.id} value={t.id}>{t.numero} - {t.libelle}</option>)}
+                                        {filteredManualTiers.map(t => <option key={t.id} value={t.id}>{t.numero} - {t.libelle}</option>)}
                                     </select>
                                 </div>
                                 <div className="flex-1 min-w-[200px]">
@@ -1026,8 +1120,13 @@ export default function Index({
                                                 <td className="py-2.5 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{l.libelle}</td>
                                                 <td className="py-2.5 px-4 text-xs font-black text-right text-slate-800 dark:text-slate-200">{Number(l.debit) > 0 ? Number(l.debit).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : ''}</td>
                                                 <td className="py-2.5 px-4 text-xs font-black text-right text-slate-800 dark:text-slate-200">{Number(l.credit) > 0 ? Number(l.credit).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : ''}</td>
-                                                <td className="py-2.5 px-4 text-right">
-                                                    <button onClick={() => removeLine(l.id)} className="text-rose-500 hover:text-rose-700 p-1">
+                                                <td className="py-2.5 px-4 text-right flex items-center justify-end space-x-1.5">
+                                                    <button onClick={() => editLine(l)} className="text-indigo-500 hover:text-indigo-700 p-1" title="Modifier la ligne">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button onClick={() => removeLine(l.id)} className="text-rose-500 hover:text-rose-700 p-1" title="Supprimer la ligne">
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </td>

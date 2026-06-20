@@ -454,7 +454,7 @@ export default function Authenticated({
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 {/* Topbar - Metronic Clean White / Dark Fluid theme */}
                 <header className="flex h-16 items-center justify-between px-6 bg-white dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800/80 backdrop-blur-md shrink-0 transition-colors duration-200">
                     {/* Left: Mobile hamburger & Search bar */}

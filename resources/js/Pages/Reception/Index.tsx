@@ -155,7 +155,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
             });
         } catch (error) {
             console.error("Error fetching reception details for conversion", error);
-            alert("Erreur lors de la récupération des détails du bon de réception.");
+            setLocalFlash({ type: 'error', message: "Erreur lors de la récupération des détails du bon de réception." });
         }
     };
 
@@ -234,7 +234,7 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
             });
 
         if (activeLines.length === 0) {
-            alert("Veuillez saisir une quantité supérieure à 0 pour au moins un produit.");
+            setLocalFlash({ type: 'error', message: "Veuillez saisir une quantité supérieure à 0 pour au moins un produit." });
             return;
         }
 

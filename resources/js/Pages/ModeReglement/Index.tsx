@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
 import InputError from '@/Components/InputError';
 
 interface StatutReglement {
@@ -17,9 +17,25 @@ interface Item {
 }
 
 export default function Index({ items }: { items: Item[] }) {
+    const { flash } = usePage().props as any;
+    const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setLocalFlash({ type: 'success', message: flash.success });
+            const t = setTimeout(() => setLocalFlash(null), 5000);
+            return () => clearTimeout(t);
+        } else if (flash?.error) {
+            setLocalFlash({ type: 'error', message: flash.error });
+            const t = setTimeout(() => setLocalFlash(null), 7000);
+            return () => clearTimeout(t);
+        }
+    }, [flash]);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
+    const [statusToDelete, setStatusToDelete] = useState<number | null>(null);
 
     // States for manage statuses modal
     const [activeModeForStatuses, setActiveModeForStatuses] = useState<Item | null>(null);
@@ -63,6 +79,7 @@ export default function Index({ items }: { items: Item[] }) {
     // Status management handlers
     const currentMode = items.find(m => m.id === activeModeForStatuses?.id) || activeModeForStatuses;
     const modeStatuts = currentMode?.statuts || [];
+    const statusToDeleteObject = modeStatuts.find(s => s.id === statusToDelete);
 
     const openStatuses = (item: Item) => {
         setActiveModeForStatuses(item);
@@ -128,13 +145,7 @@ export default function Index({ items }: { items: Item[] }) {
     };
 
     const deleteStatus = (statusId: number) => {
-        if (confirm('Voulez-vous vraiment supprimer ce statut ?')) {
-            router.delete(route('statuts-reglement.destroy', statusId), {
-                onError: (errs) => {
-                    alert(Object.values(errs)[0] || 'Une erreur est survenue lors de la suppression.');
-                }
-            });
-        }
+        setStatusToDelete(statusId);
     };
 
     return (
@@ -344,6 +355,50 @@ export default function Index({ items }: { items: Item[] }) {
                                 </form>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Custom Status Delete Confirm Modal */}
+            {statusToDeleteObject && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 backdrop-blur-md p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 w-full max-w-sm rounded-3xl shadow-2xl p-6">
+                        <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-855 dark:text-white mb-2">Supprimer le statut ?</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Supprimer le statut <strong>"{statusToDeleteObject.label}"</strong> ? Cette action est irréversible.</p>
+                        <div className="flex items-center justify-end space-x-3">
+                            <button onClick={() => setStatusToDelete(null)} className="px-5 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all">Annuler</button>
+                            <button onClick={() => {
+                                router.delete(route('statuts-reglement.destroy', statusToDeleteObject.id), {
+                                    onSuccess: () => setStatusToDelete(null),
+                                    onError: (errs) => {
+                                        setLocalFlash({ type: 'error', message: Object.values(errs)[0] || 'Une erreur est survenue lors de la suppression.' });
+                                        setStatusToDelete(null);
+                                    }
+                                });
+                            }}
+                                className="px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-2xl transition-all active:scale-[0.97]">Supprimer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast */}
+            {localFlash && (
+                <div className="fixed top-5 right-5 z-[100] max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[2rem] shadow-3xl p-4 animate-slide-in backdrop-blur-xl">
+                    <div className="flex items-start space-x-3.5">
+                        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${localFlash.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/20'}`}>
+                            {localFlash.type === 'success' ? (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">{localFlash.type === 'success' ? 'Succès' : 'Erreur'}</h4>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-455 mt-1 leading-relaxed">{localFlash.message}</p>
+                        </div>
+                        <button onClick={() => setLocalFlash(null)} className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-355 transition-all shrink-0">
+                            <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                 </div>
             )}

@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import DecimalInput from '@/Components/DecimalInput';
 import { useEntitySettings } from '@/Utils/entitySettings';
@@ -125,6 +125,21 @@ export default function Index({
     branches?: any[];
 }) {
     const { decimals, formatMoney } = useEntitySettings();
+    const { flash } = usePage().props as any;
+    const [localFlash, setLocalFlash] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setLocalFlash({ type: 'success', message: flash.success });
+            const t = setTimeout(() => setLocalFlash(null), 5000);
+            return () => clearTimeout(t);
+        } else if (flash?.error) {
+            setLocalFlash({ type: 'error', message: flash.error });
+            const t = setTimeout(() => setLocalFlash(null), 7000);
+            return () => clearTimeout(t);
+        }
+    }, [flash]);
+
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [deleteTarget, setDeleteTarget] = useState<Devis | null>(null);
@@ -198,7 +213,7 @@ export default function Index({
                 setIsFetchingCloneDetails(false);
             })
             .catch(() => {
-                alert("Erreur lors de la récupération des détails du devis.");
+                setLocalFlash({ type: 'error', message: "Erreur lors de la récupération des détails du devis." });
                 setIsFetchingCloneDetails(false);
                 setCloneTarget(null);
             });
@@ -312,7 +327,7 @@ export default function Index({
         if (!cloneForm) return;
         const line = cloneForm.lines[index];
         if (!line.product_id || !line.entrepot_id) {
-            alert("Veuillez sélectionner un entrepôt.");
+            setLocalFlash({ type: 'error', message: "Veuillez sélectionner un entrepôt." });
             return;
         }
         
@@ -457,7 +472,7 @@ export default function Index({
 
                 const allocated = line.lots.reduce((sum, l) => sum + l.quantity, 0);
                 if (Math.abs(allocated - requestedQty) > 0.0001) {
-                    alert(`Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.product.label}) avant d'enregistrer.`);
+                    setLocalFlash({ type: 'error', message: `Veuillez allouer les lots pour la ligne n° ${i + 1} (${line.product.label}) avant d'enregistrer.` });
                     return;
                 }
             }
@@ -497,7 +512,7 @@ export default function Index({
                 setIsSubmittingClone(false);
             },
             onError: (err) => {
-                alert("Erreur lors de la création de la commande : " + Object.values(err).join(", "));
+                setLocalFlash({ type: 'error', message: "Erreur lors de la création de la commande : " + Object.values(err).join(", ") });
                 setIsSubmittingClone(false);
             }
         });
@@ -1275,6 +1290,28 @@ export default function Index({
                                 Confirmer l'Allocation
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast */}
+            {localFlash && (
+                <div className="fixed top-5 right-5 z-[100] max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[2rem] shadow-3xl p-4 animate-slide-in backdrop-blur-xl">
+                    <div className="flex items-start space-x-3.5">
+                        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${localFlash.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border border-rose-500/20'}`}>
+                            {localFlash.type === 'success' ? (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                                <svg className="h-5 w-5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-850 dark:text-white">{localFlash.type === 'success' ? 'Succès' : 'Erreur'}</h4>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-455 mt-1 leading-relaxed">{localFlash.message}</p>
+                        </div>
+                        <button onClick={() => setLocalFlash(null)} className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-355 transition-all shrink-0">
+                            <svg className="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                 </div>
             )}

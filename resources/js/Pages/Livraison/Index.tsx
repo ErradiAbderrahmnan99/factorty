@@ -158,7 +158,7 @@ export default function Index({
             });
         } catch (error) {
             console.error("Error fetching delivery note details for conversion", error);
-            alert("Erreur lors de la récupération des détails du bon de livraison.");
+            setLocalFlash({ type: 'error', message: "Erreur lors de la récupération des détails du bon de livraison." });
         }
     };
 
@@ -220,7 +220,7 @@ export default function Index({
 
         const activeLines = cloneForm.lines.filter(l => l.qty > 0);
         if (activeLines.length === 0) {
-            alert("Veuillez saisir une quantité supérieure à 0 pour au moins un produit.");
+            setLocalFlash({ type: 'error', message: "Veuillez saisir une quantité supérieure à 0 pour au moins un produit." });
             return;
         }
 

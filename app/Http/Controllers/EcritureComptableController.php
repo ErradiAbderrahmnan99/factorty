@@ -67,6 +67,18 @@ class EcritureComptableController extends Controller
             'lignes.*.credit' => 'required|numeric|min:0',
         ]);
 
+        // Validate unique combination of general and tier account within the piece
+        $seen = [];
+        foreach ($validated['lignes'] as $ligne) {
+            $planComptableId = $ligne['plan_comptable_id'];
+            $compteTierId = $ligne['compte_tier_id'] ?? null;
+            $key = $planComptableId . '-' . ($compteTierId ?? 'null');
+            if (in_array($key, $seen)) {
+                return back()->withErrors(['lignes' => 'Chaque ligne de la pièce doit avoir une combinaison unique de Compte général et Compte tiers.']);
+            }
+            $seen[] = $key;
+        }
+
         $totalDebit = collect($validated['lignes'])->sum('debit');
         $totalCredit = collect($validated['lignes'])->sum('credit');
 
@@ -82,7 +94,7 @@ class EcritureComptableController extends Controller
                 'periode_comptable_id' => $validated['periode_comptable_id'],
                 'jour' => $validated['jour'],
                 'numero_piece' => $validated['numero_piece'],
-                'numero_facture' => $validated['numero_facture'],
+                'numero_facture' => isset($validated['numero_facture']) && trim($validated['numero_facture']) !== '' ? $validated['numero_facture'] : null,
             ]);
 
             // Create the child lines
