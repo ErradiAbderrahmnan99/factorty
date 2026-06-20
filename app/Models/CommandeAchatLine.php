@@ -17,6 +17,7 @@ class CommandeAchatLine extends Model
         'product_id',
         'entrepot_id',
         'purchase_unit_id',
+        'taux_tva_id',
         'tva',
         'qty',
         'pu_ht',
@@ -69,5 +70,10 @@ class CommandeAchatLine extends Model
     public function demandePrixLine(): BelongsTo
     {
         return $this->belongsTo(DemandePrixLine::class, 'demande_prix_line_id');
+    }
+
+    public function tauxTva(): BelongsTo
+    {
+        return $this->belongsTo(TauxTva::class, 'taux_tva_id');
     }
 }

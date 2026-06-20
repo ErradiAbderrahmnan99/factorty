@@ -19,6 +19,7 @@ class RetourVenteLine extends Model
         'product_id',
         'entrepot_id',
         'sale_unit_id',
+        'taux_tva_id',
         'tva',
         'qty',
         'pu_ht',
@@ -63,6 +64,11 @@ class RetourVenteLine extends Model
     public function saleUnit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'sale_unit_id');
+    }
+
+    public function tauxTva(): BelongsTo
+    {
+        return $this->belongsTo(TauxTva::class, 'taux_tva_id');
     }
 
     public function lots(): HasMany

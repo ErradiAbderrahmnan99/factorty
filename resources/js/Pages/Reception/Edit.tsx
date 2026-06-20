@@ -6,6 +6,15 @@ import LotAllocationModal, { LineLot } from '@/Components/LotAllocationModal';
 import { useEntitySettings } from '@/Utils/entitySettings';
 import DecimalInput from '@/Components/DecimalInput';
 
+
+interface TauxTva {
+    id: number;
+    code: string;
+    libelle: string;
+    taux: number;
+    actif: boolean;
+}
+
 interface Tier {
     id: number;
     label: string;
@@ -48,6 +57,7 @@ interface LineItem {
     product_id: string;
     entrepot_id: string;
     purchase_unit_id: string;
+    taux_tva_id: string;
     tva: number;
     qty: number;
     pu_ht: number;
@@ -79,6 +89,7 @@ interface Reception {
         product_id: number;
         entrepot_id: number;
         purchase_unit_id: number | null;
+        taux_tva_id?: number | null;
         tva: number;
         qty: number;
         pu_ht: number;
@@ -108,6 +119,7 @@ export default function Edit({
     comptesBancaires = [],
     entrepots = [],
     branches = [],
+    tauxTvas = [],
 }: {
     reception: Reception;
     tiers: Tier[];
@@ -119,9 +131,10 @@ export default function Edit({
     comptesBancaires?: LookupItem[];
     entrepots?: LookupItem[];
     branches?: { id: number; name: string; }[];
+    tauxTvas?: TauxTva[];
 }) {
     const isReadOnly = reception.status !== 'brouillon';
-    const { defaultTva, decimals, formatMoney } = useEntitySettings();
+    const { defaultTva, decimals, formatMoney , roundMoney, defaultTvaId} = useEntitySettings();
 
     const { data, setData, put, processing, errors } = useForm({
         tier_id: reception.tier_id.toString(),
@@ -137,6 +150,7 @@ export default function Edit({
             product_id: line.product_id.toString(),
             entrepot_id: line.entrepot_id ? line.entrepot_id.toString() : (entrepots.length > 0 ? entrepots[0].id.toString() : ''),
             purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
+            taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
             tva: Number(line.tva),
             qty: Number(line.qty),
             pu_ht: Number(line.pu_ht),
@@ -176,6 +190,7 @@ export default function Edit({
     const addLine = () => {
         if (isReadOnly) return;
         const newLine: LineItem = {
+            taux_tva_id: defaultTvaId ? String(defaultTvaId) : '',
             product_id: '',
             entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
             purchase_unit_id: '',
@@ -225,6 +240,12 @@ export default function Edit({
             line.rm = Number(value) || 0;
             const lineHtTotal = line.qty * line.pu_ht;
             line.remise = lineHtTotal > 0 ? Number(((line.rm / lineHtTotal) * 100).toFixed(4)) : 0;
+        } else if (field === 'taux_tva_id') {
+            const selectedTauxTva = tauxTvas.find(t => t.id.toString() === value);
+            line.taux_tva_id = value;
+            line.tva = selectedTauxTva ? Number(selectedTauxTva.taux) : 0;
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'qty' || field === 'tva') {
             line[field] = Number(value) || 0;
             line.pu_ttc = Number((line.pu_ht * (1 + line.tva / 100)).toFixed(4));
@@ -493,8 +514,13 @@ export default function Edit({
                                                 </select>
                                             </td>
                                             <td className="py-3 px-2">
-                                                <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70"
-                                                    value={line.tva} onChange={e => updateLineField(idx, 'tva', e.target.value)} required disabled={isReadOnly} />
+                                                <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-50"
+                                                    value={line.taux_tva_id} onChange={e => updateLineField(idx, 'taux_tva_id', e.target.value)} required disabled={isReadOnly}>
+                                                    <option value="">TVA...</option>
+                                                    {(tauxTvas || []).map(t => (
+                                                        <option key={t.id} value={t.id}>{t.taux}%</option>
+                                                    ))}
+                                                </select>
                                             </td>
                                             <td className="py-3 px-2">
                                                 <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-955/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold disabled:opacity-70"

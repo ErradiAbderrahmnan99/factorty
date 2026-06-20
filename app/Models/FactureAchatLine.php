@@ -16,6 +16,7 @@ class FactureAchatLine extends Model
         'facture_achat_id',
         'product_id',
         'purchase_unit_id',
+        'taux_tva_id',
         'tva',
         'qty',
         'pu_ht',
@@ -50,5 +51,10 @@ class FactureAchatLine extends Model
     public function purchaseUnit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'purchase_unit_id');
+    }
+
+    public function tauxTva(): BelongsTo
+    {
+        return $this->belongsTo(TauxTva::class, 'taux_tva_id');
     }
 }

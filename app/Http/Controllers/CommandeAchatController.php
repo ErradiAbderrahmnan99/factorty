@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommandeAchat;
+use App\Models\TauxTva;
 use App\Models\CommandeAchatLine;
 use App\Models\Tier;
 use App\Models\Product;
@@ -44,6 +45,7 @@ class CommandeAchatController extends Controller
             'products'  => Product::where('status', 'actif')->with(['purchaseUnit', 'stockUnit'])->orderBy('label')->get(),
             'entrepots' => Entrepot::orderBy('label')->get(),
             'units'     => Unit::orderBy('label')->get(),
+            'tauxTvas'  => TauxTva::where('actif', true)->orderBy('taux')->get(),
         ]);
     }
 
@@ -59,6 +61,7 @@ class CommandeAchatController extends Controller
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
             'entrepots'           => Entrepot::orderBy('label')->get(),
             'branches'            => Branche::orderBy('name')->get(),
+            'tauxTvas'  => TauxTva::where('actif', true)->orderBy('taux')->get(),
         ]);
     }
 
@@ -81,7 +84,7 @@ class CommandeAchatController extends Controller
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
-            'lines.*.tva'            => ['required', 'numeric', 'min:0'],
+            'lines.*.taux_tva_id'    => ['required', 'exists:taux_tvas,id'],
             'lines.*.qty'            => ['required', 'numeric', 'min:0.0001'],
             'lines.*.pu_ht'          => ['required', 'numeric', 'min:0'],
             'lines.*.pu_ttc'         => ['required', 'numeric', 'min:0'],
@@ -176,6 +179,7 @@ class CommandeAchatController extends Controller
             'comptesBancaires'    => CompteBancaire::orderBy('label')->get(),
             'entrepots'           => Entrepot::orderBy('label')->get(),
             'branches'            => Branche::orderBy('name')->get(),
+            'tauxTvas'  => TauxTva::where('actif', true)->orderBy('taux')->get(),
         ]);
     }
 
@@ -202,7 +206,7 @@ class CommandeAchatController extends Controller
             'lines.*.product_id'     => ['required', 'exists:products,id'],
             'lines.*.entrepot_id'    => ['required', 'exists:entrepots,id'],
             'lines.*.purchase_unit_id' => ['nullable', 'exists:units,id'],
-            'lines.*.tva'            => ['required', 'numeric', 'min:0'],
+            'lines.*.taux_tva_id'    => ['required', 'exists:taux_tvas,id'],
             'lines.*.qty'            => ['required', 'numeric', 'min:0.0001'],
             'lines.*.pu_ht'          => ['required', 'numeric', 'min:0'],
             'lines.*.pu_ttc'         => ['required', 'numeric', 'min:0'],
@@ -325,10 +329,16 @@ class CommandeAchatController extends Controller
         $totalTtc = 0;
         $linesData = [];
 
+        // Pre-load all needed TauxTva records
+        $tauxTvaIds = array_unique(array_filter(array_column($lines, 'taux_tva_id')));
+        $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
+
         foreach ($lines as $line) {
             $qty    = (double)$line['qty'];
             $puHt   = (double)$line['pu_ht'];
-            $tva    = (double)$line['tva'];
+            $tauxTvaId = $line['taux_tva_id'] ?? null;
+            $taux = $tauxTvas[$tauxTvaId]->taux ?? 0;
+            $tva    = (double)$taux;
             $remise = (double)($line['remise'] ?? 0);
             $rm     = (double)($line['rm'] ?? 0);
 
@@ -345,7 +355,8 @@ class CommandeAchatController extends Controller
                 'product_id'       => $line['product_id'],
                 'entrepot_id'      => $line['entrepot_id'],
                 'purchase_unit_id' => $line['purchase_unit_id'] ?? null,
-                'tva'              => $tva,
+                'taux_tva_id'  => $tauxTvaId,
+                'tva'          => $tva,
                 'qty'              => $qty,
                 'pu_ht'            => $puHt,
                 'pu_ttc'           => $line['pu_ttc'],

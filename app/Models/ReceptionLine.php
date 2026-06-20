@@ -18,6 +18,7 @@ class ReceptionLine extends Model
         'product_id',
         'entrepot_id',
         'purchase_unit_id',
+        'taux_tva_id',
         'tva',
         'qty',
         'pu_ht',
@@ -68,5 +69,10 @@ class ReceptionLine extends Model
     public function commandeAchatLine(): BelongsTo
     {
         return $this->belongsTo(CommandeAchatLine::class, 'commande_achat_line_id');
+    }
+
+    public function tauxTva(): BelongsTo
+    {
+        return $this->belongsTo(TauxTva::class, 'taux_tva_id');
     }
 }

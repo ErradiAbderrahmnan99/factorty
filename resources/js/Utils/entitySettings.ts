@@ -5,7 +5,10 @@ export function useEntitySettings() {
     const { entity } = usePage<PageProps>().props;
 
     const decimals = entity?.number_after_comma !== undefined ? Number(entity.number_after_comma) : 2;
+    // defaultTva still returns the numeric rate (e.g. 20) for backward-compat calculations
     const defaultTva = entity?.default_tva !== undefined ? Number(entity.default_tva) : 20;
+    // defaultTvaId is the FK to TauxTva
+    const defaultTvaId = entity?.default_tva_id ?? null;
     const defaultDeviseId = entity?.devise_id ? entity.devise_id.toString() : '';
 
     const formatMoney = (amount: number) => {
@@ -26,6 +29,7 @@ export function useEntitySettings() {
     return {
         decimals,
         defaultTva,
+        defaultTvaId,
         defaultDeviseId,
         formatMoney,
         roundMoney,

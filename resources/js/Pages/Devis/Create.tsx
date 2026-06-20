@@ -5,6 +5,15 @@ import InputError from '@/Components/InputError';
 import DecimalInput from '@/Components/DecimalInput';
 import { useEntitySettings } from '@/Utils/entitySettings';
 
+
+interface TauxTva {
+    id: number;
+    code: string;
+    libelle: string;
+    taux: number;
+    actif: boolean;
+}
+
 interface Tier {
     id: number;
     label: string;
@@ -36,6 +45,7 @@ interface Devise {
 interface LineItem {
     product_id: string;
     sale_unit_id: string;
+    taux_tva_id: string;
     tva: number;
     qty: number;
     pu_ht: number;
@@ -53,6 +63,7 @@ export default function Create({
     units,
     commercials,
     branches = [],
+    tauxTvas = [],
 }: {
     tiers: Tier[];
     products: Product[];
@@ -60,8 +71,9 @@ export default function Create({
     units: Unit[];
     commercials: { id: number; first_name: string; last_name: string; type: string; }[];
     branches?: { id: number; name: string; }[];
+    tauxTvas?: TauxTva[];
 }) {
-    const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney, stepMoney } = useEntitySettings();
+    const { decimals, defaultTva, defaultTvaId, defaultDeviseId, formatMoney, roundMoney, stepMoney } = useEntitySettings();
     // Current date format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
 
@@ -79,6 +91,7 @@ export default function Create({
         const newLine: LineItem = {
             product_id: '',
             sale_unit_id: '',
+            taux_tva_id: defaultTvaId ? String(defaultTvaId) : '',
             tva: defaultTva,
             qty: 1,
             pu_ht: 0,
@@ -108,6 +121,7 @@ export default function Create({
             if (prod) {
                 line.pu_ht = Number(prod.sale_price) || 0;
                 line.sale_unit_id = prod.sale_unit_id ? prod.sale_unit_id.toString() : '';
+                line.taux_tva_id = defaultTvaId ? String(defaultTvaId) : '';
                 line.tva = defaultTva; // default tva from entity
                 line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
                 line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
@@ -119,6 +133,12 @@ export default function Create({
             line.rm = Number(value) || 0;
             const lineHtTotal = line.qty * line.pu_ht;
             line.remise = lineHtTotal > 0 ? roundMoney((line.rm / lineHtTotal) * 100) : 0;
+        } else if (field === 'taux_tva_id') {
+            const selectedTauxTva = tauxTvas.find(t => t.id.toString() === value);
+            line.taux_tva_id = value;
+            line.tva = selectedTauxTva ? Number(selectedTauxTva.taux) : 0;
+            line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
+            line.rm = roundMoney((line.qty * line.pu_ht) * (line.remise / 100));
         } else if (field === 'qty' || field === 'tva') {
             line[field] = Number(value) || 0;
             line.pu_ttc = roundMoney(line.pu_ht * (1 + line.tva / 100));
@@ -294,8 +314,13 @@ export default function Create({
                                             </select>
                                         </td>
                                         <td className="py-3 px-2">
-                                            <input type="number" step="0.01" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
-                                                value={line.tva} onChange={e => updateLineField(idx, 'tva', e.target.value)} required />
+                                            <select className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"
+                                                    value={line.taux_tva_id} onChange={e => updateLineField(idx, 'taux_tva_id', e.target.value)} required>
+                                                    <option value="">TVA...</option>
+                                                    {(tauxTvas || []).map(t => (
+                                                        <option key={t.id} value={t.id}>{t.taux}%</option>
+                                                    ))}
+                                                </select>
                                         </td>
                                         <td className="py-3 px-2">
                                             <input type="number" step="0.0001" className="block w-full rounded-2xl border border-slate-200/85 dark:border-slate-800/85 bg-slate-50 dark:bg-slate-950/40 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 font-semibold"

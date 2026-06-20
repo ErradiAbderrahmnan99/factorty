@@ -14,7 +14,7 @@ class ContratAchatLine extends Model
 
     protected $fillable = [
         'contrat_achat_id', 'product_id', 'purchase_unit_id',
-        'tva', 'qty', 'pu_ht', 'pu_ttc', 'remise', 'rm', 'total_ht', 'total_ttc',
+        'taux_tva_id', 'tva', 'qty', 'pu_ht', 'pu_ttc', 'remise', 'rm', 'total_ht', 'total_ttc',
     ];
 
     protected $casts = [
@@ -26,4 +26,5 @@ class ContratAchatLine extends Model
     public function contratAchat(): BelongsTo { return $this->belongsTo(ContratAchat::class, 'contrat_achat_id'); }
     public function product(): BelongsTo      { return $this->belongsTo(Product::class, 'product_id'); }
     public function purchaseUnit(): BelongsTo   { return $this->belongsTo(Unit::class, 'purchase_unit_id'); }
+    public function tauxTva(): BelongsTo      { return $this->belongsTo(TauxTva::class, 'taux_tva_id'); }
 }

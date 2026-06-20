@@ -27,6 +27,14 @@ interface Devise {
     symbol: string | null;
 }
 
+interface TauxTva {
+    id: number;
+    code: string;
+    libelle: string;
+    taux: number;
+    actif: boolean;
+}
+
 interface Entity {
     id: number;
     code: string | null;
@@ -46,6 +54,7 @@ interface Entity {
     cnss: string | null;
     forme_juridique: string | null;
     default_tva: number;
+    default_tva_id: number | null;
     number_after_comma: number;
     country?: Country;
     region?: Region;
@@ -59,6 +68,7 @@ export default function Index({
     regions,
     cities,
     devises,
+    tauxTvas,
     legalForms
 }: {
     entities: Entity[];
@@ -66,6 +76,7 @@ export default function Index({
     regions: Region[];
     cities: City[];
     devises: Devise[];
+    tauxTvas: TauxTva[];
     legalForms: string[];
 }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,7 +100,7 @@ export default function Index({
         ice: '',
         cnss: '',
         forme_juridique: '',
-        default_tva: 20,
+        default_tva_id: '',
         number_after_comma: 2
     });
 
@@ -118,7 +129,7 @@ export default function Index({
             ice: item.ice || '',
             cnss: item.cnss || '',
             forme_juridique: item.forme_juridique || '',
-            default_tva: Number(item.default_tva),
+            default_tva_id: item.default_tva_id ? String(item.default_tva_id) : '',
             number_after_comma: Number(item.number_after_comma)
         });
         clearErrors();
@@ -421,10 +432,15 @@ export default function Index({
                                     <InputError message={errors.devise_id} className="mt-1" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-extrabold text-indigo-700 dark:text-indigo-400 mb-1.5">TVA par défaut (%) <span className="text-rose-500">*</span></label>
-                                    <input type="number" step="0.01" className="block w-full rounded-xl border border-slate-200/85 dark:border-slate-800/85 bg-white dark:bg-slate-900 text-xs py-2.5 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold"
-                                        value={data.default_tva} onChange={e => setData('default_tva', Number(e.target.value))} placeholder="ex: 20" required />
-                                    <InputError message={errors.default_tva} className="mt-1" />
+                                    <label className="block text-xs font-extrabold text-indigo-700 dark:text-indigo-400 mb-1.5">TVA par défaut <span className="text-rose-500">*</span></label>
+                                    <select className="block w-full rounded-xl border border-slate-200/85 dark:border-slate-800/85 bg-white dark:bg-slate-900 text-xs py-2.5 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-850 dark:text-slate-200"
+                                        value={data.default_tva_id} onChange={e => setData('default_tva_id', e.target.value)} required>
+                                        <option value="">Choisir un taux TVA...</option>
+                                        {tauxTvas.map(t => (
+                                            <option key={t.id} value={t.id}>{t.taux}% — {t.libelle}</option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.default_tva_id} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-extrabold text-indigo-700 dark:text-indigo-400 mb-1.5">Décimales de prix <span className="text-rose-500">*</span></label>

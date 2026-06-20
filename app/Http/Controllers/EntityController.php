@@ -7,6 +7,7 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\City;
 use App\Models\Devise;
+use App\Models\TauxTva;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -17,11 +18,12 @@ class EntityController extends Controller
     public function index(): Response
     {
         return Inertia::render('Entity/Index', [
-            'entities'  => Entity::with(['country', 'region', 'city', 'devise'])->orderBy('label')->get(),
-            'countries' => Country::orderBy('label')->get(),
-            'regions'   => Region::orderBy('label')->get(),
-            'cities'    => City::orderBy('label')->get(),
+            'entities'   => Entity::with(['country', 'region', 'city', 'devise', 'defaultTauxTva'])->orderBy('label')->get(),
+            'countries'  => Country::orderBy('label')->get(),
+            'regions'    => Region::orderBy('label')->get(),
+            'cities'     => City::orderBy('label')->get(),
             'devises'    => Devise::orderBy('label')->get(),
+            'tauxTvas'   => TauxTva::where('actif', true)->orderBy('taux')->get(),
             'legalForms' => ['SARL', 'SA', 'SNC', 'SCS', 'Auto-Entrepreneur', 'Succursale'],
         ]);
     }
@@ -49,9 +51,15 @@ class EntityController extends Controller
             'ice'                => ['nullable', 'string', 'max:50'],
             'cnss'               => ['nullable', 'string', 'max:50'],
             'forme_juridique'    => ['nullable', 'string', 'max:100'],
-            'default_tva'        => ['required', 'numeric', 'min:0', 'max:100'],
+            'default_tva_id'     => ['nullable', 'exists:taux_tvas,id'],
             'number_after_comma' => ['required', 'integer', 'min:0', 'max:6'],
         ]);
+
+        // Sync the decimal tva rate from the selected TauxTva record
+        if (!empty($validated['default_tva_id'])) {
+            $tauxTva = TauxTva::find($validated['default_tva_id']);
+            $validated['default_tva'] = $tauxTva ? (float)$tauxTva->taux : 0;
+        }
 
         Entity::create($validated);
 
@@ -77,9 +85,15 @@ class EntityController extends Controller
             'ice'                => ['nullable', 'string', 'max:50'],
             'cnss'               => ['nullable', 'string', 'max:50'],
             'forme_juridique'    => ['nullable', 'string', 'max:100'],
-            'default_tva'        => ['required', 'numeric', 'min:0', 'max:100'],
+            'default_tva_id'     => ['nullable', 'exists:taux_tvas,id'],
             'number_after_comma' => ['required', 'integer', 'min:0', 'max:6'],
         ]);
+
+        // Sync the decimal tva rate from the selected TauxTva record
+        if (!empty($validated['default_tva_id'])) {
+            $tauxTva = TauxTva::find($validated['default_tva_id']);
+            $validated['default_tva'] = $tauxTva ? (float)$tauxTva->taux : 0;
+        }
 
         $entity->update($validated);
 

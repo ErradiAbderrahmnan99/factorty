@@ -26,6 +26,7 @@ class Entity extends Model
         'cnss',
         'forme_juridique',
         'default_tva',
+        'default_tva_id',
         'number_after_comma',
     ];
 
@@ -47,6 +48,11 @@ class Entity extends Model
     public function devise(): BelongsTo
     {
         return $this->belongsTo(Devise::class);
+    }
+
+    public function defaultTauxTva(): BelongsTo
+    {
+        return $this->belongsTo(TauxTva::class, 'default_tva_id');
     }
 
     public function branches(): HasMany
