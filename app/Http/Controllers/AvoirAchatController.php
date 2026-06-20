@@ -283,7 +283,6 @@ class AvoirAchatController extends Controller
                 'product_id'       => $line['product_id'],
                 'purchase_unit_id' => $line['purchase_unit_id'] ?? null,
                 'taux_tva_id'  => $tauxTvaId,
-                'tva'          => $tva,
                 'qty'              => $qty,
                 'pu_ht'            => $puHt,
                 'pu_ttc'           => $line['pu_ttc'],

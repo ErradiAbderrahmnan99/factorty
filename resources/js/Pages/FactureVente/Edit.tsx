@@ -171,7 +171,7 @@ export default function Edit({
             id: l.id,
             product_id: l.product_id.toString(),
             sale_unit_id: l.sale_unit_id?.toString() || '',
-            tva: Number(l.tva),
+            tva: (tauxTvas || []).find(t => t.id.toString() === (l.taux_tva_id || '').toString())?.taux || 0,
             qty: Number(l.qty),
             pu_ht: roundMoney(Number(l.pu_ht)),
             pu_ttc: roundMoney(Number(l.pu_ttc)),

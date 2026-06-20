@@ -55,11 +55,7 @@ class EntityController extends Controller
             'number_after_comma' => ['required', 'integer', 'min:0', 'max:6'],
         ]);
 
-        // Sync the decimal tva rate from the selected TauxTva record
-        if (!empty($validated['default_tva_id'])) {
-            $tauxTva = TauxTva::find($validated['default_tva_id']);
-            $validated['default_tva'] = $tauxTva ? (float)$tauxTva->taux : 0;
-        }
+
 
         Entity::create($validated);
 
@@ -89,11 +85,7 @@ class EntityController extends Controller
             'number_after_comma' => ['required', 'integer', 'min:0', 'max:6'],
         ]);
 
-        // Sync the decimal tva rate from the selected TauxTva record
-        if (!empty($validated['default_tva_id'])) {
-            $tauxTva = TauxTva::find($validated['default_tva_id']);
-            $validated['default_tva'] = $tauxTva ? (float)$tauxTva->taux : 0;
-        }
+
 
         $entity->update($validated);
 

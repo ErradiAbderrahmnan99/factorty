@@ -4,6 +4,14 @@ import { useState, useRef } from 'react';
 import LotAllocationModal from '@/Components/LotAllocationModal';
 import { useEntitySettings } from '@/Utils/entitySettings';
 
+
+interface TauxTva {
+    id: number;
+    code: string;
+    libelle: string;
+    taux: number;
+    actif: boolean;
+}
 interface LineLot {
     lot_number: string;
     quantity: number;
@@ -29,6 +37,7 @@ interface RetourAchatLine {
     product_id: number;
     entrepot_id: number;
     purchase_unit_id: number | null;
+    taux_tva_id?: number | null;
     tva: number;
     qty: number;
     pu_ht: number;
@@ -86,6 +95,7 @@ export default function Edit({
     modesReglement = [],
     conditionsReglement = [],
     comptesBancaires = [],
+    tauxTvas = [],
     branches = []
 }: {
     retour: RetourAchat;
@@ -95,6 +105,7 @@ export default function Edit({
     modesReglement?: OptionItem[];
     conditionsReglement?: OptionItem[];
     comptesBancaires?: OptionItem[];
+    tauxTvas?: TauxTva[];
     branches?: { id: number; name: string; }[];
 }) {
     const isLocked = retour.status !== 'brouillon';
@@ -116,7 +127,7 @@ export default function Edit({
             product_id: line.product_id,
             entrepot_id: line.entrepot_id,
             purchase_unit_id: line.purchase_unit_id,
-            tva: Number(line.tva),
+            tva: (tauxTvas || []).find(t => t.id.toString() === (line.taux_tva_id || '').toString())?.taux || 0,
             qty: Number(line.qty),
             pu_ht: Number(line.pu_ht),
             pu_ttc: Number(line.pu_ttc),

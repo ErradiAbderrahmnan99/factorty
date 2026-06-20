@@ -25,7 +25,6 @@ class Entity extends Model
         'ice',
         'cnss',
         'forme_juridique',
-        'default_tva',
         'default_tva_id',
         'number_after_comma',
     ];

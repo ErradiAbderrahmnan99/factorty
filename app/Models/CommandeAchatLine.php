@@ -18,7 +18,6 @@ class CommandeAchatLine extends Model
         'entrepot_id',
         'purchase_unit_id',
         'taux_tva_id',
-        'tva',
         'qty',
         'pu_ht',
         'pu_ttc',

@@ -20,7 +20,6 @@ class RetourVenteLine extends Model
         'entrepot_id',
         'sale_unit_id',
         'taux_tva_id',
-        'tva',
         'qty',
         'pu_ht',
         'pu_ttc',

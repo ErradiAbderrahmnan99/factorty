@@ -15,7 +15,6 @@ class DevisLine extends Model
         'product_id',
         'sale_unit_id',
         'taux_tva_id',
-        'tva',
         'qty',
         'qty_commande',
         'pu_ht',

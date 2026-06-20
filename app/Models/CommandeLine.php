@@ -20,7 +20,6 @@ class CommandeLine extends Model
         'entrepot_id',
         'sale_unit_id',
         'taux_tva_id',
-        'tva',
         'qty',
         'qty_livre',
         'pu_ht',

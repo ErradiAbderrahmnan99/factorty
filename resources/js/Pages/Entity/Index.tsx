@@ -53,8 +53,8 @@ interface Entity {
     ice: string | null;
     cnss: string | null;
     forme_juridique: string | null;
-    default_tva: number;
     default_tva_id: number | null;
+    default_taux_tva?: TauxTva;
     number_after_comma: number;
     country?: Country;
     region?: Region;
@@ -309,7 +309,7 @@ export default function Index({
                                         </div>
                                         <div className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-center">
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TVA par défaut</div>
-                                            <div className="text-lg font-black text-indigo-650 dark:text-indigo-400 mt-1">{entity.default_tva}%</div>
+                                            <div className="text-lg font-black text-indigo-650 dark:text-indigo-400 mt-1">{entity.default_taux_tva ? entity.default_taux_tva.taux : 0}%</div>
                                         </div>
                                         <div className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-center">
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Décimales après la virgule</div>

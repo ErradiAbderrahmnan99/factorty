@@ -4,6 +4,14 @@ import { useState, useRef } from 'react';
 import LotAllocationModal from '@/Components/LotAllocationModal';
 import { useEntitySettings } from '@/Utils/entitySettings';
 
+
+interface TauxTva {
+    id: number;
+    code: string;
+    libelle: string;
+    taux: number;
+    actif: boolean;
+}
 interface LineLot {
     lot_number: string;
     quantity: number;
@@ -30,6 +38,7 @@ interface RetourVenteLine {
     product_id: number;
     entrepot_id: number;
     sale_unit_id: number | null;
+    taux_tva_id?: number | null;
     tva: number;
     qty: number;
     pu_ht: number;
@@ -69,13 +78,15 @@ interface RetourVente {
     devise?: Devise;
 }
 
-export default function Edit({ retour, tiers, devises, entrepots, commercials, branches = [] }: {
+export default function Edit({ retour, tiers, devises, entrepots, commercials, branches = [],
+    tauxTvas = [] }: {
     retour: RetourVente;
     tiers: Tier[];
     devises: Devise[];
     entrepots: Entrepot[];
     commercials: Employee[];
     branches?: { id: number; name: string; }[];
+    tauxTvas?: TauxTva[];
 }) {
     const { decimals, defaultTva, defaultDeviseId, formatMoney, roundMoney, stepMoney } = useEntitySettings();
     const isLocked = retour.status !== 'brouillon';
@@ -92,7 +103,7 @@ export default function Edit({ retour, tiers, devises, entrepots, commercials, b
             product_id: line.product_id,
             entrepot_id: line.entrepot_id,
             sale_unit_id: line.sale_unit_id,
-            tva: Number(line.tva),
+            tva: (tauxTvas || []).find(t => t.id.toString() === (line.taux_tva_id || '').toString())?.taux || 0,
             qty: Number(line.qty),
             pu_ht: Number(line.pu_ht),
             pu_ttc: Number(line.pu_ttc),

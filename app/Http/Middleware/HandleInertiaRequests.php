@@ -34,7 +34,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'entity' => \App\Models\Entity::first(),
+            'entity' => \App\Models\Entity::with('defaultTauxTva')->first(),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

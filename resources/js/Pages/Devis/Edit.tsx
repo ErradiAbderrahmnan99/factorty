@@ -115,7 +115,7 @@ export default function Edit({
             product_id: line.product_id ? line.product_id.toString() : '',
             sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
             taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
-            tva: Number(line.tva || 0),
+            tva: (tauxTvas || []).find(t => t.id.toString() === (line.taux_tva_id || '').toString())?.taux || 0,
             qty: Number(line.qty || 0),
             pu_ht: Number(line.pu_ht || 0),
             pu_ttc: Number(line.pu_ttc || 0),

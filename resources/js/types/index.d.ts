@@ -18,7 +18,6 @@ export interface Entity {
     code: string | null;
     label: string;
     devise_id: number | null;
-    default_tva: number;
     default_tva_id: number | null;
     number_after_comma: number;
     default_taux_tva?: TauxTva | null;

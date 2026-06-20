@@ -288,7 +288,6 @@ class AvoirVenteController extends Controller
                 'product_id'   => $line['product_id'],
                 'sale_unit_id' => $line['sale_unit_id'] ?? null,
                 'taux_tva_id'  => $tauxTvaId,
-                'tva'          => $tva,
                 'qty'          => $qty,
                 'pu_ht'        => $puHt,
                 'pu_ttc'       => $line['pu_ttc'],

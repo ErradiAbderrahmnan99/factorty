@@ -175,7 +175,7 @@ export default function Edit({
             id: l.id,
             product_id: l.product_id.toString(),
             purchase_unit_id: l.purchase_unit_id?.toString() || '',
-            tva: Number(l.tva),
+            tva: (tauxTvas || []).find(t => t.id.toString() === (l.taux_tva_id || '').toString())?.taux || 0,
             qty: Number(l.qty),
             pu_ht: Number(l.pu_ht),
             pu_ttc: Number(l.pu_ttc),
@@ -300,7 +300,7 @@ export default function Edit({
                 lines: (facture.lines || []).map((l: any) => ({
                     product_id: l.product_id ? l.product_id.toString() : '',
                     purchase_unit_id: l.purchase_unit_id ? l.purchase_unit_id.toString() : '',
-                    tva: Number(l.tva) || 20,
+                    tva: (tauxTvas || []).find(t => t.id.toString() === (l.taux_tva_id || '').toString())?.taux || 0 || 20,
                     qty: Number(l.qty) || 1,
                     pu_ht: Number(l.pu_ht) || 0,
                     pu_ttc: Number(l.pu_ttc) || 0,
