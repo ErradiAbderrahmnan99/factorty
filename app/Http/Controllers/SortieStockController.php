@@ -130,7 +130,7 @@ class SortieStockController extends Controller
 
     public function edit(SortieStock $sortiesStock)
     {
-        $sortiesStock->load(['lines.product.stockUnit', 'lines.entrepot', 'lines.lots']);
+        $sortiesStock->load(['lines.tauxTva', 'lines.product.stockUnit', 'lines.entrepot', 'lines.lots']);
         $products = Product::with(['stockUnit'])->orderBy('label')->get();
         $entrepots = Entrepot::orderBy('label')->get();
         $employees = Employee::orderBy('first_name')->get();

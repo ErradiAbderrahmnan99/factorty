@@ -161,7 +161,7 @@ class ReceptionController extends Controller
 
     public function edit(Reception $reception): Response
     {
-        $reception->load(['lines.product', 'lines.purchaseUnit', 'lines.entrepot', 'lines.lots']);
+        $reception->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'lines.entrepot', 'lines.lots']);
 
         return Inertia::render('Reception/Edit', [
             'reception'           => $reception,
@@ -375,7 +375,7 @@ class ReceptionController extends Controller
 
     public function getReceptionWithLines(Reception $reception)
     {
-        $reception->load(['lines.product', 'lines.purchaseUnit', 'branche']);
+        $reception->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'branche']);
         
         $factureIds = \App\Models\FactureAchat::where('reception_id', $reception->id)
             ->where('status', '!=', 'annulee')

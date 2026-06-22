@@ -146,7 +146,7 @@ class AvoirVenteController extends Controller
 
     public function edit(AvoirVente $avoirsVente): Response
     {
-        $avoirsVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
+        $avoirsVente->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
         $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('AvoirVente/Edit', [

@@ -120,7 +120,7 @@ class ContratAchatController extends Controller
 
     public function edit(ContratAchat $contratsAchat): Response
     {
-        $contratsAchat->load(['lines.product', 'lines.purchaseUnit']);
+        $contratsAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit']);
 
         return Inertia::render('ContratAchat/Edit', [
             'contrat'             => $contratsAchat,

@@ -134,7 +134,7 @@ class LivraisonController extends Controller
 
             $linesData = [];
             // Pre-load all needed TauxTva records
-            $tauxTvaIds = array_unique(array_filter(array_column(is_array($lines) ? $lines : $lines->toArray(), 'taux_tva_id')));
+            $tauxTvaIds = array_unique(array_filter(array_column($request->input('lines'), 'taux_tva_id')));
             $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
 
             foreach ($request->input('lines') as $line) {
@@ -216,7 +216,7 @@ class LivraisonController extends Controller
 
     public function edit(Livraison $livraison): Response
     {
-        $livraison->load(['lines.product', 'lines.saleUnit', 'lines.lots']);
+        $livraison->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'lines.lots']);
 
         $tiers = Tier::where('type', 'client')
             ->where('status', 'actif')
@@ -288,7 +288,7 @@ class LivraisonController extends Controller
 
             $linesData = [];
             // Pre-load all needed TauxTva records
-            $tauxTvaIds = array_unique(array_filter(array_column(is_array($lines) ? $lines : $lines->toArray(), 'taux_tva_id')));
+            $tauxTvaIds = array_unique(array_filter(array_column($request->input('lines'), 'taux_tva_id')));
             $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
 
             foreach ($request->input('lines') as $line) {
@@ -421,7 +421,7 @@ class LivraisonController extends Controller
 
     public function getLivraisonWithLines(Livraison $livraison)
     {
-        $livraison->load(['lines.product', 'lines.saleUnit']);
+        $livraison->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit']);
         
         $factureIds = \App\Models\FactureVente::where('livraison_id', $livraison->id)
             ->where('status', '!=', 'annulee')

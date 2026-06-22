@@ -278,7 +278,7 @@ class RetourAchatController extends Controller
 
     public function edit(RetourAchat $retourAchat): Response
     {
-        $retourAchat->load(['lines.product', 'lines.purchaseUnit', 'lines.lots', 'lines.receptionLine.reception']);
+        $retourAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'lines.lots', 'lines.receptionLine.reception']);
 
         $tiers = Tier::where('type', 'fournisseur')
             ->where('status', 'actif')

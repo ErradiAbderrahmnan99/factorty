@@ -190,7 +190,7 @@ class FactureVenteController extends Controller
 
     public function edit(FactureVente $facturesVente): Response
     {
-        $facturesVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur', 'livraison.commande']);
+        $facturesVente->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur', 'livraison.commande']);
         $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('FactureVente/Edit', [
@@ -320,7 +320,7 @@ class FactureVenteController extends Controller
 
     public function getFactureWithLines(\App\Models\FactureVente $facture)
     {
-        $facture->load(['lines.product', 'lines.saleUnit']);
+        $facture->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit']);
         return response()->json($facture);
     }
 

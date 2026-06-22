@@ -162,7 +162,7 @@ class FactureAchatController extends Controller
 
     public function edit(FactureAchat $facturesAchat): Response
     {
-        $facturesAchat->load(['lines.product', 'lines.purchaseUnit', 'approbateur.typeApprobateur']);
+        $facturesAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'approbateur.typeApprobateur']);
 
         return Inertia::render('FactureAchat/Edit', [
             'facture'             => $facturesAchat,
@@ -315,7 +315,7 @@ class FactureAchatController extends Controller
 
     public function getFactureWithLines(FactureAchat $facture)
     {
-        $facture->load(['lines.product', 'lines.purchaseUnit']);
+        $facture->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit']);
         return response()->json($facture);
     }
 

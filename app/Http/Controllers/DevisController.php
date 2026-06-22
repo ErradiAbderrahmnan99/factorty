@@ -189,7 +189,7 @@ class DevisController extends Controller
 
     public function edit(Devis $devis): Response
     {
-        $devis->load(['lines.product', 'lines.saleUnit']);
+        $devis->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit']);
 
         $tiers = Tier::whereIn('type', ['client', 'prospect'])
             ->where('status', 'actif')
@@ -788,7 +788,7 @@ class DevisController extends Controller
 
     public function getDevisWithLines(Devis $devis)
     {
-        $devis->load(['lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'tier', 'devise']);
+        $devis->load(['lines.tauxTva', 'lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'tier', 'devise']);
         return response()->json($devis);
     }
 }

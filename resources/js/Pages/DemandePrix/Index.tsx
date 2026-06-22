@@ -68,6 +68,7 @@ interface CloneLineItem {
     product_id: string;
     qty: number;
     purchase_unit_id: string;
+    taux_tva_id?: string | null;
     tva: number;
     pu_ht: number;
     pu_ttc: number;
@@ -273,7 +274,8 @@ export default function Index({
                         product_id: line.product_id.toString(),
                         qty: defaultQty,
                         purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
-                        tva: Number(line.tva),
+                        taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
+                        tva: Number(line.taux_tva?.taux || 0),
                         pu_ht: Number(line.pu_ht),
                         pu_ttc: Number(line.pu_ttc),
                         remise: Number(line.remise || 0),
@@ -348,7 +350,8 @@ export default function Index({
                 product_id: line.product_id,
                 entrepot_id: line.entrepot_id,
                 purchase_unit_id: line.purchase_unit_id || null,
-                tva: line.tva,
+                taux_tva_id: line.taux_tva_id || null,
+            tva: line.tva,
                 qty: line.qty,
                 pu_ht: line.pu_ht,
                 pu_ttc: line.pu_ttc,

@@ -139,7 +139,7 @@ class ContratVenteController extends Controller
 
     public function edit(ContratVente $contratsVente): Response
     {
-        $contratsVente->load(['lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
+        $contratsVente->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'approbateur.typeApprobateur']);
         $branches = \App\Models\Branche::orderBy('name')->get();
 
         return Inertia::render('ContratVente/Edit', [
@@ -244,7 +244,7 @@ class ContratVenteController extends Controller
 
     public function getContratWithLines(\App\Models\ContratVente $contrat)
     {
-        $contrat->load(['lines.product', 'lines.saleUnit']);
+        $contrat->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit']);
         return response()->json($contrat);
     }
 

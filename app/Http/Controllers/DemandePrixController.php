@@ -129,7 +129,7 @@ class DemandePrixController extends Controller
 
     public function edit(DemandePrix $demandesPrix): Response
     {
-        $demandesPrix->load(['lines.product', 'lines.purchaseUnit']);
+        $demandesPrix->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit']);
 
         return Inertia::render('DemandePrix/Edit', [
             'demande'    => $demandesPrix,
@@ -218,7 +218,7 @@ class DemandePrixController extends Controller
 
     public function getDemandePrixWithLines(DemandePrix $demandesPrix)
     {
-        $demandesPrix->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
+        $demandesPrix->load(['lines.tauxTva', 'lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
         return response()->json($demandesPrix);
     }
 

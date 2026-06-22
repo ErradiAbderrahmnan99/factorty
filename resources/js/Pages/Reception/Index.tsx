@@ -30,6 +30,7 @@ interface CloneLine {
     qty: number | string;
     max_qty: number;
     purchase_unit_id: string;
+    taux_tva_id?: string | null;
     tva: number;
     pu_ht: number;
     pu_ttc: number;
@@ -130,7 +131,8 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                         qty: remainingQty.toString(),
                         max_qty: remainingQty,
                         purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
-                        tva: Number(line.tva) || 20.00,
+                        taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
+                        tva: Number(line.taux_tva?.taux || 0),
                         pu_ht: Number(line.pu_ht),
                         pu_ttc: Number(line.pu_ttc),
                         remise: Number(line.remise) || 0,

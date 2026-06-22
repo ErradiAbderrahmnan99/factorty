@@ -142,7 +142,7 @@ class AvoirAchatController extends Controller
 
     public function edit(AvoirAchat $avoirsAchat): Response
     {
-        $avoirsAchat->load(['lines.product', 'lines.purchaseUnit', 'approbateur.typeApprobateur']);
+        $avoirsAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'approbateur.typeApprobateur']);
 
         return Inertia::render('AvoirAchat/Edit', [
             'avoir'               => $avoirsAchat,

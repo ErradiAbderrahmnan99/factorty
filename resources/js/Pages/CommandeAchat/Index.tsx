@@ -49,6 +49,7 @@ interface CloneLineItem {
     original_qty: number;
     qty_receptionnee: number;
     purchase_unit_id: string | null;
+    taux_tva_id?: string | null;
     tva: number;
     pu_ht: number;
     pu_ttc: number;
@@ -184,7 +185,7 @@ export default function Index({
                     .map((line: any) => {
                         const qty = Number(line.qty) - (Number(line.qty_receptionnee) || 0);
                         const pu_ht = Number(line.pu_ht);
-                        const tva = Number(line.tva) || 20.00;
+                        const tva = Number(line.taux_tva?.taux || 0);
                         const remise = Number(line.remise) || 0;
                         const rm = Number(line.rm) || 0;
                         const lineHt = qty * pu_ht;
@@ -199,6 +200,7 @@ export default function Index({
                             original_qty: Number(line.qty),
                             qty_receptionnee: Number(line.qty_receptionnee) || 0,
                             purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
+                            taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
                             tva: tva,
                             pu_ht: pu_ht,
                             pu_ttc: Number(line.pu_ttc),

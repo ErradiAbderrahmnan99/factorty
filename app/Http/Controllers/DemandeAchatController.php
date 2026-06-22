@@ -129,7 +129,7 @@ class DemandeAchatController extends Controller
 
     public function edit(DemandeAchat $demandesAchat): Response
     {
-        $demandesAchat->load(['lines.product', 'lines.purchaseUnit']);
+        $demandesAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit']);
 
         return Inertia::render('DemandeAchat/Edit', [
             'demande'             => $demandesAchat,

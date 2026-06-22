@@ -165,7 +165,7 @@ class CommandeAchatController extends Controller
 
     public function edit(CommandeAchat $commandesAchat): Response
     {
-        $commandesAchat->load(['lines.product', 'lines.purchaseUnit', 'lines.entrepot', 'lines.lots']);
+        $commandesAchat->load(['lines.tauxTva', 'lines.product', 'lines.purchaseUnit', 'lines.entrepot', 'lines.lots']);
 
         return Inertia::render('CommandeAchat/Edit', [
             'commande'            => $commandesAchat,
@@ -317,7 +317,7 @@ class CommandeAchatController extends Controller
 
     public function getCommandeWithLines(CommandeAchat $commandesAchat)
     {
-        $commandesAchat->load(['lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
+        $commandesAchat->load(['lines.tauxTva', 'lines.product.stockUnit', 'lines.product.purchaseUnit', 'lines.purchaseUnit', 'tier', 'devise', 'branche']);
         return response()->json($commandesAchat);
     }
 

@@ -134,7 +134,7 @@ class CommandeController extends Controller
 
             $linesData = [];
             // Pre-load all needed TauxTva records
-            $tauxTvaIds = array_unique(array_filter(array_column(is_array($lines) ? $lines : $lines->toArray(), 'taux_tva_id')));
+            $tauxTvaIds = array_unique(array_filter(array_column($request->input('lines'), 'taux_tva_id')));
             $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
 
             foreach ($request->input('lines') as $line) {
@@ -216,7 +216,7 @@ class CommandeController extends Controller
 
     public function edit(Commande $commande): Response
     {
-        $commande->load(['lines.product', 'lines.saleUnit', 'lines.lots']);
+        $commande->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'lines.lots']);
 
         $tiers = Tier::where('type', 'client')
             ->where('status', 'actif')
@@ -288,7 +288,7 @@ class CommandeController extends Controller
 
             $linesData = [];
             // Pre-load all needed TauxTva records
-            $tauxTvaIds = array_unique(array_filter(array_column(is_array($lines) ? $lines : $lines->toArray(), 'taux_tva_id')));
+            $tauxTvaIds = array_unique(array_filter(array_column($request->input('lines'), 'taux_tva_id')));
             $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
 
             foreach ($request->input('lines') as $line) {
@@ -480,7 +480,7 @@ class CommandeController extends Controller
      */
     public function getCommandeWithLines(Commande $commande)
     {
-        $commande->load(['lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'lines.lots', 'tier', 'devise']);
+        $commande->load(['lines.tauxTva', 'lines.product.stockUnit', 'lines.product.saleUnit', 'lines.saleUnit', 'lines.lots', 'tier', 'devise']);
         return response()->json($commande);
     }
 }

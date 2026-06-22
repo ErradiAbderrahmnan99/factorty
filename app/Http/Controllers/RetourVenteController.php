@@ -277,7 +277,7 @@ class RetourVenteController extends Controller
 
     public function edit(RetourVente $retourVente): Response
     {
-        $retourVente->load(['lines.product', 'lines.saleUnit', 'lines.lots', 'lines.livraisonLine.livraison']);
+        $retourVente->load(['lines.tauxTva', 'lines.product', 'lines.saleUnit', 'lines.lots', 'lines.livraisonLine.livraison']);
 
         $tiers = Tier::where('type', 'client')
             ->where('status', 'actif')

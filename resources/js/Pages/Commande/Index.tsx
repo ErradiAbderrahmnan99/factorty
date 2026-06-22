@@ -33,6 +33,7 @@ interface CloneLineItem {
     product_id: string;
     qty: number;
     sale_unit_id: string;
+    taux_tva_id?: string | null;
     tva: number;
     pu_ht: number;
     pu_ttc: number;
@@ -81,7 +82,8 @@ interface Commande {
     date_commande: string;
     status: 'brouillon' | 'valide' | 'annule' | 'livré' | 'livré partiellement';
     total_ht: number;
-    total_tva: number;
+    total_taux_tva_id?: string | null;
+    tva: number;
     total_ttc: number;
     tier: Tier;
     devise: Devise;
@@ -208,7 +210,7 @@ export default function Index({
                     .map((line: any) => {
                         const qty = Number(line.qty) - (Number(line.qty_livre) || 0);
                         const pu_ht = Number(line.pu_ht);
-                        const tva = Number(line.tva) || 20.00;
+                        const tva = Number(line.taux_tva?.taux || 0);
                         const remise = Number(line.remise) || 0;
                         const rm = Number(line.rm) || 0;
                         const lineHt = qty * pu_ht;
@@ -223,6 +225,7 @@ export default function Index({
                             original_qty: Number(line.qty),
                             qty_livre: Number(line.qty_livre) || 0,
                             sale_unit_id: line.sale_unit_id ? line.sale_unit_id.toString() : '',
+                            taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
                             tva: tva,
                             pu_ht: pu_ht,
                             pu_ttc: Number(line.pu_ttc),
