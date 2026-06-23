@@ -223,7 +223,7 @@ export default function Create({ products, entrepots, employees, units }: {
                                                 </select>
                                             </td>
                                             <td className="py-4 px-6">
-                                                <input type="number" step="any" min="0.0001" value={line.qty} required
+                                                <input type="number" step="any" min="0.0001" max="9999999999" value={line.qty} required
                                                     onChange={e => handleLineChange(idx, 'qty', Number(e.target.value))}
                                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-xs font-bold text-slate-800 dark:text-slate-200 py-2 px-2 text-center focus:outline-none focus:border-indigo-500 transition-all" />
                                             </td>

@@ -31,12 +31,25 @@ class RetourAchatTest extends TestCase
     private $productWithLot;
     private $productWithoutLot;
     private $reception;
+    private $tauxTva;
+    private $branche;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->user = User::factory()->create();
+
+        $this->tauxTva = \App\Models\TauxTva::create([
+            'code' => 'TVA20',
+            'libelle' => 'TVA 20%',
+            'taux' => 20.00,
+            'actif' => true,
+        ]);
+
+        $this->branche = \App\Models\Branche::create([
+            'name' => 'Branche Test',
+        ]);
 
         $this->fournisseur = Tier::create([
             'type' => 'fournisseur',
@@ -110,7 +123,7 @@ class RetourAchatTest extends TestCase
             'qty' => 10,
             'pu_ht' => 100,
             'pu_ttc' => 120,
-            'tva' => 20,
+            'taux_tva_id' => $this->tauxTva->id,
             'remise' => 0,
             'rm' => 0,
             'total_ht' => 1000,
@@ -130,7 +143,7 @@ class RetourAchatTest extends TestCase
             'qty' => 5,
             'pu_ht' => 100,
             'pu_ttc' => 120,
-            'tva' => 20,
+            'taux_tva_id' => $this->tauxTva->id,
             'remise' => 0,
             'rm' => 0,
             'total_ht' => 500,
@@ -181,6 +194,7 @@ class RetourAchatTest extends TestCase
                 'tier_id' => $this->fournisseur->id,
                 'date_retour' => '2026-06-03',
                 'devise_id' => $this->devise->id,
+                'branche_id' => $this->branche->id,
                 'lines' => [
                     [
                         'reception_line_id' => $receptionLine1->id,
@@ -190,7 +204,7 @@ class RetourAchatTest extends TestCase
                         'qty' => 5.0,
                         'pu_ht' => 100.0,
                         'pu_ttc' => 120.0,
-                        'tva' => 20.0,
+                        'taux_tva_id' => $this->tauxTva->id,
                         'remise' => 0,
                         'rm' => 0,
                         'lots' => [
@@ -228,6 +242,7 @@ class RetourAchatTest extends TestCase
                 'tier_id' => $this->fournisseur->id,
                 'date_retour' => '2026-06-03',
                 'devise_id' => $this->devise->id,
+                'branche_id' => $this->branche->id,
                 'lines' => [
                     [
                         'reception_line_id' => $receptionLine1->id,
@@ -237,7 +252,7 @@ class RetourAchatTest extends TestCase
                         'qty' => 15.0, // Exceeds 10 limit
                         'pu_ht' => 100.0,
                         'pu_ttc' => 120.0,
-                        'tva' => 20.0,
+                        'taux_tva_id' => $this->tauxTva->id,
                         'remise' => 0,
                         'rm' => 0,
                         'lots' => [
@@ -277,7 +292,7 @@ class RetourAchatTest extends TestCase
             'qty' => 4.0,
             'pu_ht' => 100.0,
             'pu_ttc' => 120.0,
-            'tva' => 20.0,
+            'taux_tva_id' => $this->tauxTva->id,
             'remise' => 0,
             'rm' => 0,
             'total_ht' => 400,
@@ -341,7 +356,7 @@ class RetourAchatTest extends TestCase
             'qty' => 4.0, // Exceeds 2.0 available
             'pu_ht' => 100.0,
             'pu_ttc' => 120.0,
-            'tva' => 20.0,
+            'taux_tva_id' => $this->tauxTva->id,
             'remise' => 0,
             'rm' => 0,
             'total_ht' => 400,

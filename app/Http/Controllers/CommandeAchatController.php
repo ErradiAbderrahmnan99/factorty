@@ -130,6 +130,7 @@ class CommandeAchatController extends Controller
                     'product_id'           => $lData['product_id'],
                     'entrepot_id'          => $lData['entrepot_id'],
                     'purchase_unit_id'     => $lData['purchase_unit_id'],
+                    'taux_tva_id'          => $lData['taux_tva_id'],
                     'qty'                  => $lData['qty'],
                     'pu_ht'                => $lData['pu_ht'],
                     'pu_ttc'               => $lData['pu_ttc'],
@@ -184,8 +185,8 @@ class CommandeAchatController extends Controller
 
     public function update(Request $request, CommandeAchat $commandesAchat): RedirectResponse
     {
-        if ($commandesAchat->status === 'recue') {
-            return back()->with('error', 'Une commande reçue ne peut pas être modifiée.');
+        if (in_array($commandesAchat->status, ['commandee', 'recue', 'recue partiellement'])) {
+            return back()->with('error', 'Une commande d\'achat validée (commandée ou reçue) ne peut pas être modifiée.');
         }
 
         $request->validate([
@@ -247,6 +248,7 @@ class CommandeAchatController extends Controller
                     'product_id'           => $lData['product_id'],
                     'entrepot_id'          => $lData['entrepot_id'],
                     'purchase_unit_id'     => $lData['purchase_unit_id'],
+                    'taux_tva_id'          => $lData['taux_tva_id'],
                     'qty'                  => $lData['qty'],
                     'pu_ht'                => $lData['pu_ht'],
                     'pu_ttc'               => $lData['pu_ttc'],
@@ -284,8 +286,8 @@ class CommandeAchatController extends Controller
 
     public function destroy(CommandeAchat $commandesAchat): RedirectResponse
     {
-        if ($commandesAchat->status === 'recue') {
-            return back()->with('error', 'Une commande reçue ne peut pas être supprimée.');
+        if (in_array($commandesAchat->status, ['commandee', 'recue', 'recue partiellement'])) {
+            return back()->with('error', 'Une commande d\'achat validée (commandée ou reçue) ne peut pas être supprimée.');
         }
 
         $demandeId = $commandesAchat->demande_prix_id;
@@ -301,11 +303,20 @@ class CommandeAchatController extends Controller
 
     public function updateStatus(Request $request, CommandeAchat $commandesAchat): RedirectResponse
     {
+        if (in_array($commandesAchat->status, ['commandee', 'recue', 'recue partiellement'])) {
+            return back()->with('error', 'Le statut d\'une commande d\'achat déjà validée ou reçue ne peut plus être modifié.');
+        }
+
         $request->validate([
-            'status' => ['required', 'string', 'in:brouillon,commandee,recue,annulee'],
+            'status' => ['required', 'string', 'in:brouillon,commandee,recue,recue partiellement,annulee'],
         ]);
 
-        $commandesAchat->update(['status' => $request->input('status')]);
+        $newStatus = $request->input('status');
+        if (in_array($newStatus, ['recue', 'recue partiellement'])) {
+            return back()->with('error', 'Les statuts de réception ne peuvent pas être définis manuellement.');
+        }
+
+        $commandesAchat->update(['status' => $newStatus]);
 
         if ($commandesAchat->demande_prix_id) {
             $dem = \App\Models\DemandePrix::find($commandesAchat->demande_prix_id);

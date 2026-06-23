@@ -256,6 +256,10 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
             },
             onError: (errs) => {
                 setCloneErrors(errs);
+                const firstError = Object.values(errs)[0];
+                if (firstError) {
+                    setLocalFlash({ type: 'error', message: firstError as string });
+                }
                 setIsSubmittingClone(false);
             },
             onFinish: () => {

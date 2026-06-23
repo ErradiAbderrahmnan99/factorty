@@ -145,6 +145,9 @@ class RetourAchatController extends Controller
                 $totalTtc = 0;
                 $linesData = [];
 
+                $tauxTvaIds = array_unique(array_filter(array_column($request->input('lines'), 'taux_tva_id')));
+                $tauxTvas = TauxTva::whereIn('id', $tauxTvaIds)->get()->keyBy('id');
+
                 foreach ($request->input('lines') as $line) {
                     $receptionLine = ReceptionLine::findOrFail($line['reception_line_id']);
 
@@ -406,7 +409,7 @@ class RetourAchatController extends Controller
 
                     $qty = (double)$lineInput['qty'];
                     $puHt = (double)$rLine->pu_ht;
-                    $tva = (double)$rLine->tva;
+                    $tva = (double)($rLine->tauxTva->taux ?? 0);
                     $remise = (double)$rLine->remise;
                     $rm = (double)$rLine->rm;
 

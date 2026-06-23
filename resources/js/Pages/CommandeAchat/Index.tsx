@@ -112,15 +112,17 @@ export default function Index({
     filters,
     products = [],
     entrepots = [],
-    units = []
+    units = [],
+    tauxTvas = []
 }: {
     commandes: PaginatedCommandes;
     filters: { search: string | null; status: string | null };
     products?: Product[];
     entrepots?: Entrepot[];
     units?: Unit[];
+    tauxTvas?: any[];
 }) {
-    const { decimals } = useEntitySettings();
+    const { decimals, defaultTvaId } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -193,6 +195,15 @@ export default function Index({
                         const total_ht = Math.max(0, lineHt - discount);
                         const total_ttc = total_ht * (1 + tva / 100);
 
+                        let mappedTauxTvaId = line.taux_tva_id ? String(line.taux_tva_id) : '';
+                        if (!mappedTauxTvaId) {
+                            if (defaultTvaId) {
+                                mappedTauxTvaId = String(defaultTvaId);
+                            } else if (tauxTvas && tauxTvas.length > 0) {
+                                mappedTauxTvaId = String(tauxTvas[0].id);
+                            }
+                        }
+
                         return {
                             commande_achat_line_id: line.id,
                             product_id: line.product_id.toString(),
@@ -200,7 +211,7 @@ export default function Index({
                             original_qty: Number(line.qty),
                             qty_receptionnee: Number(line.qty_receptionnee) || 0,
                             purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
-                            taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
+                            taux_tva_id: mappedTauxTvaId,
                             tva: tva,
                             pu_ht: pu_ht,
                             pu_ttc: Number(line.pu_ttc),
@@ -551,51 +562,53 @@ export default function Index({
                 </div>
 
                 {/* Change Status Modal */}
-                {statusTarget && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-fade-in">
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-[2rem] shadow-3xl p-6">
-                            <div className="flex items-center space-x-3 text-indigo-500 mb-3">
-                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">Modifier le statut</h3>
-                            </div>
-                            {(statusTarget.status === 'recue' || statusTarget.status === 'recue partiellement') && (
-                                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-955/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
-                                    ⚠️ Cette commande a été reçue ou partiellement reçue. Son statut est géré par les bons de réception et ne peut plus être modifié manuellement.
+                {statusTarget && (() => {
+                    const isTargetLocked = ['commandee', 'recue', 'recue partiellement'].includes(statusTarget.status);
+                    return (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-fade-in">
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-[2rem] shadow-3xl p-6">
+                                <div className="flex items-center space-x-3 text-indigo-500 mb-3">
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <h3 className="text-sm font-extrabold uppercase tracking-widest text-slate-855 dark:text-white">Modifier le statut</h3>
                                 </div>
-                            )}
-                            <p className="text-xs text-slate-500 mb-5">Modifier le statut de la commande <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
-                            <div className="space-y-2 mb-6">
-                                {(['brouillon', 'commandee', 'recue', 'recue partiellement', 'annulee'] as const).map(statusOption => {
-                                    const st = STATUS_STYLING[statusOption];
-                                    const isTargetReceived = statusTarget.status === 'recue' || statusTarget.status === 'recue partiellement';
-                                    const isDisabled = (isTargetReceived && statusOption !== statusTarget.status) || 
-                                                       ((statusOption === 'recue' || statusOption === 'recue partiellement') && statusTarget.status !== statusOption);
-                                    return (
-                                        <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${
-                                                isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 active:scale-[0.99]'
-                                            } ${
-                                                statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-5/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'
-                                            }`}>
-                                            <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                                                <span>{st.label}</span>
-                                            </span>
-                                            {statusTarget.status === statusOption && (
-                                                <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex justify-end">
-                                <button onClick={() => setStatusTarget(null)} className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-350 bg-slate-100 dark:bg-slate-805 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">Annuler</button>
+                                {isTargetLocked && (
+                                    <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-955/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-xs font-semibold text-rose-700 dark:text-rose-455 leading-relaxed">
+                                        ⚠️ Cette commande a été validée, reçue ou partiellement reçue. Son statut ne peut plus être modifié manuellement.
+                                    </div>
+                                )}
+                                <p className="text-xs text-slate-500 mb-5">Modifier le statut de la commande <strong className="text-slate-800 dark:text-slate-200">"{statusTarget.ref}"</strong> :</p>
+                                <div className="space-y-2 mb-6">
+                                    {(['brouillon', 'commandee', 'recue', 'recue partiellement', 'annulee'] as const).map(statusOption => {
+                                        const st = STATUS_STYLING[statusOption];
+                                        const isDisabled = (isTargetLocked && statusOption !== statusTarget.status) || 
+                                                           ((statusOption === 'recue' || statusOption === 'recue partiellement') && statusTarget.status !== statusOption);
+                                        return (
+                                            <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
+                                                className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${
+                                                    isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-805/50 active:scale-[0.99]'
+                                                } ${
+                                                    statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-5/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'
+                                                }`}>
+                                                <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                                                    <span>{st.label}</span>
+                                                </span>
+                                                {statusTarget.status === statusOption && (
+                                                    <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex justify-end">
+                                    <button onClick={() => setStatusTarget(null)} className="px-5 py-2.5 text-xs font-bold text-slate-655 dark:text-slate-350 bg-slate-100 dark:bg-slate-805 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-750 transition-all">Annuler</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Delete Modal */}
                 {deleteTarget && (
@@ -643,6 +656,16 @@ export default function Index({
                             </div>
 
                             <form onSubmit={submitClone} className="space-y-6">
+                                {Object.keys(cloneErrors).length > 0 && (
+                                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-455">
+                                        <p className="font-extrabold mb-1">Des erreurs sont survenues lors de la validation :</p>
+                                        <ul className="list-disc pl-5 space-y-1 font-semibold">
+                                            {Object.entries(cloneErrors).map(([key, val]) => (
+                                                <li key={key}>{val}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                                 {/* General Details */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
                                     <div>
@@ -682,7 +705,6 @@ export default function Index({
                                                     <th className="py-3 px-2 w-28">P.U. HT</th>
                                                     <th className="py-3 px-2 w-48">Entrepôt <span className="text-rose-500">*</span></th>
                                                     <th className="py-3 px-4 text-center w-36">Lots</th>
-                                                    <th className="py-3 px-4 text-center w-24">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -719,7 +741,7 @@ export default function Index({
                                                             </td>
                                                             <td className="py-3 px-2 font-bold font-mono text-slate-700 dark:text-slate-300">
                                                                 <div className="flex items-center space-x-1">
-                                                                    <input type="number" step="any" min="0.0001"
+                                                                    <input type="number" step="any" min="0.0001" max="9999999999"
                                                                         className="w-20 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs py-1 px-1.5 focus:outline-none focus:border-indigo-500 font-bold font-mono text-slate-800 dark:text-slate-200"
                                                                         value={line.qty}
                                                                         onChange={e => handleCloneLineQtyChange(idx, Number(e.target.value) || 0)}
@@ -775,47 +797,16 @@ export default function Index({
                                                                     <span className="text-[10px] text-slate-400 font-bold italic select-none">—</span>
                                                                 )}
                                                             </td>
-                                                            <td className="py-3 px-4 text-center">
-                                                                <button type="button" onClick={() => handleRemoveCloneLine(idx)}
-                                                                    className="p-1 text-slate-450 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all"
-                                                                    title="Supprimer cette ligne">
-                                                                    <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </button>
-                                                            </td>
                                                         </tr>
                                                     );
                                                 })}
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
-                                        <div className="flex items-center space-x-2 w-full sm:w-72">
-                                            <select
-                                                className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-800 dark:text-slate-200"
-                                                value=""
-                                                onChange={e => {
-                                                    const prodId = e.target.value;
-                                                    if (!prodId) return;
-                                                    const prod = products.find(p => p.id.toString() === prodId);
-                                                    if (prod) {
-                                                        handleAddProductToClone(prod);
-                                                    }
-                                                    e.target.value = "";
-                                                }}
-                                            >
-                                                <option value="">+ Ajouter un produit au bon de réception...</option>
-                                                {products.map(p => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.ref ? `[${p.ref}] ` : ''}{p.label} - {p.purchase_price} DH
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                    <div className="flex justify-end items-center bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
                                         <div className="text-right w-full sm:w-auto">
                                             <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Total Lignes Bon de Réception</span>
-                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                                            <span className="text-sm font-black text-indigo-650 dark:text-indigo-400 font-mono">
                                                 {cloneForm.lines.reduce((sum, line) => sum + line.total_ttc, 0).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} <span className="text-[10px] text-slate-400">{cloneTarget.devise.symbol || cloneTarget.devise.code}</span>
                                             </span>
                                         </div>

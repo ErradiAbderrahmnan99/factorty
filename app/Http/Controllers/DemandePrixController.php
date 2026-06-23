@@ -148,6 +148,10 @@ class DemandePrixController extends Controller
 
     public function update(Request $request, DemandePrix $demandesPrix): RedirectResponse
     {
+        if ($demandesPrix->status !== 'brouillon') {
+            return back()->with('error', 'Seule une demande de prix au statut brouillon peut être modifiée.');
+        }
+
         $request->validate([
             'employee_id'            => ['nullable', 'exists:employees,id'],
             'tier_id'                => ['required', 'exists:tiers,id'],
@@ -202,15 +206,27 @@ class DemandePrixController extends Controller
 
     public function destroy(DemandePrix $demandesPrix): RedirectResponse
     {
+        if ($demandesPrix->status !== 'brouillon') {
+            return back()->with('error', 'Seule une demande de prix au statut brouillon peut être supprimée.');
+        }
+
         $demandesPrix->delete();
         return redirect()->route('demandes-prix.index')->with('success', 'Demande de prix supprimée avec succès.');
     }
 
     public function updateStatus(Request $request, DemandePrix $demandesPrix): RedirectResponse
     {
+        if (in_array($demandesPrix->status, ['commande', 'commande partiellement'])) {
+            return back()->with('error', 'Le statut d\'une demande de prix commandée ou partiellement commandée ne peut pas être modifié.');
+        }
+
         $request->validate([
             'status' => ['required', 'string', 'in:brouillon,valide,annulee,commande,commande partiellement'],
         ]);
+
+        if (in_array($request->input('status'), ['commande', 'commande partiellement'])) {
+            return back()->with('error', 'Le statut de la demande de prix ne peut pas être modifié manuellement vers commandé ou commandé partiellement.');
+        }
 
         $demandesPrix->update(['status' => $request->input('status')]);
         return back()->with('success', 'Statut de la demande de prix mis à jour.');

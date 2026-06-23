@@ -26,12 +26,20 @@ class LivraisonToFactureTest extends TestCase
     private $product;
     private $entrepot;
     private $livraison;
+    private $tauxTva;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->user = User::factory()->create();
+
+        $this->tauxTva = \App\Models\TauxTva::create([
+            'code' => 'TVA20',
+            'libelle' => 'TVA 20%',
+            'taux' => 20.00,
+            'actif' => true,
+        ]);
 
         $this->client = Tier::create([
             'type'   => 'client',
@@ -88,7 +96,7 @@ class LivraisonToFactureTest extends TestCase
             'product_id'   => $this->product->id,
             'entrepot_id'  => $this->entrepot->id,
             'sale_unit_id' => $this->unit->id,
-            'tva'          => 20.00,
+            'taux_tva_id'  => $this->tauxTva->id,
             'qty'          => 10,
             'pu_ht'        => 20.00,
             'pu_ttc'       => 24.00,
@@ -119,7 +127,7 @@ class LivraisonToFactureTest extends TestCase
                 [
                     'product_id'   => $this->product->id,
                     'sale_unit_id' => $this->unit->id,
-                    'tva'          => 20.00,
+                    'taux_tva_id'  => $this->tauxTva->id,
                     'qty'          => 10,
                     'pu_ht'        => 20.00,
                     'pu_ttc'       => 24.00,
@@ -155,7 +163,7 @@ class LivraisonToFactureTest extends TestCase
                 [
                     'product_id'   => $this->product->id,
                     'sale_unit_id' => $this->unit->id,
-                    'tva'          => 20.00,
+                    'taux_tva_id'  => $this->tauxTva->id,
                     'qty'          => 4,
                     'pu_ht'        => 20.00,
                     'pu_ttc'       => 24.00,
@@ -184,7 +192,7 @@ class LivraisonToFactureTest extends TestCase
                 [
                     'product_id'   => $this->product->id,
                     'sale_unit_id' => $this->unit->id,
-                    'tva'          => 20.00,
+                    'taux_tva_id'  => $this->tauxTva->id,
                     'qty'          => 11, // Exceeds 10
                     'pu_ht'        => 20.00,
                     'pu_ttc'       => 24.00,

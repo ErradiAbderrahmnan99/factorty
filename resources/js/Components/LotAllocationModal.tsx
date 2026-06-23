@@ -344,7 +344,7 @@ export default function LotAllocationModal({
                                             {/* Qty input */}
                                             <div>
                                                 <input
-                                                    type="number" step="any" min="0" max={maxAllowed}
+                                                    type="number" step="any" min="0" max={maxAllowed || 9999999999}
                                                     disabled={isLocked} placeholder="0"
                                                     className={`block w-full rounded-xl border text-xs py-2 px-3 text-right font-bold transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${hasAllocation
                                                         ? 'border-indigo-300 dark:border-indigo-600/50 bg-white dark:bg-gray-900 text-indigo-700 dark:text-indigo-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
@@ -406,7 +406,7 @@ export default function LotAllocationModal({
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Quantité</label>
-                                    <input type="number" step="any" min="0" placeholder="0.00"
+                                    <input type="number" step="any" min="0" max="9999999999" placeholder="0.00"
                                         className="block w-full rounded-xl border border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-900 text-xs py-2.5 px-3 text-right font-semibold text-gray-800 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 transition-all"
                                         value={manualLotQty} onChange={e => setManualLotQty(e.target.value)} />
                                 </div>

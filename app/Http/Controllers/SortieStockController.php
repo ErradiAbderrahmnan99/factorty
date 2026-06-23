@@ -75,11 +75,11 @@ class SortieStockController extends Controller
             'lines' => 'required|array|min:1',
             'lines.*.product_id' => 'required|exists:products,id',
             'lines.*.entrepot_id' => 'required|exists:entrepots,id',
-            'lines.*.qty' => 'required|numeric|gt:0',
+            'lines.*.qty' => 'required|numeric|gt:0|max:9999999999',
             'lines.*.commentaire' => 'nullable|string',
             'lines.*.lots' => 'nullable|array',
             'lines.*.lots.*.lot_number' => 'required_with:lines.*.lots|string',
-            'lines.*.lots.*.quantity' => 'required_with:lines.*.lots|numeric|gt:0',
+            'lines.*.lots.*.quantity' => 'required_with:lines.*.lots|numeric|gt:0|max:9999999999',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -158,11 +158,11 @@ class SortieStockController extends Controller
             'lines' => 'required|array|min:1',
             'lines.*.product_id' => 'required|exists:products,id',
             'lines.*.entrepot_id' => 'required|exists:entrepots,id',
-            'lines.*.qty' => 'required|numeric|gt:0',
+            'lines.*.qty' => 'required|numeric|gt:0|max:9999999999',
             'lines.*.commentaire' => 'nullable|string',
             'lines.*.lots' => 'nullable|array',
             'lines.*.lots.*.lot_number' => 'required_with:lines.*.lots|string',
-            'lines.*.lots.*.quantity' => 'required_with:lines.*.lots|numeric|gt:0',
+            'lines.*.lots.*.quantity' => 'required_with:lines.*.lots|numeric|gt:0|max:9999999999',
         ]);
 
         DB::transaction(function () use ($request, $sortiesStock) {

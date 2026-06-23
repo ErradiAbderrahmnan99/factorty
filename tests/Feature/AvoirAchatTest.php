@@ -23,12 +23,25 @@ class AvoirAchatTest extends TestCase
     private $unit;
     private $product;
     private $facture;
+    private $tauxTva;
+    private $branche;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->user = User::factory()->create();
+
+        $this->tauxTva = \App\Models\TauxTva::create([
+            'code' => 'TVA20',
+            'libelle' => 'TVA 20%',
+            'taux' => 20.00,
+            'actif' => true,
+        ]);
+
+        $this->branche = \App\Models\Branche::create([
+            'name' => 'Branche Test',
+        ]);
 
         $this->fournisseur = Tier::create([
             'type'   => 'fournisseur',
@@ -91,11 +104,12 @@ class AvoirAchatTest extends TestCase
             'facture_achat_id' => $this->facture->id,
             'date_avoir'       => '2026-06-01',
             'devise_id'        => $this->devise->id,
+            'branche_id'       => $this->branche->id,
             'lines'            => [
                 [
                     'product_id'       => $this->product->id,
                     'purchase_unit_id' => $this->unit->id,
-                    'tva'              => 20.00,
+                    'taux_tva_id'      => $this->tauxTva->id,
                     'qty'              => 2,
                     'pu_ht'            => 150.00,
                     'pu_ttc'           => 180.00,
@@ -142,7 +156,7 @@ class AvoirAchatTest extends TestCase
         $avoir->lines()->create([
             'product_id'       => $this->product->id,
             'purchase_unit_id' => $this->unit->id,
-            'tva'              => 20.00,
+            'taux_tva_id'      => $this->tauxTva->id,
             'qty'              => 1,
             'pu_ht'            => 150.00,
             'pu_ttc'           => 180.00,
@@ -154,11 +168,12 @@ class AvoirAchatTest extends TestCase
             'tier_id'    => $this->fournisseur->id,
             'date_avoir' => '2026-06-02',
             'devise_id'  => $this->devise->id,
+            'branche_id' => $this->branche->id,
             'lines'      => [
                 [
                     'product_id'       => $this->product->id,
                     'purchase_unit_id' => $this->unit->id,
-                    'tva'              => 20.00,
+                    'taux_tva_id'      => $this->tauxTva->id,
                     'qty'              => 5,
                     'pu_ht'            => 140.00,
                     'pu_ttc'           => 168.00,
@@ -197,11 +212,12 @@ class AvoirAchatTest extends TestCase
             'tier_id'    => $this->fournisseur->id,
             'date_avoir' => '2026-06-02',
             'devise_id'  => $this->devise->id,
+            'branche_id' => $this->branche->id,
             'lines'      => [
                 [
                     'product_id'       => $this->product->id,
                     'purchase_unit_id' => $this->unit->id,
-                    'tva'              => 20.00,
+                    'taux_tva_id'      => $this->tauxTva->id,
                     'qty'              => 5,
                     'pu_ht'            => 140.00,
                     'pu_ttc'           => 168.00,

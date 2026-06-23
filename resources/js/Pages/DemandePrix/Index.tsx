@@ -461,12 +461,19 @@ export default function Index({
                                                 {item.total_ttc.toFixed(decimals)} {item.devise ? item.devise.symbol || item.devise.code : ''}
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                <button onClick={() => setStatusTarget(item)}
-                                                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
-                                                    <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
-                                                    <span>{styling.label}</span>
-                                                    <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                                </button>
+                                                {['commande', 'commande partiellement'].includes(item.status) ? (
+                                                    <span className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                    </span>
+                                                ) : (
+                                                    <button onClick={() => setStatusTarget(item)}
+                                                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 border ${styling.badge}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${styling.dot}`} />
+                                                        <span>{styling.label}</span>
+                                                        <svg className="h-2.5 w-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+                                                    </button>
+                                                )}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center justify-center space-x-1">
@@ -552,9 +559,12 @@ export default function Index({
                             <div className="space-y-2 mb-6">
                                 {(['brouillon', 'valide', 'annulee'] as const).map(statusOption => {
                                     const st = STATUS_STYLING[statusOption];
+                                    const isDisabled = ['commande', 'commande partiellement'].includes(statusTarget.status);
                                     return (
-                                        <button key={statusOption} onClick={() => changeStatus(statusTarget.id, statusOption)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all hover:bg-slate-50/50 dark:hover:bg-slate-850/50 active:scale-[0.99] ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
+                                        <button key={statusOption} disabled={isDisabled} onClick={() => !isDisabled && changeStatus(statusTarget.id, statusOption)}
+                                            className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition-all ${
+                                                isDisabled ? 'opacity-40 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-850/50 active:scale-[0.99]'
+                                            } ${statusTarget.status === statusOption ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-800'}`}>
                                             <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${st.badge}`}>
                                                 <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                                 <span>{st.label}</span>
@@ -638,13 +648,12 @@ export default function Index({
                                 <div className="overflow-x-auto border border-slate-100 dark:border-slate-800/85 rounded-2xl">
                                     <table className="w-full text-left min-w-[800px]">
                                         <thead>
-                                            <tr className="bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-800/80 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
+                                            <tr className="bg-slate-50/50 dark:bg-slate-955/20 border-b border-slate-100 dark:border-slate-800/80 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">
                                                 <th className="py-3 px-4">Produit</th>
                                                 <th className="py-3 px-2 w-28">Quantité</th>
                                                 <th className="py-3 px-2 w-28">P.U. HT</th>
                                                 <th className="py-3 px-2 w-48">Entrepôt <span className="text-rose-500">*</span></th>
                                                 <th className="py-3 px-4 text-center w-36">Lots</th>
-                                                <th className="py-3 px-4 text-center w-24">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -724,7 +733,7 @@ export default function Index({
                                                                     className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
                                                                         isLotsFullyAllocated 
                                                                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 border border-emerald-500/20'
-                                                                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/20'
+                                                                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-455 border border-amber-500/20'
                                                                     }`}>
                                                                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -735,44 +744,13 @@ export default function Index({
                                                                 <span className="text-[10px] text-slate-400 font-bold italic select-none">—</span>
                                                             )}
                                                         </td>
-                                                        <td className="py-3 px-4 text-center">
-                                                            <button type="button" onClick={() => handleRemoveCloneLine(idx)}
-                                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl transition-all"
-                                                                title="Supprimer cette ligne">
-                                                                <svg className="h-4 w-4 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                </svg>
-                                                            </button>
-                                                        </td>
                                                     </tr>
                                                 );
                                             })}
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
-                                    <div className="flex items-center space-x-2 w-full sm:w-72">
-                                        <select
-                                            className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-800 dark:text-slate-200"
-                                            value=""
-                                            onChange={e => {
-                                                const prodId = e.target.value;
-                                                if (!prodId) return;
-                                                const prod = products.find(p => p.id.toString() === prodId);
-                                                if (prod) {
-                                                    handleAddProductToClone(prod);
-                                                }
-                                                e.target.value = "";
-                                            }}
-                                        >
-                                            <option value="">+ Ajouter un produit à la commande...</option>
-                                            {products.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.ref ? `[${p.ref}] ` : ''}{p.label} - {p.purchase_price} DH
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div className="flex justify-end items-center bg-slate-50 dark:bg-slate-955/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
                                     <div className="text-right w-full sm:w-auto">
                                         <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Total Lignes Commande</span>
                                         <span className="text-sm font-black text-indigo-650 dark:text-indigo-400 font-mono">

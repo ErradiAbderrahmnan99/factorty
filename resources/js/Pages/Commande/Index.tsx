@@ -314,37 +314,7 @@ export default function Index({
         });
     };
 
-    const handleAddProductToClone = (prod: any) => {
-        if (!cloneForm) return;
-        const newLine: CloneLineItem = {
-            product_id: prod.id.toString(),
-            qty: 1,
-            sale_unit_id: prod.sale_unit_id ? prod.sale_unit_id.toString() : '',
-            tva: 20.00,
-            pu_ht: Number(prod.sale_price || 0),
-            pu_ttc: Number(prod.sale_price || 0) * 1.20,
-            remise: 0,
-            rm: 0,
-            total_ht: Number(prod.sale_price || 0),
-            total_ttc: Number(prod.sale_price || 0) * 1.20,
-            entrepot_id: entrepots.length > 0 ? entrepots[0].id.toString() : '',
-            lots: [],
-            product: {
-                id: prod.id,
-                label: prod.label,
-                ref: prod.ref,
-                manage_by_lot: !!prod.manage_by_lot,
-                stock_unit: prod.stock_unit,
-                sale_unit: prod.sale_unit
-            },
-            sale_unit: prod.sale_unit
-        };
 
-        setCloneForm({
-            ...cloneForm,
-            lines: [...cloneForm.lines, newLine]
-        });
-    };
 
     const handleRemoveCloneLine = (index: number) => {
         if (!cloneForm) return;
@@ -1064,29 +1034,7 @@ export default function Index({
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
-                                    <div className="flex items-center space-x-2 w-full sm:w-72">
-                                        <select
-                                            className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs py-2 px-3 focus:outline-none focus:border-indigo-500 transition-all font-semibold text-slate-800 dark:text-slate-200"
-                                            value=""
-                                            onChange={e => {
-                                                const prodId = e.target.value;
-                                                if (!prodId) return;
-                                                const prod = products.find(p => p.id.toString() === prodId);
-                                                if (prod) {
-                                                    handleAddProductToClone(prod);
-                                                }
-                                                e.target.value = "";
-                                            }}
-                                        >
-                                            <option value="">+ Ajouter un produit au bon de livraison...</option>
-                                            {products.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.ref ? `[${p.ref}] ` : ''}{p.label} - {p.sale_price} DH
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div className="flex flex-col sm:flex-row justify-end items-center bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60 gap-4 mt-3">
                                     <div className="text-right w-full sm:w-auto">
                                         <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Total Lignes Bon de Livraison</span>
                                         <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
