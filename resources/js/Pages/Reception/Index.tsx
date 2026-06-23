@@ -73,8 +73,16 @@ const STATUS_STYLING: Record<string, {badge: string; dot: string; label: string}
     'annulee':   { badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-455 border-rose-500/20',        dot: 'bg-rose-500',   label: 'Annulé' },
 };
 
-export default function Index({ receptions, filters }: { receptions: PaginatedReceptions; filters: { search: string | null; status: string | null } }) {
-    const { decimals } = useEntitySettings();
+export default function Index({
+    receptions,
+    filters,
+    tauxTvas = []
+}: {
+    receptions: PaginatedReceptions;
+    filters: { search: string | null; status: string | null };
+    tauxTvas?: any[];
+}) {
+    const { decimals, defaultTvaId } = useEntitySettings();
     const { flash } = usePage().props as any;
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
@@ -126,13 +134,27 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
             const lines = data.lines
                 .map((line: any) => {
                     const remainingQty = Math.max(0, Number(line.qty) - (Number(line.invoiced_qty) || 0));
+                    let mappedTauxTvaId = line.taux_tva_id ? String(line.taux_tva_id) : '';
+                    let tva = Number(line.taux_tva?.taux || 0);
+                    if (!mappedTauxTvaId) {
+                        if (defaultTvaId) {
+                            mappedTauxTvaId = String(defaultTvaId);
+                        } else if (tauxTvas && tauxTvas.length > 0) {
+                            mappedTauxTvaId = String(tauxTvas[0].id);
+                        }
+                        const foundTva = tauxTvas.find((t: any) => String(t.id) === mappedTauxTvaId);
+                        if (foundTva) {
+                            tva = Number(foundTva.taux || 0);
+                        }
+                    }
+
                     return {
                         product_id: line.product_id.toString(),
                         qty: remainingQty.toString(),
                         max_qty: remainingQty,
                         purchase_unit_id: line.purchase_unit_id ? line.purchase_unit_id.toString() : '',
-                        taux_tva_id: line.taux_tva_id ? String(line.taux_tva_id) : '',
-                        tva: Number(line.taux_tva?.taux || 0),
+                        taux_tva_id: mappedTauxTvaId,
+                        tva: tva,
                         pu_ht: Number(line.pu_ht),
                         pu_ttc: Number(line.pu_ttc),
                         remise: Number(line.remise) || 0,
@@ -553,6 +575,16 @@ export default function Index({ receptions, filters }: { receptions: PaginatedRe
                             </div>
 
                             <form onSubmit={submitClone} className="space-y-6">
+                                {Object.keys(cloneErrors).length > 0 && (
+                                     <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-455">
+                                         <p className="font-extrabold mb-1">Des erreurs sont survenues lors de la validation :</p>
+                                         <ul className="list-disc pl-5 space-y-1 font-semibold">
+                                             {Object.entries(cloneErrors).map(([key, val]) => (
+                                                 <li key={key}>{val}</li>
+                                             ))}
+                                         </ul>
+                                     </div>
+                                 )}
                                 {/* General Details */}
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-55 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/60">
                                     <div>
